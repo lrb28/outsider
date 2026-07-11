@@ -23,7 +23,7 @@ from outsider_ingest.db import Repository, connect
 from outsider_ingest.parse.senate import normalize_all
 from outsider_ingest.providers.senate_disclosure import SenateDisclosureProvider
 
-MAX_RECORDS = int(os.environ.get("SENATE_MAX_RECORDS", "400"))
+MAX_RECORDS = int(os.environ.get("SENATE_MAX_RECORDS", "200"))
 
 
 def slugify(s: str) -> str:

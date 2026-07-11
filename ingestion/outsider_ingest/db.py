@@ -63,15 +63,35 @@ class Repository:
     # --- securities -----------------------------------------------------------
 
     def upsert_security(self, identity: SecurityIdentity) -> int:
+        # Find an existing row by FIGI or CUSIP first. A security may already
+        # exist (from the demo seed, or an earlier run that stored it under just
+        # a CUSIP) — a plain INSERT ... ON CONFLICT (figi) would then trip the
+        # separate UNIQUE(cusip) constraint. Find-or-create avoids that clash.
+        if identity.figi:
+            row = self.conn.execute(
+                "SELECT id FROM securities WHERE figi = %s", (identity.figi,)
+            ).fetchone()
+            if row:
+                self.conn.execute(
+                    "UPDATE securities SET ticker = COALESCE(%s, ticker), "
+                    "name = COALESCE(%s, name), cusip = COALESCE(cusip, %s) WHERE id = %s",
+                    (identity.ticker, identity.name, identity.cusip, row[0]),
+                )
+                return row[0]
+        if identity.cusip:
+            row = self.conn.execute(
+                "SELECT id FROM securities WHERE cusip = %s", (identity.cusip,)
+            ).fetchone()
+            if row:
+                self.conn.execute(
+                    "UPDATE securities SET figi = COALESCE(%s, figi), "
+                    "ticker = COALESCE(%s, ticker), name = COALESCE(%s, name) WHERE id = %s",
+                    (identity.figi, identity.ticker, identity.name, row[0]),
+                )
+                return row[0]
         row = self.conn.execute(
-            """
-            INSERT INTO securities (ticker, figi, cusip, name, exchange, asset_type)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (figi) DO UPDATE SET
-                ticker = COALESCE(EXCLUDED.ticker, securities.ticker),
-                name   = COALESCE(EXCLUDED.name, securities.name)
-            RETURNING id
-            """,
+            "INSERT INTO securities (ticker, figi, cusip, name, exchange, asset_type) "
+            "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
             (
                 identity.ticker,
                 identity.figi,
@@ -195,6 +215,25 @@ class Repository:
             )
             n += 1
         return n
+
+    def upsert_prices_bulk(self, security_id: int, prices: Sequence[PricePoint]) -> int:
+        """Batch upsert (one round-trip via executemany) — far faster than row-by-row."""
+        if not prices:
+            return 0
+        with self.conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO prices (security_id, date, open, high, low, close, volume) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (security_id, date) DO UPDATE SET close = EXCLUDED.close",
+                [(security_id, p.the_date, p.open, p.high, p.low, p.close, p.volume) for p in prices],
+            )
+        return len(prices)
+
+    def latest_price_date(self, security_id: int):
+        row = self.conn.execute(
+            "SELECT max(date) FROM prices WHERE security_id = %s", (security_id,)
+        ).fetchone()
+        return row[0] if row else None
 
     # --- symbol cache ---------------------------------------------------------
 
