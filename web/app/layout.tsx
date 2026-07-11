@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header className="border-b border-edge">
           <div className="mx-auto max-w-5xl px-4 py-4 flex items-baseline gap-3">
             <span className="text-lg font-semibold tracking-tight">Outsider</span>
-            <span className="text-xs text-muted">working title · v0.1 MVP</span>
+            <span className="text-xs text-muted">Politiker, Insider und Investoren</span>
           </div>
         </header>
         <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
