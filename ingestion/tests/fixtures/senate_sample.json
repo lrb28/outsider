@@ -1,0 +1,41 @@
+[
+  {
+    "transaction_date": "01/02/2024",
+    "owner": "Spouse",
+    "ticker": "AAPL",
+    "asset_description": "Apple Inc",
+    "asset_type": "Stock",
+    "type": "Purchase",
+    "amount": "$1,001 - $15,000",
+    "comment": "--",
+    "senator": "Thomas H Tuberville",
+    "ptr_link": "https://efdsearch.senate.gov/search/view/ptr/abc123/",
+    "disclosure_date": "01/15/2024"
+  },
+  {
+    "transaction_date": "03/10/2024",
+    "owner": "Self",
+    "ticker": "NVDA",
+    "asset_description": "NVIDIA Corp",
+    "asset_type": "Stock",
+    "type": "Sale (Full)",
+    "amount": "$50,001 - $100,000",
+    "comment": "--",
+    "senator": "Sheldon Whitehouse",
+    "ptr_link": "https://efdsearch.senate.gov/search/view/ptr/def456/",
+    "disclosure_date": "03/28/2024"
+  },
+  {
+    "transaction_date": "05/01/2024",
+    "owner": "Joint",
+    "ticker": "--",
+    "asset_description": "US Treasury Note",
+    "asset_type": "Non-Public Stock",
+    "type": "Sale (Partial)",
+    "amount": "$1,000,001 +",
+    "comment": "--",
+    "senator": "Example Senator",
+    "ptr_link": "https://efdsearch.senate.gov/search/view/ptr/ghi789/",
+    "disclosure_date": "05/20/2024"
+  }
+]

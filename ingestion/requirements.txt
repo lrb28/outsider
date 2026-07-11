@@ -1,0 +1,11 @@
+# Outsider ingestion — Python dependencies (all free, no paid SDKs)
+lxml>=5.0            # 13F / Form 4 XML parsing
+requests>=2.31       # HTTP with custom User-Agent for SEC etc.
+pandas>=2.0          # tabular transforms, CSV price handling
+psycopg[binary]>=3.1 # PostgreSQL (Supabase) writes
+PyYAML>=6.0          # tracked_entities.yaml
+pdfplumber>=0.11     # House PTR PDF text extraction (Phase: politicians)
+python-dateutil>=2.9
+
+# --- optional / later (kept out of the hot path) ---
+# ocrmypdf / pytesseract  # OCR fallback for scanned House PTRs

@@ -1,0 +1,33 @@
+# Data-driven tracked-entity list (NOT hardcoded in logic).
+# The ingestion pipelines read this file; add a row to track a new actor.
+#
+# For politicians the House/Senate bulk feeds are ingested wholesale anyway —
+# entries here just mark who to HIGHLIGHT (e.g. Pelosi) in the UI.
+
+institutions:
+  - slug: scion-asset-management
+    full_name: Scion Asset Management, LLC   # Michael Burry
+    cik: "0001649339"
+    highlight: true
+  - slug: renaissance-technologies
+    full_name: Renaissance Technologies LLC
+    cik: "0001037389"                        # verify name at ingest (submissions.json)
+    highlight: true
+
+politicians:
+  - slug: nancy-pelosi
+    full_name: Nancy Pelosi
+    chamber: House
+    highlight: true
+    # bioguide_id resolved from the House feed at ingest
+
+# corporate_insiders are discovered from Form 4 by issuer/reporting-owner; no
+# static seed needed. Add specific people here only to highlight them.
+corporate_insiders: []
+
+# Issuer CIKs whose insider Form 4 activity we ingest (ingest_form4 --all).
+form4_issuers:
+  - "0000320193"   # Apple Inc.
+  - "0001318605"   # Tesla, Inc.
+  - "0001045810"   # NVIDIA Corp
+
