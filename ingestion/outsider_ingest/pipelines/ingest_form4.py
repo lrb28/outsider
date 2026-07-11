@@ -36,7 +36,7 @@ def _d(s):
         return None
 
 
-def ingest_issuer_form4(issuer_cik: str, since: date | None = None, max_filings: int = 60) -> int:
+def ingest_issuer_form4(issuer_cik: str, since: date | None = None, max_filings: int = 20) -> int:
     sec = config.get_filings_provider("sec")
     conn = connect(config.DATABASE_URL)
     repo = Repository(conn)

@@ -9,10 +9,13 @@ institutions:
     full_name: Scion Asset Management, LLC   # Michael Burry
     cik: "0001649339"
     highlight: true
-  - slug: renaissance-technologies
-    full_name: Renaissance Technologies LLC
-    cik: "0001037389"                        # verify name at ingest (submissions.json)
-    highlight: true
+  # Renaissance holds hundreds of positions; without an OPENFIGI_API_KEY the
+  # keyless CUSIP->ticker lookup is slow (rate-limited). Re-enable once you add
+  # OPENFIGI_API_KEY as a secret.
+  # - slug: renaissance-technologies
+  #   full_name: Renaissance Technologies LLC
+  #   cik: "0001037389"
+  #   highlight: true
 
 politicians:
   - slug: nancy-pelosi
