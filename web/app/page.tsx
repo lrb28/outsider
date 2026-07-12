@@ -198,9 +198,28 @@ export default function Page() {
                     <div className="text-xs text-subtle">{TYP[r.entityType]}</div>
                   </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="font-mono text-sm font-medium">{r.ticker ?? "—"}</div>
-                  <div className="truncate text-xs text-subtle">{r.securityName}</div>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  {r.ticker ? (
+                    <img
+                      src={`https://assets.parqet.com/logos/symbol/${r.ticker}`}
+                      alt=""
+                      loading="lazy"
+                      className="h-7 w-7 shrink-0 rounded-md bg-white object-contain p-0.5 ring-1 ring-hair"
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (img.dataset.fb !== "1") {
+                          img.dataset.fb = "1";
+                          img.src = `https://financialmodelingprep.com/image-stock/${r.ticker}.png`;
+                        } else {
+                          img.style.display = "none";
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <div className="font-mono text-sm font-medium">{r.ticker ?? "—"}</div>
+                    <div className="truncate text-xs text-subtle">{r.securityName}</div>
+                  </div>
                 </div>
                 <div>
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${badge}`}>
