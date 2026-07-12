@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-import { avatarColor, initials, pct, signalLabel } from "@/lib/format";
+import { avatarColor, initials, pct, signalLabel, wikiTitleFor } from "@/lib/format";
 import { FeedRow, TradesResponse } from "@/lib/types";
 
 interface Stats {
@@ -40,6 +40,7 @@ export default function Page() {
   const [txnType, setTxnType] = useState("");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     fetch("/api/stats").then((r) => r.json()).then(setStats).catch(() => {});
@@ -67,9 +68,50 @@ export default function Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, txnType]);
 
+  // resolve investor portraits from Wikipedia at runtime (CORS-enabled)
+  useEffect(() => {
+    const missing = new Set<string>();
+    for (const r of rows) {
+      const t = wikiTitleFor(r.entityName);
+      if (t && !(t in photos)) missing.add(t);
+    }
+    missing.forEach((t) => {
+      fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t)}`)
+        .then((r) => r.json())
+        .then((d) => setPhotos((p) => ({ ...p, [t]: d?.thumbnail?.source ?? null })))
+        .catch(() => setPhotos((p) => ({ ...p, [t]: null })));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
     load();
+  };
+
+  const renderAvatar = (name: string) => {
+    const t = wikiTitleFor(name);
+    const photo = t ? photos[t] : undefined;
+    if (photo) {
+      return (
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          onError={() => t && setPhotos((p) => ({ ...p, [t]: null }))}
+          className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-hair"
+        />
+      );
+    }
+    return (
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarColor(
+          name,
+        )}`}
+      >
+        {initials(name)}
+      </div>
+    );
   };
 
   const cards = stats
@@ -183,13 +225,7 @@ export default function Page() {
                 className={`grid grid-cols-1 ${GRID} items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-slate-50`}
               >
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarColor(
-                      r.entityName,
-                    )}`}
-                  >
-                    {initials(r.entityName)}
-                  </div>
+                  {renderAvatar(r.entityName)}
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 text-sm font-medium">
                       <span className="truncate">{r.entityName}</span>

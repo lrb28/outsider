@@ -9,6 +9,9 @@ export function Disclaimer() {
       Tage nach Quartalsende gemeldet und enthalten nur Long-US-Positionen (Leerverkäufe sind
       nicht dabei); Politiker-Trades erscheinen Tage bis Wochen nach dem Handel. Jede Zahl
       verweist auf ihre Quell-Offenlegung.
+      <span className="mt-2 block text-[11px] text-subtle">
+        Firmenlogos: Parqet · Financial Modeling Prep. Investoren-Porträts: Wikimedia Commons.
+      </span>
     </div>
   );
 }

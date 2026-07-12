@@ -66,3 +66,35 @@ export function avatarColor(name: string): string {
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
+
+// Curated map: an entity's fund OR person name -> Wikipedia article title.
+// Matched by substring so it works whether the feed shows the fund or the person.
+// The app fetches the portrait from Wikipedia at runtime (CORS-enabled); anything
+// not listed / without a photo keeps the coloured initials avatar.
+const WIKI_TITLES: [string, string][] = [
+  ["berkshire", "Warren_Buffett"],
+  ["buffett", "Warren_Buffett"],
+  ["scion", "Michael_Burry"],
+  ["burry", "Michael_Burry"],
+  ["pershing", "Bill_Ackman"],
+  ["ackman", "Bill_Ackman"],
+  ["duquesne", "Stanley_Druckenmiller"],
+  ["druckenmiller", "Stanley_Druckenmiller"],
+  ["soros", "George_Soros"],
+  ["daily journal", "Charlie_Munger"],
+  ["munger", "Charlie_Munger"],
+  ["bridgewater", "Ray_Dalio"],
+  ["dalio", "Ray_Dalio"],
+  ["perceptive", "Joseph_Edelman"],
+  ["edelman", "Joseph_Edelman"],
+  ["dalal", "Mohnish_Pabrai"],
+  ["pabrai", "Mohnish_Pabrai"],
+  ["situational", "Leopold_Aschenbrenner"],
+  ["aschenbrenner", "Leopold_Aschenbrenner"],
+];
+
+export function wikiTitleFor(name: string): string | null {
+  const n = name.toLowerCase();
+  for (const [sub, title] of WIKI_TITLES) if (n.includes(sub)) return title;
+  return null;
+}
