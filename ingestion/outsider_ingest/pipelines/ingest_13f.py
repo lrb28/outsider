@@ -1,14 +1,15 @@
 """Ingest institutional 13F-HR filings into Postgres.
 
-Flow (per institution):
-  submissions.json -> list 13F-HR filings -> for each: fetch info table, parse,
-  upsert holdings, and derive QoQ position-change transactions vs the prior
-  quarter. Securities are resolved CUSIP->identity via OpenFIGI (cached).
+Flow (per institution): submissions.json -> list 13F-HR filings -> for the most
+recent couple: fetch info table, parse, upsert holdings, and derive QoQ
+position-change transactions vs the prior quarter. Securities are resolved
+CUSIP->identity via OpenFIGI, BATCH-resolved up front (fast with an API key) so
+large funds don't make one API call per position.
 
 Run:
   PYTHONPATH=. SEC_USER_AGENT='Outsider/0.1 you@example.com' \
-    DATABASE_URL=postgres://... python3 -m outsider_ingest.pipelines.ingest_13f \
-    --cik 0001649339 --name "Scion Asset Management, LLC" --max-filings 8
+    DATABASE_URL=postgres://... OPENFIGI_API_KEY=... \
+    python3 -m outsider_ingest.pipelines.ingest_13f --cik 0001649339 --name "Scion ..."
 """
 
 from __future__ import annotations
@@ -30,6 +31,25 @@ def slugify(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+def _prewarm_securities(repo: Repository, symbols, holdings: list[Holding13F]) -> None:
+    """Batch-resolve every uncached CUSIP once, then upsert + cache, so the
+    per-holding loop hits the DB cache instead of the OpenFIGI API. This is what
+    makes a 1000-position fund ingest in seconds rather than many minutes."""
+    if symbols is None:
+        return
+    todo = [h.cusip for h in holdings if h.cusip and repo.cache_get_symbol(h.cusip) is None]
+    if not todo:
+        return
+    try:
+        identities = symbols.resolve_batch(todo)
+    except Exception:  # noqa: BLE001 — never let symbol lookup break ingestion
+        return
+    for cusip, identity in identities.items():
+        if identity and identity.figi:
+            sid = repo.upsert_security(identity)
+            repo.cache_put_symbol(cusip, sid)
+
+
 def _resolve_security_id(repo: Repository, symbols, h: Holding13F) -> int:
     cached = repo.cache_get_symbol(h.cusip)
     if cached is not None:
@@ -37,13 +57,12 @@ def _resolve_security_id(repo: Repository, symbols, h: Holding13F) -> int:
     identity = None
     try:
         identity = symbols.resolve(h.cusip, "ID_CUSIP")
-    except Exception:  # noqa: BLE001 — never let symbol lookup break ingestion
+    except Exception:  # noqa: BLE001
         identity = None
     if identity and identity.figi:
         sid = repo.upsert_security(identity)
         repo.cache_put_symbol(h.cusip, sid)
         return sid
-    # fallback: keep the CUSIP + issuer name so nothing is dropped
     return repo.upsert_security_by_cusip(h.cusip, h.name_of_issuer)
 
 
@@ -56,7 +75,7 @@ def ingest_institution(
     repo = Repository(conn)
 
     entity_id = repo.upsert_entity(
-        "institution", name, slugify(name), {"cik": cik}, org_name=name
+        "institution", name, slugify(name), {"cik": cik}, org_name=name, highlight=True
     )
     filings = sec.list_filings(cik, ["13F-HR"], since)
     filings.sort(key=lambda f: (f.period_of_report or date.min))
@@ -64,6 +83,7 @@ def ingest_institution(
     prev: list[Holding13F] | None = None
     for ref in filings[-max_filings:]:
         holdings = sec.get_13f_holdings(ref)
+        _prewarm_securities(repo, symbols, holdings)
         as_of = ref.period_of_report or ref.filed_at
         filing_id = repo.insert_filing(
             ref.source, ref.form_type, entity_id, ref.filed_at,
@@ -85,17 +105,19 @@ def ingest_institution(
                     shares=abs(ch.delta_shares), put_call=ch.put_call,
                 )
         prev = holdings
-        print(f"  ingested {ref.form_type} {ref.period_of_report} "
-              f"({len(holdings)} positions)")
-
-    repo.commit()
+        repo.commit()
+        print(f"  {ref.period_of_report}: {len(holdings)} positions")
 
 
 def ingest_from_config() -> None:
     cfg = yaml.safe_load((Path(__file__).resolve().parents[2] / "tracked_entities.yaml").read_text())
     for inst in cfg.get("institutions", []):
         print(f"[13F] {inst['full_name']} (CIK {inst['cik']})")
-        ingest_institution(inst["cik"], inst["full_name"])
+        try:
+            # latest 2 quarters = current holdings + one QoQ diff; keeps volume sane
+            ingest_institution(inst["cik"], inst["full_name"], max_filings=2)
+        except Exception as e:  # noqa: BLE001 — one bad fund must not stop the rest
+            print(f"  SKIP {inst['full_name']}: {e}")
 
 
 def main() -> None:

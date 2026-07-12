@@ -1,18 +1,20 @@
-"""Ingest US House STOCK Act PTRs (politicians).
+"""Ingest US House STOCK Act PTRs (politicians) — best-effort.
 
-Downloads the yearly index ZIP, lists Periodic Transaction Reports, fetches each
-PDF, and extracts transactions via parse/house_ptr.py. PDFs that are scanned
-(no text layer) are skipped until OCR is added. Pelosi is flagged as highlight.
+Downloads the yearly index ZIP, lists Periodic Transaction Reports, fetches the
+most recent PDFs, and extracts transactions via parse/house_ptr.py. Scanned
+(image-only) PDFs are skipped until OCR is added, so coverage starts partial.
+Capped to the newest PTRs so a daily run stays bounded. Pelosi is flagged as
+highlight.
 
 Run:
-  PYTHONPATH=... DATABASE_URL=... python3 -m outsider_ingest.pipelines.ingest_house --year 2025
+  PYTHONPATH=. DATABASE_URL=... python3 -m outsider_ingest.pipelines.ingest_house --year 2026
 """
 
 from __future__ import annotations
 
 import argparse
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from outsider_ingest import config
 from outsider_ingest.db import Repository, connect
@@ -32,9 +34,10 @@ def _d(iso):
         return None
 
 
-def ingest_house(year: int | None = None, max_ptrs: int = 300) -> int:
+def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
     provider = config.get_filings_provider("house")
     refs = provider.list_filings("", ["P"], year=year)
+    refs.sort(key=lambda r: (r.filed_at or date.min), reverse=True)  # newest first
 
     conn = connect(config.DATABASE_URL)
     repo = Repository(conn)
@@ -70,15 +73,16 @@ def ingest_house(year: int | None = None, max_ptrs: int = 300) -> int:
                 amount_min=r.get("amount_min"), amount_max=r.get("amount_max"),
             )
             n += 1
-    repo.commit()
-    print(f"House: {n} transactions from {len(refs[:max_ptrs])} PTRs ({skipped} skipped/scanned)")
+        repo.commit()
+    print(f"House: {n} transactions from {len(refs[:max_ptrs])} recent PTRs "
+          f"({skipped} skipped/scanned)")
     return n
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int)
-    ap.add_argument("--max-ptrs", type=int, default=300)
+    ap.add_argument("--max-ptrs", type=int, default=120)
     args = ap.parse_args()
     ingest_house(year=args.year, max_ptrs=args.max_ptrs)
 

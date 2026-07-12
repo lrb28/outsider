@@ -1,36 +1,71 @@
 # Data-driven tracked-entity list (NOT hardcoded in logic).
-# The ingestion pipelines read this file; add a row to track a new actor.
-#
-# For politicians the House/Senate bulk feeds are ingested wholesale anyway —
-# entries here just mark who to HIGHLIGHT (e.g. Pelosi) in the UI.
+# Add a row to track a new actor; the daily robot reads this file.
 
 institutions:
   - slug: scion-asset-management
-    full_name: Scion Asset Management, LLC   # Michael Burry
+    full_name: Scion Asset Management, LLC          # Michael Burry
     cik: "0001649339"
     highlight: true
-  # Renaissance holds hundreds of positions; without an OPENFIGI_API_KEY the
-  # keyless CUSIP->ticker lookup is slow (rate-limited). Re-enable once you add
-  # OPENFIGI_API_KEY as a secret.
-  # - slug: renaissance-technologies
-  #   full_name: Renaissance Technologies LLC
-  #   cik: "0001037389"
-  #   highlight: true
+  - slug: pershing-square
+    full_name: Pershing Square Capital Management, L.P.   # Bill Ackman
+    cik: "0001336528"
+    highlight: true
+  - slug: berkshire-hathaway
+    full_name: Berkshire Hathaway Inc               # Warren Buffett
+    cik: "0001067983"
+    highlight: true
+  - slug: duquesne-family-office
+    full_name: Duquesne Family Office LLC           # Stanley Druckenmiller
+    cik: "0001536411"
+    highlight: true
+  - slug: soros-fund-management
+    full_name: Soros Fund Management LLC            # George Soros
+    cik: "0001029160"
+    highlight: true
+  - slug: daily-journal
+    full_name: Daily Journal Corporation            # Charlie Munger
+    cik: "0000783412"
+    highlight: true
+  - slug: bridgewater-associates
+    full_name: Bridgewater Associates, LP           # Ray Dalio
+    cik: "0001350694"
+    highlight: true
+  - slug: perceptive-advisors
+    full_name: Perceptive Advisors LLC              # Joseph Edelman
+    cik: "0001224962"
+    highlight: true
+  - slug: dalal-street
+    full_name: Dalal Street, LLC                    # Mohnish Pabrai
+    cik: "0001549575"
+    highlight: true
+  - slug: situational-awareness
+    full_name: Situational Awareness LP             # Leopold Aschenbrenner
+    cik: "0002045724"
+    highlight: true
 
 politicians:
   - slug: nancy-pelosi
     full_name: Nancy Pelosi
     chamber: House
     highlight: true
-    # bioguide_id resolved from the House feed at ingest
 
-# corporate_insiders are discovered from Form 4 by issuer/reporting-owner; no
-# static seed needed. Add specific people here only to highlight them.
 corporate_insiders: []
 
-# Issuer CIKs whose insider Form 4 activity we ingest (ingest_form4 --all).
+# Firmen, deren Insider-Trades (Form 4) wir holen:
 form4_issuers:
   - "0000320193"   # Apple Inc.
   - "0001318605"   # Tesla, Inc.
   - "0001045810"   # NVIDIA Corp
-
+  - "0000789019"   # Microsoft Corp
+  - "0001326801"   # Meta Platforms, Inc.
+  - "0001018724"   # Amazon.com, Inc.
+  - "0001652044"   # Alphabet Inc. (Google)
+  - "0001065280"   # Netflix, Inc.
+  - "0000002488"   # Advanced Micro Devices (AMD)
+  - "0001321655"   # Palantir Technologies
+  - "0001679788"   # Coinbase Global
+  - "0001108524"   # Salesforce, Inc.
+  - "0001341439"   # Oracle Corp
+  - "0000050863"   # Intel Corp
+  - "0000019617"   # JPMorgan Chase
+  - "0000021344"   # Coca-Cola Co
