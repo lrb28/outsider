@@ -168,10 +168,36 @@ const COMPANY_BY_TICKER: Record<string, string> = {
   UBER: "Uber", ABNB: "Airbnb", SHOP: "Shopify", PYPL: "PayPal",
   QCOM: "Qualcomm", MU: "Micron", ADBE: "Adobe", NOW: "ServiceNow",
   SPY: "S&P 500 ETF", QQQ: "Nasdaq 100 ETF", DVA: "DaVita",
-  GOOGLE: "Alphabet", BABA: "Alibaba", UNH: "UnitedHealth",
-  LLY: "Eli Lilly", MRK: "Merck", XOM: "ExxonMobil", CVX: "Chevron",
-  GM: "General Motors", F: "Ford", C: "Citigroup", GS: "Goldman Sachs",
+  BABA: "Alibaba", UNH: "UnitedHealth", LLY: "Eli Lilly", MRK: "Merck",
+  XOM: "ExxonMobil", CVX: "Chevron", GM: "General Motors", F: "Ford",
+  C: "Citigroup", GS: "Goldman Sachs", MS: "Morgan Stanley", WFC: "Wells Fargo",
+  // Berkshire & other commonly-held names (correct US tickers)
+  OXY: "Occidental Petroleum", KHC: "Kraft Heinz", DAL: "Delta Air Lines",
+  SIRI: "SiriusXM", VRSN: "Verisign", KR: "Kroger", CB: "Chubb", MCO: "Moody's",
+  COF: "Capital One", ALLY: "Ally Financial", NU: "Nu Holdings",
+  CHTR: "Charter Communications", LEN: "Lennar", DHI: "D.R. Horton",
+  AON: "Aon", DPZ: "Domino's Pizza", LPX: "Louisiana-Pacific", LAMR: "Lamar",
+  // Broad large caps
+  JNJ: "Johnson & Johnson", PG: "Procter & Gamble", HD: "Home Depot",
+  COST: "Costco", PEP: "PepsiCo", ABBV: "AbbVie", TMO: "Thermo Fisher",
+  ACN: "Accenture", ABT: "Abbott", DHR: "Danaher", VZ: "Verizon", T: "AT&T",
+  CSCO: "Cisco", CMCSA: "Comcast", BLK: "BlackRock", SCHW: "Charles Schwab",
+  CAT: "Caterpillar", BA: "Boeing", GE: "GE Aerospace", HON: "Honeywell",
+  UNP: "Union Pacific", UPS: "UPS", LMT: "Lockheed Martin", RTX: "RTX",
+  DE: "Deere", LOW: "Lowe's", TJX: "TJX", MDLZ: "Mondelez", GILD: "Gilead",
+  AMGN: "Amgen", BMY: "Bristol Myers Squibb", CVS: "CVS Health",
+  SNOW: "Snowflake", PANW: "Palo Alto Networks", CRWD: "CrowdStrike",
+  DDOG: "Datadog", NET: "Cloudflare", SPGI: "S&P Global", ICE: "ICE",
+  CME: "CME Group", TXN: "Texas Instruments", IBM: "IBM", INTU: "Intuit",
+  ISRG: "Intuitive Surgical", VRT: "Vertiv", SMCI: "Super Micro",
 };
+
+// A CUSIP (9-char security id) sometimes ends up in the name/ticker column when
+// symbol resolution didn't return a clean name. Detect it so we never show it.
+function isCusipLike(s: string | null | undefined): boolean {
+  const t = (s || "").trim();
+  return t.length >= 6 && t.length <= 9 && /^[0-9A-Za-z]+$/.test(t) && /[0-9]/.test(t);
+}
 
 const SUFFIX_RE =
   /\b(incorporated|inc|corporation|corp|company|co|plc|ltd|limited|llc|l\.?p|lp|sa|n\.?v|a\.?g|holdings?|group|the|com|new|sponsored|adr|ads)\b\.?/gi;
@@ -191,9 +217,14 @@ function prettifyCompany(raw: string): string {
 }
 
 export function companyName(ticker: string | null, rawName: string | null): string {
-  if (ticker && COMPANY_BY_TICKER[ticker.toUpperCase()]) {
-    return COMPANY_BY_TICKER[ticker.toUpperCase()];
+  const rawT = (ticker || "").trim();
+  const T = rawT && !isCusipLike(rawT) ? rawT.toUpperCase() : "";
+  if (T && COMPANY_BY_TICKER[T]) return COMPANY_BY_TICKER[T];
+  if (rawName && !isCusipLike(rawName)) {
+    const pretty = prettifyCompany(rawName);
+    if (pretty && !isCusipLike(pretty)) return pretty;
   }
-  if (rawName) return prettifyCompany(rawName);
-  return ticker ?? "—";
+  if (T) return T; // clean ticker symbol beats an unresolved CUSIP
+  if (rawName && !isCusipLike(rawName)) return rawName;
+  return rawT || rawName || "—";
 }
