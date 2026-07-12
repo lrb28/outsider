@@ -13,11 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
       - name: Install dependencies
         working-directory: ingestion
         run: pip install -r requirements.txt
@@ -39,6 +37,14 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: PYTHONPATH=. python -m outsider_ingest.pipelines.ingest_senate
 
+      - name: Politicians - US House
+        if: ${{ always() }}
+        continue-on-error: true
+        working-directory: ingestion
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: PYTHONPATH=. python -m outsider_ingest.pipelines.ingest_house --year "$(date +%Y)"
+
       - name: Institutions - SEC 13F
         if: ${{ always() }}
         continue-on-error: true
@@ -46,6 +52,7 @@ jobs:
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
         run: PYTHONPATH=. python -m outsider_ingest.pipelines.ingest_13f --all
 
       - name: Refresh EOD prices
