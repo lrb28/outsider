@@ -22,6 +22,7 @@ from pathlib import Path
 import yaml
 
 from outsider_ingest import config
+from outsider_ingest.aggregate import aggregate_holdings
 from outsider_ingest.db import Repository, connect
 from outsider_ingest.holdings_diff import compute_position_changes
 from outsider_ingest.models import Holding13F
@@ -82,7 +83,9 @@ def ingest_institution(
 
     prev: list[Holding13F] | None = None
     for ref in filings[-max_filings:]:
-        holdings = sec.get_13f_holdings(ref)
+        # A 13F splits one position into several rows (one per sub-manager);
+        # sum them so a position's stored value is the FULL stake, not a slice.
+        holdings = aggregate_holdings(sec.get_13f_holdings(ref))
         _prewarm_securities(repo, symbols, holdings)
         as_of = ref.period_of_report or ref.filed_at
         filing_id = repo.insert_filing(
@@ -91,6 +94,8 @@ def ingest_institution(
         )
         for h in holdings:
             sid = _resolve_security_id(repo, symbols, h)
+            # upgrade a placeholder/CUSIP security name to the clean issuer name
+            repo.ensure_security_name(sid, h.name_of_issuer)
             repo.upsert_holding(filing_id, entity_id, sid, as_of,
                                 h.shares_or_prn, h.value_usd, h.put_call)
 

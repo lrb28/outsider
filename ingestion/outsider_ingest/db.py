@@ -128,6 +128,18 @@ class Repository:
         ).fetchone()
         return row[0]
 
+    def ensure_security_name(self, security_id: int, name: Optional[str]) -> None:
+        """Upgrade a placeholder name (NULL, empty, or a CUSIP/ticker-ish token
+        with no spaces) to the clean issuer name from the filing. Real names —
+        which contain a space, e.g. 'CHEVRON CORPORATION' — are left untouched."""
+        if not name or not name.strip():
+            return
+        self.conn.execute(
+            "UPDATE securities SET name = %s "
+            "WHERE id = %s AND (name IS NULL OR name = '' OR name !~ ' ')",
+            (name.strip(), security_id),
+        )
+
     # --- filings --------------------------------------------------------------
 
     def insert_filing(
