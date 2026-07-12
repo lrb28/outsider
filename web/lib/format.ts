@@ -8,6 +8,23 @@ export function money(v: number | null | undefined): string {
   return `$${Math.round(v).toLocaleString("de-DE")}`;
 }
 
+// Compact money like Eaves: $263.1B, $12.4M, $980K.
+export function abbrevMoney(v: number | null | undefined): string {
+  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  const a = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(1)} Bio.`;
+  if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(1)} Mrd.`;
+  if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)} Mio.`;
+  if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(0)}K`;
+  return `${sign}$${a.toFixed(0)}`;
+}
+
+export function weightPct(v: number | null): string {
+  if (v === null || Number.isNaN(v)) return "—";
+  return `${(v * 100).toFixed(1)} %`;
+}
+
 export function sizeDisplay(row: {
   shares: number | null;
   amount_min: number | null;
@@ -40,6 +57,7 @@ export function signalLabel(txnType: string, putCall: string | null): {
       : { text: "Call geschlossen", tone: "neutral" };
   if (txnType === "buy") return { text: "Kauf", tone: "bull" };
   if (txnType === "sell") return { text: "Verkauf", tone: "bear" };
+  if (txnType === "exchange") return { text: "Umschichtung", tone: "neutral" };
   return { text: txnType, tone: "neutral" };
 }
 
@@ -97,4 +115,85 @@ export function wikiTitleFor(name: string): string | null {
   const n = name.toLowerCase();
   for (const [sub, title] of WIKI_TITLES) if (n.includes(sub)) return title;
   return null;
+}
+
+// Display name of the person behind a fund (from the Wikipedia map).
+export function investorPerson(name: string): string | null {
+  const t = wikiTitleFor(name);
+  return t ? t.replace(/_/g, " ") : null;
+}
+
+// One-line description shown on investor pages (Eaves-style bio line).
+const INVESTOR_BIO: [string, string][] = [
+  ["buffett", "Legendärer Value-Investor, CEO von Berkshire Hathaway."],
+  ["berkshire", "Legendärer Value-Investor, CEO von Berkshire Hathaway."],
+  ["burry", "Contrarian-Investor, bekannt aus „The Big Short“."],
+  ["scion", "Contrarian-Investor, bekannt aus „The Big Short“."],
+  ["ackman", "Aktivistischer Investor, Gründer von Pershing Square."],
+  ["pershing", "Aktivistischer Investor, Gründer von Pershing Square."],
+  ["druckenmiller", "Makro-Legende, früher Soros' rechte Hand."],
+  ["duquesne", "Makro-Legende, früher Soros' rechte Hand."],
+  ["soros", "Makro-Investor und Philanthrop, „brach die Bank of England“."],
+  ["munger", "Buffetts langjähriger Partner, Value-Investor."],
+  ["daily journal", "Buffetts langjähriger Partner, Value-Investor."],
+  ["dalio", "Gründer von Bridgewater, dem größten Hedgefonds der Welt."],
+  ["bridgewater", "Gründer von Bridgewater, dem größten Hedgefonds der Welt."],
+  ["edelman", "Biotech-Investor, Gründer von Perceptive Advisors."],
+  ["perceptive", "Biotech-Investor, Gründer von Perceptive Advisors."],
+  ["pabrai", "Value-Investor im Stil von Buffett und Munger."],
+  ["dalal", "Value-Investor im Stil von Buffett und Munger."],
+  ["aschenbrenner", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
+  ["situational", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
+];
+
+export function investorBio(name: string): string | null {
+  const n = name.toLowerCase();
+  for (const [sub, bio] of INVESTOR_BIO) if (n.includes(sub)) return bio;
+  return null;
+}
+
+// ── Company display names ────────────────────────────────────────────────────
+// Show a clean company name instead of the ticker / raw SEC issuer name.
+const COMPANY_BY_TICKER: Record<string, string> = {
+  AAPL: "Apple", MSFT: "Microsoft", NVDA: "NVIDIA", AMZN: "Amazon",
+  GOOGL: "Alphabet", GOOG: "Alphabet", META: "Meta", TSLA: "Tesla",
+  AVGO: "Broadcom", AMD: "AMD", TSM: "TSMC", NFLX: "Netflix",
+  ORCL: "Oracle", INTC: "Intel", CRM: "Salesforce", COIN: "Coinbase",
+  PLTR: "Palantir", JPM: "JPMorgan Chase", KO: "Coca-Cola", WMT: "Walmart",
+  PFE: "Pfizer", HAL: "Halliburton", MOH: "Molina Healthcare",
+  LULU: "Lululemon", SLM: "SLM (Sallie Mae)", BRKR: "Bruker",
+  "BRK.A": "Berkshire Hathaway", "BRK.B": "Berkshire Hathaway",
+  AXP: "American Express", BAC: "Bank of America", V: "Visa", MA: "Mastercard",
+  DIS: "Disney", NKE: "Nike", SBUX: "Starbucks", MCD: "McDonald's",
+  UBER: "Uber", ABNB: "Airbnb", SHOP: "Shopify", PYPL: "PayPal",
+  QCOM: "Qualcomm", MU: "Micron", ADBE: "Adobe", NOW: "ServiceNow",
+  SPY: "S&P 500 ETF", QQQ: "Nasdaq 100 ETF", DVA: "DaVita",
+  GOOGLE: "Alphabet", BABA: "Alibaba", UNH: "UnitedHealth",
+  LLY: "Eli Lilly", MRK: "Merck", XOM: "ExxonMobil", CVX: "Chevron",
+  GM: "General Motors", F: "Ford", C: "Citigroup", GS: "Goldman Sachs",
+};
+
+const SUFFIX_RE =
+  /\b(incorporated|inc|corporation|corp|company|co|plc|ltd|limited|llc|l\.?p|lp|sa|n\.?v|a\.?g|holdings?|group|the|com|new|sponsored|adr|ads)\b\.?/gi;
+
+function prettifyCompany(raw: string): string {
+  let s = (raw || "").toLowerCase();
+  s = s.replace(/\b(class [a-c]|cl\.? [a-c]|series [a-c]|common stock|ordinary shares?|shares?)\b/gi, " ");
+  s = s.replace(/[/].*$/, " "); // drop trailing /DE/ etc.
+  s = s.replace(/\s+/g, " ").trim();
+  // Title-case each word
+  s = s
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+  s = s.replace(SUFFIX_RE, " ").replace(/[.,]+/g, " ").replace(/\s+/g, " ").trim();
+  return s || raw;
+}
+
+export function companyName(ticker: string | null, rawName: string | null): string {
+  if (ticker && COMPANY_BY_TICKER[ticker.toUpperCase()]) {
+    return COMPANY_BY_TICKER[ticker.toUpperCase()];
+  }
+  if (rawName) return prettifyCompany(rawName);
+  return ticker ?? "—";
 }
