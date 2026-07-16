@@ -1,6 +1,7 @@
 import { getPool } from "./db";
-import { companyName, investorBio, investorPerson, sizeDisplay } from "./format";
+import { abbrevMoney, companyName, investorBio, investorPerson, sizeDisplay } from "./format";
 import {
+  CollectionInvestor,
   CollectionItem,
   DiscoverData,
   FeedRow,
@@ -397,12 +398,60 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
 
-  const [mostHeld, conviction, biggest] = await Promise.all([mostHeldQ, convictionQ, biggestQ]);
+  // Meistgekaufte Aktien im aktuellen Quartal (institutionelle Käufe).
+  const boughtQ = pool.query(`
+    select s.ticker, s.name as security_name, count(*) as n
+    from transactions t
+    join entities e on e.id = t.entity_id and e.type = 'institution'
+    join securities s on s.id = t.security_id
+    where t.txn_type = 'buy' and s.ticker is not null
+    group by s.id, s.ticker, s.name
+    order by n desc, s.ticker
+    limit 12
+  `);
+  // Größte Fonds (nach Portfolio-Wert).
+  const fundsQ = pool.query(`
+    ${CUR_CTE}
+    select e.slug, e.full_name as fund, sum(c.market_value) as v
+    from entities e join cur c on c.entity_id = e.id
+    where e.type = 'institution'
+    group by e.id, e.slug, e.full_name
+    order by v desc nulls last
+    limit 12
+  `);
+  // Am konzentriertesten (höchstes Einzelpositions-Gewicht).
+  const concQ = pool.query(`
+    ${CUR_CTE},
+    tot as (select entity_id, sum(market_value) as v from cur group by entity_id)
+    select e.slug, e.full_name as fund, max(c.market_value / nullif(t.v, 0)) as mw
+    from entities e
+    join cur c on c.entity_id = e.id
+    join tot t on t.entity_id = e.id
+    where e.type = 'institution'
+    group by e.id, e.slug, e.full_name
+    order by mw desc nulls last
+    limit 12
+  `);
+
+  const [mostHeld, conviction, biggest, bought, funds, conc] = await Promise.all([
+    mostHeldQ,
+    convictionQ,
+    biggestQ,
+    boughtQ,
+    fundsQ,
+    concQ,
+  ]);
 
   const item = (r: Record<string, unknown>, metric: string): CollectionItem => ({
     ticker: (r.ticker as string) ?? null,
     company: companyName((r.ticker as string) ?? null, (r.security_name as string) ?? null),
     securityName: (r.security_name as string) ?? "",
+    metric,
+  });
+  const inv = (r: Record<string, unknown>, metric: string): CollectionInvestor => ({
+    slug: r.slug as string,
+    fund: r.fund as string,
+    person: investorPerson(r.fund as string),
     metric,
   });
 
@@ -417,5 +466,10 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
         mv >= 1e9 ? `$${(mv / 1e9).toFixed(1)} Mrd.` : `$${(mv / 1e6).toFixed(0)} Mio.`;
       return item(r, s);
     }),
+    mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Käufe`)),
+    biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
+    mostConcentrated: conc.rows.map((r) =>
+      inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),
+    ),
   };
 }

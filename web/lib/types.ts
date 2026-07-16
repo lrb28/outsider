@@ -128,9 +128,19 @@ export interface CollectionItem {
   metric: string;
 }
 
+export interface CollectionInvestor {
+  slug: string;
+  fund: string;
+  person: string | null;
+  metric: string;
+}
+
 export interface DiscoverData {
   source: "database" | "sample";
   mostHeld: CollectionItem[];
   highestConviction: CollectionItem[];
   biggest: CollectionItem[];
+  mostBoughtQ: CollectionItem[];
+  biggestFunds: CollectionInvestor[];
+  mostConcentrated: CollectionInvestor[];
 }

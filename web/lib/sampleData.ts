@@ -166,6 +166,11 @@ const coll = (ticker: string, name: string, metric: string): CollectionItem => (
   metric,
 });
 
+const collInv = (slug: string, metric: string) => {
+  const f = SAMPLE_INVESTORS.find((i) => i.slug === slug);
+  return { slug, fund: f?.fund ?? slug, person: f?.person ?? null, metric };
+};
+
 export const SAMPLE_DISCOVER = {
   mostHeld: [
     coll("AMZN", "AMAZON.COM INC", "49 Investoren"),
@@ -182,5 +187,20 @@ export const SAMPLE_DISCOVER = {
     coll("AAPL", "APPLE INC", "$63.0 Mrd."),
     coll("AXP", "AMERICAN EXPRESS CO", "$46.0 Mrd."),
     coll("KO", "COCA-COLA CO", "$28.0 Mrd."),
+  ],
+  mostBoughtQ: [
+    coll("NVDA", "NVIDIA CORPORATION", "6 Käufe"),
+    coll("AMZN", "AMAZON.COM INC", "5 Käufe"),
+    coll("META", "META PLATFORMS INC", "4 Käufe"),
+  ],
+  biggestFunds: [
+    collInv("berkshire-hathaway", "$263.1 Mrd."),
+    collInv("bridgewater-associates", "$21.7 Mrd."),
+    collInv("pershing-square", "$12.1 Mrd."),
+  ],
+  mostConcentrated: [
+    collInv("scion-asset-management", "62 % Top-Position"),
+    collInv("daily-journal", "40 % Top-Position"),
+    collInv("pershing-square", "22 % Top-Position"),
   ],
 };
