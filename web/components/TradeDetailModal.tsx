@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { companyName, pct, signalLabel } from "@/lib/format";
+import { companyName, fixTicker, pct, signalLabel } from "@/lib/format";
 import { FeedRow, PriceBar, PricesResponse } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -96,7 +96,7 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
           <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${badge}`}>
             {sig.text}
           </span>
-          <span className="font-mono text-xs text-subtle">{row.ticker ?? "—"}</span>
+          <span className="font-mono text-xs text-subtle">{fixTicker(row.ticker, company) ?? "—"}</span>
           <span className="ml-auto text-sm font-semibold" style={{ color: up ? "#16a34a" : "#dc2626" }}>
             {pct(perf)}
           </span>

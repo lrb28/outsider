@@ -6,10 +6,11 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
 import { Sparkline } from "@/components/Sparkline";
 import { TradeFeed } from "@/components/TradeFeed";
-import { abbrevMoney, weightPct } from "@/lib/format";
+import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 
 export default function StockPage() {
@@ -45,6 +46,22 @@ export default function StockPage() {
 
   const buys = stock.trades.filter((t) => t.txnType === "buy").length;
   const sells = stock.trades.filter((t) => t.txnType === "sell").length;
+
+  // Investor activity this quarter: who bought / sold / just held (institutions).
+  const insts = stock.trades.filter((t) => t.entityType === "institution");
+  const boughtSet = new Set(insts.filter((t) => t.txnType === "buy").map((t) => t.entitySlug ?? t.entityName));
+  const soldSet = new Set(insts.filter((t) => t.txnType === "sell").map((t) => t.entitySlug ?? t.entityName));
+  const heldCount = stock.holders.filter(
+    (h) => !boughtSet.has(h.slug) && !soldSet.has(h.slug),
+  ).length;
+  const act = [
+    { label: "Gekauft", value: boughtSet.size, color: "#16a34a" },
+    { label: "Gehalten", value: heldCount, color: "#94a3b8" },
+    { label: "Verkauft", value: soldSet.size, color: "#dc2626" },
+  ];
+  const actTotal = act.reduce((a, s) => a + s.value, 0);
+  const actTop = [...act].sort((a, b) => b.value - a.value)[0];
+
   const up = bars && bars.length > 1 ? bars[bars.length - 1].close >= bars[0].close : true;
   const chg =
     bars && bars.length > 1 ? (bars[bars.length - 1].close - bars[0].close) / bars[0].close : null;
@@ -66,7 +83,7 @@ export default function StockPage() {
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={64} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{stock.company}</h1>
-          <div className="font-mono text-sm text-subtle">{stock.ticker ?? "—"}</div>
+          <div className="font-mono text-sm text-subtle">{fixTicker(stock.ticker, stock.company) ?? "—"}</div>
         </div>
         {stock.ticker && <FollowButton kind="stock" id={stock.ticker} />}
       </div>
@@ -91,6 +108,33 @@ export default function StockPage() {
           </div>
         ))}
       </div>
+
+      {actTotal > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold tracking-tight">Aktivität der Investoren</h2>
+          <div className="flex flex-col items-center gap-6 rounded-2xl bg-card p-5 shadow-card sm:flex-row">
+            <Donut
+              segments={act}
+              centerTop={`${Math.round((actTop.value / actTotal) * 100)} %`}
+              centerBottom={actTop.label}
+            />
+            <div className="w-full flex-1 space-y-2.5">
+              {act.map((s) => (
+                <div key={s.label} className="flex items-center gap-2 text-sm">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                  <span className="text-ink">{s.label}</span>
+                  <span className="text-xs text-subtle">
+                    {s.value} {s.value === 1 ? "Investor" : "Investoren"}
+                  </span>
+                  <span className="ml-auto font-semibold">
+                    {Math.round((s.value / actTotal) * 100)} %
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">Wer hält diese Aktie</h2>

@@ -4,6 +4,8 @@
 // Prep -> a coloured monogram tile. Renders a rounded square like the Eaves app.
 import { useState } from "react";
 
+import { fixTicker } from "@/lib/format";
+
 function tile(ticker: string | null, company: string, size: number, rounded: string) {
   const letter = (company || ticker || "?").trim()[0]?.toUpperCase() ?? "?";
   return (
@@ -28,11 +30,12 @@ export function CompanyLogo({
   rounded?: string;
 }) {
   const [step, setStep] = useState(0);
-  if (!ticker) return tile(ticker, company, size, rounded);
+  const t = fixTicker(ticker, company);
+  if (!t) return tile(ticker, company, size, rounded);
 
   const srcs = [
-    `https://assets.parqet.com/logos/symbol/${ticker}`,
-    `https://financialmodelingprep.com/image-stock/${ticker}.png`,
+    `https://assets.parqet.com/logos/symbol/${t}`,
+    `https://financialmodelingprep.com/image-stock/${t}.png`,
   ];
   if (step >= srcs.length) return tile(ticker, company, size, rounded);
 

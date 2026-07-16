@@ -216,6 +216,25 @@ function prettifyCompany(raw: string): string {
   return s || raw;
 }
 
+// Some CUSIPs resolve to a non-US listing (CHV instead of CVX). Correct the
+// display ticker to the familiar US symbol, and recover a symbol for a couple
+// of names that came through without one. Used for the logo lookup and label;
+// routing/DB lookups keep the raw ticker.
+const TICKER_FIX: Record<string, string> = {
+  CHV: "CVX",
+  DUT: "MCO",
+  TRL: "DVA",
+};
+
+export function fixTicker(ticker: string | null, name?: string | null): string | null {
+  if (ticker) return TICKER_FIX[ticker.toUpperCase()] ?? ticker;
+  if (name) {
+    const n = name.toLowerCase();
+    if (n.includes("chubb")) return "CB";
+  }
+  return ticker;
+}
+
 export function companyName(ticker: string | null, rawName: string | null): string {
   const rawT = (ticker || "").trim();
   const T = rawT && !isCusipLike(rawT) ? rawT.toUpperCase() : "";

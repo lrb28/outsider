@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { fixTicker } from "@/lib/format";
 import { CollectionItem, DiscoverData } from "@/lib/types";
 
 const META: Record<
@@ -75,7 +76,7 @@ export default function CollectionPage() {
                 <CompanyLogo ticker={it.ticker} company={it.company} size={38} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{it.company}</div>
-                  <div className="font-mono text-xs text-subtle">{it.ticker ?? "—"}</div>
+                  <div className="font-mono text-xs text-subtle">{fixTicker(it.ticker, it.company) ?? "—"}</div>
                 </div>
                 <div className="text-sm font-medium text-slate-700">{it.metric}</div>
               </div>

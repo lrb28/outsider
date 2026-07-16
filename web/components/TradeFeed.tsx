@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { companyName, pct, signalLabel } from "@/lib/format";
+import { companyName, fixTicker, pct, signalLabel } from "@/lib/format";
 import { FeedRow } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -98,7 +98,9 @@ export function TradeFeed({
                   <CompanyLogo ticker={r.ticker} company={company} size={34} />
                   <div className="min-w-0">
                     <div className={`truncate text-sm font-medium ${nameCls}`}>{company}</div>
-                    <div className={`font-mono text-xs ${subCls}`}>{r.ticker ?? "—"}</div>
+                    <div className={`font-mono text-xs ${subCls}`}>
+                      {fixTicker(r.ticker, company) ?? "—"}
+                    </div>
                   </div>
                 </div>
 

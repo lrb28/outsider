@@ -9,7 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeFeed } from "@/components/TradeFeed";
-import { abbrevMoney, companyName, weightPct } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 
 export default function InvestorPage() {
@@ -125,7 +125,7 @@ export default function InvestorPage() {
                     <div className="truncate text-sm font-medium">{company}</div>
                   )}
                   <div className="font-mono text-xs text-subtle">
-                    {h.ticker ?? "—"}
+                    {fixTicker(h.ticker, company) ?? "—"}
                     {h.putCall ? ` · ${h.putCall}` : ""}
                   </div>
                 </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { fixTicker } from "@/lib/format";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -108,7 +109,9 @@ export function SearchBox() {
                 >
                   <CompanyLogo ticker={s.ticker} company={s.company} size={26} rounded="rounded-lg" />
                   <span className="truncate text-sm font-medium">{s.company}</span>
-                  <span className="ml-auto font-mono text-xs text-subtle">{s.ticker}</span>
+                  <span className="ml-auto font-mono text-xs text-subtle">
+                    {fixTicker(s.ticker, s.company)}
+                  </span>
                 </Link>
               ))}
             </div>
