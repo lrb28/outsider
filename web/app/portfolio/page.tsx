@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FaceStack } from "@/components/FaceStack";
+import { FollowButton } from "@/components/FollowButton";
 import { abbrevMoney } from "@/lib/format";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
@@ -72,6 +73,7 @@ export default function PortfolioPage() {
                 <div className="text-sm font-medium">{iv.positions} Positionen</div>
                 <div className="text-xs text-subtle">{abbrevMoney(iv.value)}</div>
               </div>
+              <FollowButton kind="investor" id={iv.slug} variant="star" />
               <span className="text-slate-300">›</span>
             </Link>
           ))}
@@ -99,6 +101,7 @@ export default function PortfolioPage() {
                 </div>
               </div>
               <FaceStack names={s.holderNames} />
+              {s.ticker && <FollowButton kind="stock" id={s.ticker} variant="star" />}
               <span className="text-slate-300">›</span>
             </Link>
           ))}

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { FollowButton } from "@/components/FollowButton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { abbrevMoney, companyName, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
@@ -60,11 +62,12 @@ export default function InvestorPage() {
 
       <div className="flex items-start gap-4">
         <Avatar name={inv.person ?? inv.fund} size={72} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{inv.person ?? inv.fund}</h1>
           <div className="text-sm text-subtle">{inv.fund}</div>
           {inv.bio && <p className="mt-1 max-w-xl text-sm text-slate-600">{inv.bio}</p>}
         </div>
+        <FollowButton kind="investor" id={inv.slug} />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -75,6 +78,8 @@ export default function InvestorPage() {
           </div>
         ))}
       </div>
+
+      <AllocationBar holdings={inv.holdings} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

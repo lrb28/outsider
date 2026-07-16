@@ -16,7 +16,12 @@ function LogoTrio({ items }: { items: CollectionItem[] }) {
           style={{ marginLeft: i === 0 ? 0 : -10, zIndex: top.length - i }}
           className="rounded-2xl ring-2 ring-white/70"
         >
-          <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-2xl" />
+          <CompanyLogo
+            ticker={it.ticker}
+            company={it.company}
+            size={i === 0 ? 52 : 44}
+            rounded="rounded-2xl"
+          />
         </div>
       ))}
     </div>
@@ -24,13 +29,13 @@ function LogoTrio({ items }: { items: CollectionItem[] }) {
 }
 
 function Hero({
-  id,
+  href,
   title,
   blurb,
   items,
   gradient,
 }: {
-  id: string;
+  href: string;
   title: string;
   blurb: string;
   items: CollectionItem[];
@@ -38,57 +43,17 @@ function Hero({
 }) {
   return (
     <Link
-      href={`#${id}`}
-      className={`flex w-72 shrink-0 flex-col justify-between rounded-3xl p-5 shadow-card ring-1 ring-black/5 ${gradient}`}
+      href={href}
+      className={`flex flex-col justify-between rounded-3xl p-5 shadow-card ring-1 ring-black/5 transition hover:shadow-cardhover ${gradient}`}
     >
       <LogoTrio items={items} />
       <div className="mt-6">
-        <div className="text-lg font-semibold tracking-tight text-slate-900">{title}</div>
+        <div className="flex items-center gap-1 text-lg font-semibold tracking-tight text-slate-900">
+          {title} <span className="text-slate-400">›</span>
+        </div>
         <p className="mt-1 text-sm leading-snug text-slate-600">{blurb}</p>
       </div>
     </Link>
-  );
-}
-
-function Collection({
-  id,
-  title,
-  subtitle,
-  items,
-}: {
-  id: string;
-  title: string;
-  subtitle: string;
-  items: CollectionItem[];
-}) {
-  if (items.length === 0) return null;
-  return (
-    <section id={id} className="scroll-mt-24 space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        <p className="text-sm text-subtle">{subtitle}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {items.map((it, i) => {
-          const inner = (
-            <div className="flex h-full items-center gap-3 rounded-2xl bg-card p-3 shadow-card transition hover:shadow-cardhover">
-              <CompanyLogo ticker={it.ticker} company={it.company} size={40} />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">{it.company}</div>
-                <div className="text-xs text-subtle">{it.metric}</div>
-              </div>
-            </div>
-          );
-          return it.ticker ? (
-            <Link key={`${it.ticker}-${i}`} href={`/stock/${it.ticker}`}>
-              {inner}
-            </Link>
-          ) : (
-            <div key={`${it.company}-${i}`}>{inner}</div>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -104,61 +69,40 @@ export default function DiscoverPage() {
   }, []);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Discover</h1>
         <p className="text-sm text-subtle">
-          Worauf das smarte Geld gerade setzt — aus den 13F-Portfolios der verfolgten Investoren.
+          Worauf das smarte Geld gerade setzt — tippe eine Sammlung an.
         </p>
       </div>
 
       {loading && <div className="py-10 text-center text-sm text-subtle">Lädt…</div>}
 
       {!loading && data && (
-        <>
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-            <Hero
-              id="conviction"
-              title="Höchste Überzeugung"
-              blurb="Wenn ein Milliardär 15–20 % seines Fonds in eine Aktie steckt, ist das kein Zufall — das ist ein Statement."
-              items={data.highestConviction}
-              gradient="bg-gradient-to-br from-indigo-100 via-violet-50 to-white"
-            />
-            <Hero
-              id="mostheld"
-              title="Am meisten gehalten"
-              blurb="Die Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben."
-              items={data.mostHeld}
-              gradient="bg-gradient-to-br from-sky-100 via-cyan-50 to-white"
-            />
-            <Hero
-              id="biggest"
-              title="Größte Positionen"
-              blurb="Die wertmäßig größten Einzelwetten unter den Investoren."
-              items={data.biggest}
-              gradient="bg-gradient-to-br from-emerald-100 via-teal-50 to-white"
-            />
-          </div>
-
-          <Collection
-            id="mostheld"
-            title="Am meisten gehalten"
-            subtitle="Aktien, die die meisten verfolgten Investoren im Depot haben."
-            items={data.mostHeld}
-          />
-          <Collection
-            id="conviction"
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Hero
+            href="/discover/conviction"
             title="Höchste Überzeugung"
-            subtitle="Wo ein Investor den größten Anteil seines Portfolios hineinsteckt."
+            blurb="Wenn ein Milliardär 15–20 % seines Fonds in eine Aktie steckt, ist das kein Zufall — das ist ein Statement."
             items={data.highestConviction}
+            gradient="bg-gradient-to-br from-indigo-100 via-violet-50 to-white"
           />
-          <Collection
-            id="biggest"
-            title="Größte Einzelpositionen"
-            subtitle="Die wertmäßig größten Wetten unter den verfolgten Investoren."
+          <Hero
+            href="/discover/mostheld"
+            title="Am meisten gehalten"
+            blurb="Die Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben."
+            items={data.mostHeld}
+            gradient="bg-gradient-to-br from-sky-100 via-cyan-50 to-white"
+          />
+          <Hero
+            href="/discover/biggest"
+            title="Größte Positionen"
+            blurb="Die wertmäßig größten Einzelwetten unter den Investoren."
             items={data.biggest}
+            gradient="bg-gradient-to-br from-emerald-100 via-teal-50 to-white"
           />
-        </>
+        </div>
       )}
     </div>
   );

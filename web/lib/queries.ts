@@ -267,13 +267,21 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
+  const T = ticker.toUpperCase();
   const sec = await pool.query(
-    `select id, ticker, name as security_name from securities where upper(ticker) = $1 limit 1`,
-    [ticker.toUpperCase()],
+    `select s.id, s.ticker, s.name as security_name,
+            (select count(*) from holdings h where h.security_id = s.id) as hc
+     from securities s
+     where upper(s.ticker) = $1
+     order by hc desc, s.id asc`,
+    [T],
   );
   if (sec.rows.length === 0) return null;
   const s = sec.rows[0];
 
+  // A ticker can map to more than one securities row (a 13F row keyed by CUSIP
+  // and a Form 4 row keyed by ticker). Aggregate holders across all of them so
+  // the 13F holdings aren't missed when the wrong row is picked as the header.
   const holders = await pool.query(
     `
     ${CUR_CTE},
@@ -283,10 +291,10 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     from cur c
     join entities e on e.id = c.entity_id
     join tot t on t.entity_id = c.entity_id
-    where c.security_id = $1
+    where c.security_id in (select id from securities where upper(ticker) = $1)
     order by c.market_value desc nulls last
     `,
-    [s.id],
+    [T],
   );
 
   const holderRows: StockHolder[] = holders.rows.map((r) => ({
@@ -324,7 +332,11 @@ export async function getPrices(
     select p.date, p.close
     from prices p
     where p.security_id = (
-      select id from securities where upper(ticker) = $1 order by id limit 1
+      select security_id from prices
+      where security_id in (select id from securities where upper(ticker) = $1)
+      group by security_id
+      order by count(*) desc
+      limit 1
     )
     order by p.date desc
     limit $2

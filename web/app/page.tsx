@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { TradeFeed } from "@/components/TradeFeed";
+import { Watchlist } from "@/components/Watchlist";
 import { abbrevMoney } from "@/lib/format";
 import { FeedRow, InvestorRow, InvestorsResponse, TradesResponse } from "@/lib/types";
 
@@ -68,6 +69,8 @@ export default function HomePage() {
           </div>
         ))}
       </div>
+
+      <Watchlist />
 
       {spotlight.length > 0 && (
         <section className="space-y-3">

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { Disclaimer } from "@/components/Disclaimer";
 import { Nav } from "@/components/Nav";
+import { SearchBox } from "@/components/SearchBox";
 
 export const metadata: Metadata = {
   title: "Outsider — Politiker, Insider und Investoren",
@@ -28,7 +29,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <span className="text-[11px] text-subtle">Politiker · Insider · Investoren</span>
               </div>
             </Link>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              <SearchBox />
               <Nav />
             </div>
           </div>

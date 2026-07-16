@@ -6,14 +6,17 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { FollowButton } from "@/components/FollowButton";
+import { Sparkline } from "@/components/Sparkline";
 import { TradeFeed } from "@/components/TradeFeed";
 import { abbrevMoney, weightPct } from "@/lib/format";
-import { StockDetail, StockResponse } from "@/lib/types";
+import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 
 export default function StockPage() {
   const params = useParams<{ ticker: string }>();
   const ticker = params?.ticker as string;
   const [stock, setStock] = useState<StockDetail | null>(null);
+  const [bars, setBars] = useState<PriceBar[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,6 +26,10 @@ export default function StockPage() {
       .then((r) => r.json() as Promise<StockResponse>)
       .then((d) => setStock(d.stock))
       .finally(() => setLoading(false));
+    fetch(`/api/prices?ticker=${encodeURIComponent(ticker)}`)
+      .then((r) => r.json() as Promise<PricesResponse>)
+      .then((d) => setBars(d.bars))
+      .catch(() => setBars([]));
   }, [ticker]);
 
   if (loading) return <div className="py-16 text-center text-sm text-subtle">Lädt…</div>;
@@ -36,12 +43,17 @@ export default function StockPage() {
       </div>
     );
 
+  const buys = stock.trades.filter((t) => t.txnType === "buy").length;
+  const sells = stock.trades.filter((t) => t.txnType === "sell").length;
+  const up = bars && bars.length > 1 ? bars[bars.length - 1].close >= bars[0].close : true;
+  const chg =
+    bars && bars.length > 1 ? (bars[bars.length - 1].close - bars[0].close) / bars[0].close : null;
+
   const stats = [
-    {
-      label: "Verfolgte Investoren",
-      value: stock.investors.toLocaleString("de-DE"),
-    },
+    { label: "Verfolgte Investoren", value: stock.investors.toLocaleString("de-DE") },
     { label: "Gehaltener Wert", value: abbrevMoney(stock.value) },
+    { label: "Käufe (verfolgt)", value: String(buys), cls: "text-bull" },
+    { label: "Verkäufe (verfolgt)", value: String(sells), cls: "text-bear" },
   ];
 
   return (
@@ -52,16 +64,29 @@ export default function StockPage() {
 
       <div className="flex items-center gap-4">
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={64} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{stock.company}</h1>
           <div className="font-mono text-sm text-subtle">{stock.ticker ?? "—"}</div>
         </div>
+        {stock.ticker && <FollowButton kind="stock" id={stock.ticker} />}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {bars && bars.length > 1 && (
+        <div className="rounded-2xl bg-card p-4 shadow-card">
+          <div className="mb-1 flex items-baseline justify-between">
+            <span className="text-sm text-subtle">Kurs (12 Monate)</span>
+            <span className={`text-sm font-semibold ${up ? "text-bull" : "text-bear"}`}>
+              {chg === null ? "" : `${chg >= 0 ? "+" : ""}${(chg * 100).toFixed(1)} %`}
+            </span>
+          </div>
+          <Sparkline bars={bars} up={up} height={140} />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
-            <div className="text-lg font-semibold tracking-tight">{s.value}</div>
+            <div className={`text-lg font-semibold tracking-tight ${s.cls ?? ""}`}>{s.value}</div>
             <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
           </div>
         ))}
