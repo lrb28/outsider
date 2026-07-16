@@ -312,6 +312,33 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   };
 }
 
+// ── Price series (for the trade sparkline) ──────────────────────────────────
+export async function getPrices(
+  ticker: string,
+  limit = 260,
+): Promise<{ date: string; close: number }[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const { rows } = await pool.query(
+    `
+    select p.date, p.close
+    from prices p
+    where p.security_id = (
+      select id from securities where upper(ticker) = $1 order by id limit 1
+    )
+    order by p.date desc
+    limit $2
+    `,
+    [ticker.toUpperCase(), limit],
+  );
+  return rows
+    .map((r) => ({
+      date: new Date(r.date as string).toISOString().slice(0, 10),
+      close: Number(r.close),
+    }))
+    .reverse();
+}
+
 // ── Discover collections ────────────────────────────────────────────────────
 export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   const pool = getPool();

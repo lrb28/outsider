@@ -108,6 +108,18 @@ export interface StockResponse {
   stock: StockDetail | null;
 }
 
+// ── Prices (for the trade sparkline) ────────────────────────────────────────
+export interface PriceBar {
+  date: string;
+  close: number;
+}
+
+export interface PricesResponse {
+  source: "database" | "sample";
+  ticker: string;
+  bars: PriceBar[];
+}
+
 // ── Discover collections ────────────────────────────────────────────────────
 export interface CollectionItem {
   ticker: string | null;
