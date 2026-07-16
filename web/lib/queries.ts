@@ -158,14 +158,17 @@ export async function getInvestors(): Promise<InvestorRow[]> {
     group by e.id, e.slug, e.full_name
     order by value desc nulls last, e.full_name
   `);
-  return rows.map((r) => ({
-    slug: r.slug as string,
-    fund: r.fund as string,
-    person: investorPerson(r.fund as string),
-    positions: Number(r.positions) || 0,
-    value: r.value !== null ? Number(r.value) : null,
-    asOf: r.as_of ? new Date(r.as_of as string).toISOString().slice(0, 10) : null,
-  }));
+  return rows
+    .map((r) => ({
+      slug: r.slug as string,
+      fund: r.fund as string,
+      person: investorPerson(r.fund as string),
+      positions: Number(r.positions) || 0,
+      value: r.value !== null ? Number(r.value) : null,
+      asOf: r.as_of ? new Date(r.as_of as string).toISOString().slice(0, 10) : null,
+    }))
+    // hide entities with no current holdings (e.g. a stale demo-seed row)
+    .filter((r) => r.positions > 0 || r.value !== null);
 }
 
 // ── Single investor ─────────────────────────────────────────────────────────
