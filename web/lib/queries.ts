@@ -8,6 +8,8 @@ import {
   HoldingRow,
   InvestorDetail,
   InvestorRow,
+  PoliticianDetail,
+  PoliticianRow,
   StockDetail,
   StockHolder,
   StockRow,
@@ -238,6 +240,50 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
   };
 }
 
+// ── Politicians ─────────────────────────────────────────────────────────────
+export async function getPoliticians(): Promise<PoliticianRow[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const { rows } = await pool.query(`
+    select e.slug, e.full_name as name, e.party, e.chamber,
+           count(t.id) as trades, max(t.disclosed_at) as last
+    from entities e
+    left join transactions t on t.entity_id = e.id
+    where e.type = 'politician'
+    group by e.id, e.slug, e.full_name, e.party, e.chamber
+    order by trades desc, e.full_name
+  `);
+  return rows
+    .map((r) => ({
+      slug: r.slug as string,
+      name: r.name as string,
+      party: (r.party as string) ?? null,
+      chamber: (r.chamber as string) ?? null,
+      trades: Number(r.trades) || 0,
+      lastTrade: r.last ? new Date(r.last as string).toISOString().slice(0, 10) : null,
+    }))
+    .filter((r) => r.trades > 0);
+}
+
+export async function getPolitician(slug: string): Promise<PoliticianDetail | null> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const ent = await pool.query(
+    `select slug, full_name as name, party, chamber from entities where slug = $1 and type = 'politician' limit 1`,
+    [slug],
+  );
+  if (ent.rows.length === 0) return null;
+  const e = ent.rows[0];
+  const trades = await getTrades({ entitySlug: slug, limit: 50 });
+  return {
+    slug: e.slug as string,
+    name: e.name as string,
+    party: (e.party as string) ?? null,
+    chamber: (e.chamber as string) ?? null,
+    trades,
+  };
+}
+
 // ── Stocks list ─────────────────────────────────────────────────────────────
 export async function getStocks(): Promise<StockRow[]> {
   const pool = getPool();
@@ -409,6 +455,17 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     order by n desc, s.ticker
     limit 12
   `);
+  // Aktien mit den meisten Insider-Käufen (Form 4).
+  const insiderBuysQ = pool.query(`
+    select s.ticker, s.name as security_name, count(*) as n
+    from transactions t
+    join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
+    join securities s on s.id = t.security_id
+    where t.txn_type = 'buy' and s.ticker is not null
+    group by s.id, s.ticker, s.name
+    order by n desc, s.ticker
+    limit 12
+  `);
   // Größte Fonds (nach Portfolio-Wert).
   const fundsQ = pool.query(`
     ${CUR_CTE}
@@ -433,11 +490,12 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
 
-  const [mostHeld, conviction, biggest, bought, funds, conc] = await Promise.all([
+  const [mostHeld, conviction, biggest, bought, insiderBuys, funds, conc] = await Promise.all([
     mostHeldQ,
     convictionQ,
     biggestQ,
     boughtQ,
+    insiderBuysQ,
     fundsQ,
     concQ,
   ]);
@@ -467,6 +525,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       return item(r, s);
     }),
     mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Käufe`)),
+    insiderBuys: insiderBuys.rows.map((r) => item(r, `${Number(r.n)} Insider-Käufe`)),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
       inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),

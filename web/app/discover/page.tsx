@@ -121,6 +121,13 @@ export default function DiscoverPage() {
                 gradient="bg-gradient-to-br from-emerald-100 via-teal-50 to-white"
                 visual={<LogoTrio items={data.biggest} />}
               />
+              <Hero
+                href="/discover/insiderbuys"
+                title="Insider kaufen"
+                blurb="Aktien, deren eigene Führungskräfte zuletzt am häufigsten zugekauft haben."
+                gradient="bg-gradient-to-br from-lime-100 via-green-50 to-white"
+                visual={<LogoTrio items={data.insiderBuys} />}
+              />
             </div>
           </section>
 

@@ -109,6 +109,10 @@ const WIKI_TITLES: [string, string][] = [
   ["pabrai", "Mohnish_Pabrai"],
   ["situational", "Leopold_Aschenbrenner"],
   ["aschenbrenner", "Leopold_Aschenbrenner"],
+  ["point72", "Steven_A._Cohen"],
+  ["tiger global", "Chase_Coleman_III"],
+  ["baupost", "Seth_Klarman"],
+  ["pelosi", "Nancy_Pelosi"],
 ];
 
 export function wikiTitleFor(name: string): string | null {
@@ -144,6 +148,9 @@ const INVESTOR_BIO: [string, string][] = [
   ["dalal", "Value-Investor im Stil von Buffett und Munger."],
   ["aschenbrenner", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
   ["situational", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
+  ["point72", "Hedgefonds-Milliardär, Gründer von Point72 (früher SAC Capital)."],
+  ["tiger global", "Tech-Investor, „Tiger Cub“, Gründer von Tiger Global."],
+  ["baupost", "Value-Investor, Gründer der Baupost Group."],
 ];
 
 export function investorBio(name: string): string | null {

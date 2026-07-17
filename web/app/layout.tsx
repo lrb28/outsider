@@ -8,10 +8,29 @@ import { Disclaimer } from "@/components/Disclaimer";
 import { Nav } from "@/components/Nav";
 import { SearchBox } from "@/components/SearchBox";
 
+const DESC =
+  "Verfolge Trades von Politikern, Konzern-Insidern und Star-Investoren aus offiziellen öffentlichen Offenlegungen — mit Kursentwicklung seit der Meldung.";
+
 export const metadata: Metadata = {
-  title: "Outsider — Politiker, Insider und Investoren",
-  description:
-    "Verfolge Trades von Politikern, Konzern-Insidern und Star-Investoren aus offiziellen öffentlichen Offenlegungen.",
+  metadataBase: new URL("https://outsider-tracker.vercel.app"),
+  title: {
+    default: "Outsider — Politiker, Insider und Investoren",
+    template: "%s · Outsider",
+  },
+  description: DESC,
+  applicationName: "Outsider",
+  openGraph: {
+    title: "Outsider — verfolge das smarte Geld",
+    description: DESC,
+    siteName: "Outsider",
+    type: "website",
+    locale: "de_DE",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Outsider — verfolge das smarte Geld",
+    description: DESC,
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

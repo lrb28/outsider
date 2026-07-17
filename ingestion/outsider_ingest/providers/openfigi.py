@@ -50,6 +50,16 @@ class OpenFigiProvider(SymbolProvider):
             time.sleep(self.min_interval_s - gap)
 
     @staticmethod
+    def _pick(data: list[dict]) -> dict:
+        """OpenFIGI returns one row per listing/exchange for a CUSIP. Prefer the
+        US composite listing (exchCode 'US') so we get the familiar US ticker
+        (CVX, not a foreign line like CHV). Fall back to the first row."""
+        for d in data:
+            if d.get("exchCode") == "US":
+                return d
+        return data[0]
+
+    @staticmethod
     def _identity(cusip: str, id_type: str, data0: dict) -> SecurityIdentity:
         return SecurityIdentity(
             ticker=data0.get("ticker"),
@@ -79,7 +89,7 @@ class OpenFigiProvider(SymbolProvider):
         payload = resp.json()
         if not payload or "data" not in payload[0] or not payload[0]["data"]:
             return None
-        identity = self._identity(identifier, id_type, payload[0]["data"][0])
+        identity = self._identity(identifier, id_type, self._pick(payload[0]["data"]))
         if self.cache_put:
             self.cache_put(identifier, identity)
         return identity
@@ -106,5 +116,5 @@ class OpenFigiProvider(SymbolProvider):
             for cusip, item in zip(chunk, resp.json()):
                 data = item.get("data") if isinstance(item, dict) else None
                 if data:
-                    out[cusip] = self._identity(cusip, id_type, data[0])
+                    out[cusip] = self._identity(cusip, id_type, self._pick(data))
         return out

@@ -4,6 +4,8 @@ import {
   FeedRow,
   InvestorDetail,
   InvestorRow,
+  PoliticianDetail,
+  PoliticianRow,
   StockDetail,
   StockRow,
 } from "./types";
@@ -159,6 +161,16 @@ export function sampleStock(ticker: string): StockDetail | null {
 }
 
 // ── sample discover ─────────────────────────────────────────────────────────
+// ── sample politicians ──────────────────────────────────────────────────────
+export const SAMPLE_POLITICIANS: PoliticianRow[] = [
+  { slug: "nancy-pelosi", name: "Nancy Pelosi", party: "Democrat", chamber: "House", trades: 6, lastTrade: "2026-01-14" },
+];
+
+export function samplePolitician(slug: string): PoliticianDetail | null {
+  if (slug !== "nancy-pelosi") return null;
+  return { slug, name: "Nancy Pelosi", party: "Democrat", chamber: "House", trades: [] };
+}
+
 const coll = (ticker: string, name: string, metric: string): CollectionItem => ({
   ticker,
   company: companyName(ticker, name),
@@ -192,6 +204,11 @@ export const SAMPLE_DISCOVER = {
     coll("NVDA", "NVIDIA CORPORATION", "6 Käufe"),
     coll("AMZN", "AMAZON.COM INC", "5 Käufe"),
     coll("META", "META PLATFORMS INC", "4 Käufe"),
+  ],
+  insiderBuys: [
+    coll("PLTR", "PALANTIR TECHNOLOGIES INC", "5 Insider-Käufe"),
+    coll("COIN", "COINBASE GLOBAL INC", "3 Insider-Käufe"),
+    coll("TSLA", "TESLA INC", "2 Insider-Käufe"),
   ],
   biggestFunds: [
     collInv("berkshire-hathaway", "$263.1 Mrd."),

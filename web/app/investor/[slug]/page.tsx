@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { abbrevMoney, companyName, fixTicker, weightPct } from "@/lib/format";
@@ -53,6 +54,14 @@ export default function InvestorPage() {
     { label: "Positionen", value: inv.positions.toLocaleString("de-DE") },
     { label: "Stand", value: inv.asOf ?? "—" },
   ];
+
+  const buys = inv.trades.filter((t) => t.txnType === "buy").length;
+  const sells = inv.trades.filter((t) => t.txnType === "sell").length;
+  const moves = [
+    { label: "Käufe", value: buys, color: "#16a34a" },
+    { label: "Verkäufe", value: sells, color: "#dc2626" },
+  ];
+  const moveTotal = buys + sells;
 
   return (
     <div className="space-y-6">
@@ -144,6 +153,31 @@ export default function InvestorPage() {
           )}
         </div>
       </section>
+
+      {moveTotal > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold tracking-tight">Bewegungen (Quartal)</h2>
+          <div className="flex flex-col items-center gap-6 rounded-2xl bg-card p-5 shadow-card sm:flex-row">
+            <Donut
+              segments={moves}
+              centerTop={`${Math.round((buys / moveTotal) * 100)} %`}
+              centerBottom="Käufe"
+            />
+            <div className="w-full flex-1 space-y-2.5">
+              {moves.map((s) => (
+                <div key={s.label} className="flex items-center gap-2 text-sm">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                  <span className="text-ink">{s.label}</span>
+                  <span className="text-xs text-subtle">{s.value} Positionen</span>
+                  <span className="ml-auto font-semibold">
+                    {Math.round((s.value / moveTotal) * 100)} %
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>

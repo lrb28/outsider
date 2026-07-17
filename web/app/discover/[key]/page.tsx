@@ -15,6 +15,11 @@ const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: Disco
     blurb: "Aktien, die die verfolgten Investoren zuletzt am häufigsten gekauft haben.",
     pick: (d) => d.mostBoughtQ,
   },
+  insiderbuys: {
+    title: "Insider kaufen",
+    blurb: "Aktien, deren eigene Führungskräfte (Form 4) zuletzt am häufigsten zugekauft haben.",
+    pick: (d) => d.insiderBuys,
+  },
   mostheld: {
     title: "Am meisten gehalten",
     blurb: "Die Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben.",

@@ -108,6 +108,34 @@ export interface StockResponse {
   stock: StockDetail | null;
 }
 
+// ── Politicians ─────────────────────────────────────────────────────────────
+export interface PoliticianRow {
+  slug: string;
+  name: string;
+  party: string | null;
+  chamber: string | null;
+  trades: number;
+  lastTrade: string | null;
+}
+
+export interface PoliticianDetail {
+  slug: string;
+  name: string;
+  party: string | null;
+  chamber: string | null;
+  trades: FeedRow[];
+}
+
+export interface PoliticiansResponse {
+  source: "database" | "sample";
+  rows: PoliticianRow[];
+}
+
+export interface PoliticianResponse {
+  source: "database" | "sample";
+  politician: PoliticianDetail | null;
+}
+
 // ── Prices (for the trade sparkline) ────────────────────────────────────────
 export interface PriceBar {
   date: string;
@@ -141,6 +169,7 @@ export interface DiscoverData {
   highestConviction: CollectionItem[];
   biggest: CollectionItem[];
   mostBoughtQ: CollectionItem[];
+  insiderBuys: CollectionItem[];
   biggestFunds: CollectionInvestor[];
   mostConcentrated: CollectionInvestor[];
 }

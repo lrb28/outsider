@@ -42,6 +42,18 @@ institutions:
     full_name: Situational Awareness LP             # Leopold Aschenbrenner
     cik: "0002045724"
     highlight: true
+  - slug: point72
+    full_name: Point72 Asset Management, L.P.       # Steven Cohen
+    cik: "0001603466"
+    highlight: true
+  - slug: tiger-global
+    full_name: Tiger Global Management LLC          # Chase Coleman
+    cik: "0001167483"
+    highlight: true
+  - slug: baupost-group
+    full_name: Baupost Group LLC                    # Seth Klarman
+    cik: "0001061768"
+    highlight: true
 
 politicians:
   - slug: nancy-pelosi
