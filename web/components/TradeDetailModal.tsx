@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { companyName, fixTicker, pct, signalLabel } from "@/lib/format";
+import { companyName, fixTicker, formatDate, pct, signalLabel } from "@/lib/format";
 import { FeedRow, PriceBar, PricesResponse } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -110,9 +110,9 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-sm">
           <Stat label="Größe" value={row.sizeDisplay} />
-          <Stat label="Handelsdatum" value={row.txnDate ?? "—"} />
+          <Stat label="Handelsdatum" value={formatDate(row.txnDate)} />
           <Stat label="Kurs bei Offenlegung" value={price(entry)} />
-          <Stat label="Offengelegt am" value={row.disclosedAt ?? "—"} />
+          <Stat label="Offengelegt am" value={formatDate(row.disclosedAt)} />
           <Stat label="Aktueller Kurs" value={price(current)} />
           <Stat label="Seit Offenlegung" value={pct(perf)} valueClass={up ? "text-bull" : "text-bear"} />
         </dl>

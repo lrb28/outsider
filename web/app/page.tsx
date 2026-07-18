@@ -20,18 +20,25 @@ interface Stats {
 export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [investors, setInvestors] = useState<InvestorRow[]>([]);
-  const [trades, setTrades] = useState<FeedRow[]>([]);
+  const [instTrades, setInstTrades] = useState<FeedRow[]>([]);
+  const [insiderTrades, setInsiderTrades] = useState<FeedRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/stats").then((r) => r.json()).then(setStats).catch(() => {});
     Promise.all([
       fetch("/api/investors").then((r) => r.json() as Promise<InvestorsResponse>),
-      fetch("/api/trades?limit=8").then((r) => r.json() as Promise<TradesResponse>),
+      fetch("/api/trades?type=institution&limit=6").then(
+        (r) => r.json() as Promise<TradesResponse>,
+      ),
+      fetch("/api/trades?type=corporate_insider&limit=6").then(
+        (r) => r.json() as Promise<TradesResponse>,
+      ),
     ])
-      .then(([iv, tr]) => {
+      .then(([iv, inst, ins]) => {
         setInvestors(iv.rows);
-        setTrades(tr.rows);
+        setInstTrades(inst.rows);
+        setInsiderTrades(ins.rows);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -100,12 +107,22 @@ export default function HomePage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Letzte Investoren-Trades</h2>
           <Link href="/feed" className="text-sm text-brand hover:underline">
             Zum Feed ›
           </Link>
         </div>
-        <TradeFeed rows={trades} loading={loading} />
+        <TradeFeed rows={instTrades} loading={loading} empty="Noch keine Investoren-Trades." />
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">Letzte Insider-Trades</h2>
+          <Link href="/feed" className="text-sm text-brand hover:underline">
+            Zum Feed ›
+          </Link>
+        </div>
+        <TradeFeed rows={insiderTrades} loading={loading} empty="Noch keine Insider-Trades." />
       </section>
     </div>
   );

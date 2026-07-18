@@ -11,7 +11,7 @@ import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
-import { abbrevMoney, companyName, fixTicker, weightPct } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, formatDate, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 
 export default function InvestorPage() {
@@ -19,7 +19,7 @@ export default function InvestorPage() {
   const slug = params?.slug as string;
   const [inv, setInv] = useState<InvestorDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sort, setSort] = useState<"value" | "weight">("value");
+  const [sort, setSort] = useState<"value" | "name">("value");
 
   useEffect(() => {
     if (!slug) return;
@@ -33,8 +33,10 @@ export default function InvestorPage() {
   const holdings = useMemo(() => {
     if (!inv) return [];
     const h = [...inv.holdings];
+    // Gewicht = Wert / Gesamtwert -> identische Reihenfolge wie Wert.
+    // Deshalb bieten wir Wert (Größe) und Name (A–Z) als echte Alternativen an.
     h.sort((a, b) =>
-      sort === "weight" ? (b.weight ?? 0) - (a.weight ?? 0) : (b.value ?? 0) - (a.value ?? 0),
+      sort === "name" ? a.company.localeCompare(b.company) : (b.value ?? 0) - (a.value ?? 0),
     );
     return h;
   }, [inv, sort]);
@@ -53,7 +55,7 @@ export default function InvestorPage() {
   const stats = [
     { label: "Portfolio-Wert", value: abbrevMoney(inv.value) },
     { label: "Positionen", value: inv.positions.toLocaleString("de-DE") },
-    { label: "Stand", value: inv.asOf ?? "—" },
+    { label: "Stand", value: formatDate(inv.asOf) },
   ];
 
   const buys = inv.trades.filter((t) => t.txnType === "buy").length;
@@ -98,7 +100,7 @@ export default function InvestorPage() {
             {(
               [
                 ["value", "Wert"],
-                ["weight", "Gewicht"],
+                ["name", "Name"],
               ] as const
             ).map(([key, label]) => (
               <button

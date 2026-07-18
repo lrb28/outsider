@@ -20,6 +20,14 @@ export function abbrevMoney(v: number | null | undefined): string {
   return `${sign}$${a.toFixed(0)}`;
 }
 
+// ISO date (2026-01-27) -> deutsches Format (27.01.2026)
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  if (!y || !m || !d) return iso;
+  return `${d}.${m}.${y}`;
+}
+
 export function weightPct(v: number | null): string {
   if (v === null || Number.isNaN(v)) return "—";
   return `${(v * 100).toFixed(1)} %`;

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
+import { formatDate } from "@/lib/format";
 import { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
 export default function PoliticianPage() {
@@ -35,7 +36,7 @@ export default function PoliticianPage() {
       </div>
     );
 
-  const lastTrade = pol.trades[0]?.disclosedAt ?? "—";
+  const lastTrade = formatDate(pol.trades[0]?.disclosedAt);
 
   return (
     <div className="space-y-6">

@@ -22,13 +22,16 @@ export function AllocationBar({ holdings }: { holdings: HoldingRow[] }) {
   const topSum = top.reduce((a, h) => a + (h.weight ?? 0), 0);
   const rest = Math.max(0, 1 - topSum);
 
+  const restCount = withWeight.length - top.length;
   const segs = [
     ...top.map((h, i) => ({
       label: h.company,
       weight: h.weight ?? 0,
       color: COLORS[i % COLORS.length],
     })),
-    ...(rest > 0.001 ? [{ label: "Übrige", weight: rest, color: "#cbd5e1" }] : []),
+    ...(rest > 0.001
+      ? [{ label: `Übrige (${restCount} Positionen)`, weight: rest, color: "#cbd5e1" }]
+      : []),
   ];
 
   return (
@@ -56,6 +59,12 @@ export function AllocationBar({ holdings }: { holdings: HoldingRow[] }) {
             </div>
           ))}
         </div>
+        {restCount > 0 && (
+          <p className="mt-3 text-[11px] text-subtle">
+            Zeigt die {top.length} größten Positionen einzeln — „Übrige“ fasst die restlichen{" "}
+            {restCount} Positionen zusammen.
+          </p>
+        )}
       </div>
     </section>
   );

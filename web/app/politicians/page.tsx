@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { SkeletonList } from "@/components/Skeleton";
+import { formatDate } from "@/lib/format";
 import { PoliticianRow, PoliticiansResponse } from "@/lib/types";
 
 export default function PoliticiansPage() {
@@ -46,7 +47,7 @@ export default function PoliticiansPage() {
               </div>
               <div className="text-right">
                 <div className="text-sm font-medium">{p.trades} Trades</div>
-                <div className="text-xs text-subtle">{p.lastTrade ?? "—"}</div>
+                <div className="text-xs text-subtle">{formatDate(p.lastTrade)}</div>
               </div>
               <span className="text-slate-300">›</span>
             </Link>

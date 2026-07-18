@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { companyName, fixTicker, pct, signalLabel } from "@/lib/format";
+import { companyName, fixTicker, formatDate, pct, signalLabel } from "@/lib/format";
 import { FeedRow } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -113,7 +113,7 @@ export function TradeFeed({
 
                 <div className={`text-sm ${nameCls}`}>
                   {r.sizeDisplay}
-                  <div className={`text-xs ${subCls}`}>{r.disclosedAt ?? "—"}</div>
+                  <div className={`text-xs ${subCls}`}>{formatDate(r.disclosedAt)}</div>
                 </div>
 
                 <div className="md:text-right">
