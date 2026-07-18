@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
+import { SkeletonList } from "@/components/Skeleton";
 import { abbrevMoney } from "@/lib/format";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
@@ -127,7 +128,7 @@ export default function PortfolioPage() {
         )}
       </div>
 
-      {loading && <div className="py-10 text-center text-sm text-subtle">Lädt…</div>}
+      {loading && <SkeletonList n={8} />}
 
       {!loading && tab === "investors" && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">

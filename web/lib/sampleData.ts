@@ -2,6 +2,7 @@ import { companyName, investorBio, investorPerson } from "./format";
 import {
   CollectionItem,
   FeedRow,
+  InsiderDetail,
   InvestorDetail,
   InvestorRow,
   PoliticianDetail,
@@ -171,6 +172,11 @@ export function samplePolitician(slug: string): PoliticianDetail | null {
   return { slug, name: "Nancy Pelosi", party: "Democrat", chamber: "House", trades: [] };
 }
 
+// Insider profiles only exist with a live DB; sample mode has none.
+export function sampleInsider(_slug: string): InsiderDetail | null {
+  return null;
+}
+
 const coll = (ticker: string, name: string, metric: string): CollectionItem => ({
   ticker,
   company: companyName(ticker, name),
@@ -219,5 +225,8 @@ export const SAMPLE_DISCOVER = {
     collInv("scion-asset-management", "62 % Top-Position"),
     collInv("daily-journal", "40 % Top-Position"),
     collInv("pershing-square", "22 % Top-Position"),
+  ],
+  topPoliticians: [
+    { slug: "nancy-pelosi", fund: "Democrat · House", person: "Nancy Pelosi", metric: "6 Trades" },
   ],
 };

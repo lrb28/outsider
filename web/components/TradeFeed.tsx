@@ -7,6 +7,7 @@ import { FeedRow } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
+import { SkeletonList } from "./Skeleton";
 import { TradeDetailModal } from "./TradeDetailModal";
 
 const TYP: Record<string, string> = {
@@ -29,6 +30,8 @@ export function TradeFeed({
   empty?: string;
 }) {
   const [selected, setSelected] = useState<FeedRow | null>(null);
+
+  if (loading) return <SkeletonList n={6} />;
 
   const grid = showActor
     ? "md:grid-cols-[1.7fr_1.5fr_1fr_1fr_0.8fr]"
@@ -56,13 +59,11 @@ export function TradeFeed({
           <div className="text-right">Seit Offenlegung</div>
         </div>
 
-        {loading && <div className={`px-4 py-10 text-center text-sm ${emptyCls}`}>Lädt…</div>}
-        {!loading && rows.length === 0 && (
+        {rows.length === 0 && (
           <div className={`px-4 py-10 text-center text-sm ${emptyCls}`}>{empty}</div>
         )}
 
-        {!loading &&
-          rows.map((r) => {
+        {rows.map((r) => {
             const sig = signalLabel(r.txnType, r.putCall);
             const badge =
               sig.tone === "bull"

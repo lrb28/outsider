@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
+import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
@@ -23,7 +24,7 @@ export default function PoliticianPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  if (loading) return <div className="py-16 text-center text-sm text-subtle">Lädt…</div>;
+  if (loading) return <SkeletonPage />;
   if (!pol)
     return (
       <div className="py-16 text-center text-sm text-subtle">

@@ -61,6 +61,7 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
 
   const canInvestor = row.entitySlug && row.entityType === "institution";
   const canPolitician = row.entitySlug && row.entityType === "politician";
+  const canInsider = row.entitySlug && row.entityType === "corporate_insider";
 
   return (
     <div
@@ -131,6 +132,14 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
               className="flex-1 rounded-full bg-slate-100 px-3 py-2 text-center text-sm font-medium hover:bg-slate-200"
             >
               Politiker ansehen
+            </Link>
+          )}
+          {canInsider && (
+            <Link
+              href={`/insider/${row.entitySlug}`}
+              className="flex-1 rounded-full bg-slate-100 px-3 py-2 text-center text-sm font-medium hover:bg-slate-200"
+            >
+              Insider ansehen
             </Link>
           )}
           {row.ticker && (

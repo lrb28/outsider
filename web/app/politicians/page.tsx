@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
+import { SkeletonList } from "@/components/Skeleton";
 import { PoliticianRow, PoliticiansResponse } from "@/lib/types";
 
 export default function PoliticiansPage() {
@@ -26,7 +27,7 @@ export default function PoliticiansPage() {
         </p>
       </div>
 
-      {loading && <div className="py-10 text-center text-sm text-subtle">Lädt…</div>}
+      {loading && <SkeletonList n={6} />}
 
       {!loading && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">

@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
+import { SkeletonPage } from "@/components/Skeleton";
 import { Sparkline } from "@/components/Sparkline";
 import { TradeFeed } from "@/components/TradeFeed";
 import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
@@ -34,7 +35,7 @@ export default function StockPage() {
       .catch(() => setBars([]));
   }, [ticker]);
 
-  if (loading) return <div className="py-16 text-center text-sm text-subtle">Lädt…</div>;
+  if (loading) return <SkeletonPage />;
   if (!stock)
     return (
       <div className="py-16 text-center text-sm text-subtle">

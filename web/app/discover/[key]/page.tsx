@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { SkeletonList } from "@/components/Skeleton";
 import { fixTicker } from "@/lib/format";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
 
@@ -37,16 +38,27 @@ const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: Disco
   },
 };
 
-const INV_META: Record<string, { title: string; blurb: string; pick: (d: DiscoverData) => CollectionInvestor[] }> = {
+const INV_META: Record<
+  string,
+  { title: string; blurb: string; base: string; pick: (d: DiscoverData) => CollectionInvestor[] }
+> = {
   biggestfunds: {
     title: "Größte Fonds",
     blurb: "Die verfolgten Investoren mit dem größten gemeldeten Portfolio.",
+    base: "/investor",
     pick: (d) => d.biggestFunds,
   },
   concentrated: {
     title: "Am konzentriertesten",
     blurb: "Investoren, die den größten Anteil in eine einzige Aktie stecken.",
+    base: "/investor",
     pick: (d) => d.mostConcentrated,
+  },
+  politicians: {
+    title: "Aktivste Politiker",
+    blurb: "Kongressmitglieder mit den meisten gemeldeten Aktien-Trades.",
+    base: "/politician",
+    pick: (d) => d.topPoliticians,
   },
 };
 
@@ -89,7 +101,7 @@ export default function CollectionPage() {
         <p className="mt-1 max-w-2xl text-sm text-subtle">{meta.blurb}</p>
       </div>
 
-      {!data && <div className="py-10 text-center text-sm text-subtle">Lädt…</div>}
+      {!data && <SkeletonList n={6} />}
 
       {stockItems && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
@@ -124,7 +136,7 @@ export default function CollectionPage() {
           {invItems.map((p, i) => (
             <Link
               key={p.slug + i}
-              href={`/investor/${p.slug}`}
+              href={`${invMeta?.base ?? "/investor"}/${p.slug}`}
               className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-slate-50"
             >
               <div className="w-5 text-sm font-semibold text-subtle">{i + 1}</div>

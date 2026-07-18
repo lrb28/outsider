@@ -136,6 +136,21 @@ export interface PoliticianResponse {
   politician: PoliticianDetail | null;
 }
 
+// ── Insiders ────────────────────────────────────────────────────────────────
+export interface InsiderDetail {
+  slug: string;
+  name: string;
+  role: string | null;
+  company: string | null;
+  ticker: string | null;
+  trades: FeedRow[];
+}
+
+export interface InsiderResponse {
+  source: "database" | "sample";
+  insider: InsiderDetail | null;
+}
+
 // ── Prices (for the trade sparkline) ────────────────────────────────────────
 export interface PriceBar {
   date: string;
@@ -172,4 +187,5 @@ export interface DiscoverData {
   insiderBuys: CollectionItem[];
   biggestFunds: CollectionInvestor[];
   mostConcentrated: CollectionInvestor[];
+  topPoliticians: CollectionInvestor[];
 }

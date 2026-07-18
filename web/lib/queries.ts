@@ -6,6 +6,7 @@ import {
   DiscoverData,
   FeedRow,
   HoldingRow,
+  InsiderDetail,
   InvestorDetail,
   InvestorRow,
   PoliticianDetail,
@@ -284,6 +285,28 @@ export async function getPolitician(slug: string): Promise<PoliticianDetail | nu
   };
 }
 
+// ── Insiders ────────────────────────────────────────────────────────────────
+export async function getInsider(slug: string): Promise<InsiderDetail | null> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const ent = await pool.query(
+    `select slug, full_name as name, role from entities where slug = $1 and type = 'corporate_insider' limit 1`,
+    [slug],
+  );
+  if (ent.rows.length === 0) return null;
+  const e = ent.rows[0];
+  const trades = await getTrades({ entitySlug: slug, limit: 50 });
+  const first = trades[0];
+  return {
+    slug: e.slug as string,
+    name: e.name as string,
+    role: (e.role as string) ?? null,
+    company: first ? companyName(first.ticker, first.securityName) : null,
+    ticker: first?.ticker ?? null,
+    trades,
+  };
+}
+
 // ── Stocks list ─────────────────────────────────────────────────────────────
 export async function getStocks(): Promise<StockRow[]> {
   const pool = getPool();
@@ -490,7 +513,17 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
 
-  const [mostHeld, conviction, biggest, bought, insiderBuys, funds, conc] = await Promise.all([
+  // Aktivste Politiker (nach Anzahl gemeldeter Trades).
+  const polQ = pool.query(`
+    select e.slug, e.full_name as name, e.party, e.chamber, count(t.id) as n
+    from entities e join transactions t on t.entity_id = e.id
+    where e.type = 'politician'
+    group by e.id, e.slug, e.full_name, e.party, e.chamber
+    order by n desc
+    limit 12
+  `);
+
+  const [mostHeld, conviction, biggest, bought, insiderBuys, funds, conc, pols] = await Promise.all([
     mostHeldQ,
     convictionQ,
     biggestQ,
@@ -498,6 +531,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     insiderBuysQ,
     fundsQ,
     concQ,
+    polQ,
   ]);
 
   const item = (r: Record<string, unknown>, metric: string): CollectionItem => ({
@@ -530,5 +564,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     mostConcentrated: conc.rows.map((r) =>
       inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),
     ),
+    topPoliticians: pols.rows.map((r) => ({
+      slug: r.slug as string,
+      fund: [r.party, r.chamber].filter(Boolean).join(" · ") || "US-Kongress",
+      person: (r.name as string) ?? null,
+      metric: `${Number(r.n)} Trades`,
+    })),
   };
 }

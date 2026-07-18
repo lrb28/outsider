@@ -5,6 +5,7 @@ import { ReactNode, useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { SkeletonList } from "@/components/Skeleton";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
 
 function LogoTrio({ items }: { items: CollectionItem[] }) {
@@ -86,7 +87,7 @@ export default function DiscoverPage() {
         <p className="text-sm text-subtle">Worauf das smarte Geld gerade setzt — tippe eine Sammlung an.</p>
       </div>
 
-      {loading && <div className="py-10 text-center text-sm text-subtle">Lädt…</div>}
+      {loading && <SkeletonList n={5} />}
 
       {!loading && data && (
         <>
@@ -147,6 +148,19 @@ export default function DiscoverPage() {
                 blurb="Investoren, die den größten Anteil in eine einzige Aktie stecken."
                 gradient="bg-gradient-to-br from-slate-100 via-slate-50 to-white"
                 visual={<FaceTrio people={data.mostConcentrated} />}
+              />
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-subtle">Politiker</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Hero
+                href="/discover/politicians"
+                title="Aktivste Politiker"
+                blurb="Kongressmitglieder mit den meisten gemeldeten Aktien-Trades."
+                gradient="bg-gradient-to-br from-blue-100 via-sky-50 to-white"
+                visual={<FaceTrio people={data.topPoliticians} />}
               />
             </div>
           </section>
