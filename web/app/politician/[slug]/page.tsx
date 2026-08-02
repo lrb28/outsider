@@ -5,8 +5,10 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
+import { ErrorRetry } from "@/components/ErrorRetry";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
+import { fetchJson } from "@/lib/fetchJson";
 import { formatDate } from "@/lib/format";
 import { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
@@ -15,17 +17,21 @@ export default function PoliticianPage() {
   const slug = params?.slug as string;
   const [pol, setPol] = useState<PoliticianDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    fetch(`/api/politician?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json() as Promise<PoliticianResponse>)
+    setErr(false);
+    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`)
       .then((d) => setPol(d.politician))
+      .catch(() => setErr(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, tick]);
 
   if (loading) return <SkeletonPage />;
+  if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!pol)
     return (
       <div className="py-16 text-center text-sm text-subtle">

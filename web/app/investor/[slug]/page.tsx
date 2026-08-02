@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
+import { ErrorRetry } from "@/components/ErrorRetry";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
+import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, companyName, fixTicker, formatDate, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 
@@ -20,15 +22,18 @@ export default function InvestorPage() {
   const [inv, setInv] = useState<InvestorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"value" | "name">("value");
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    fetch(`/api/investor?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json() as Promise<InvestorResponse>)
+    setErr(false);
+    fetchJson<InvestorResponse>(`/api/investor?slug=${encodeURIComponent(slug)}`)
       .then((d) => setInv(d.investor))
+      .catch(() => setErr(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, tick]);
 
   const holdings = useMemo(() => {
     if (!inv) return [];
@@ -42,6 +47,7 @@ export default function InvestorPage() {
   }, [inv, sort]);
 
   if (loading) return <SkeletonPage />;
+  if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!inv)
     return (
       <div className="py-16 text-center text-sm text-subtle">
@@ -106,7 +112,7 @@ export default function InvestorPage() {
               <button
                 key={key}
                 onClick={() => setSort(key)}
-                className={`rounded-full px-3 py-1 transition ${
+                className={`press-sm rounded-full px-3 py-1 ${
                   sort === key ? "bg-white text-ink shadow-card" : "text-subtle"
                 }`}
               >

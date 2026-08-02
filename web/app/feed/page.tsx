@@ -65,10 +65,10 @@ export default function FeedPage() {
             <button
               key={t.key}
               onClick={() => setType(t.key)}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+              className={`press-sm rounded-full px-3.5 py-1.5 text-sm font-medium ${
                 type === t.key
-                  ? "bg-brand text-white shadow-card"
-                  : "bg-white text-ink ring-1 ring-hair hover:ring-slate-300"
+                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25"
+                  : "bg-white/80 text-ink ring-1 ring-black/5 backdrop-blur hover:bg-white"
               }`}
             >
               {t.label}
@@ -80,10 +80,10 @@ export default function FeedPage() {
             <button
               key={t.key}
               onClick={() => setTxnType(t.key)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              className={`press-sm rounded-full px-3 py-1.5 text-xs font-medium ${
                 txnType === t.key
                   ? "bg-slate-900 text-white"
-                  : "bg-white text-subtle ring-1 ring-hair hover:ring-slate-300"
+                  : "bg-white/80 text-subtle ring-1 ring-black/5 backdrop-blur hover:bg-white"
               }`}
             >
               {t.label}

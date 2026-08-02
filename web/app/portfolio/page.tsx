@@ -41,7 +41,7 @@ function SortBar<T extends string>({
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`rounded-full px-3 py-1 transition ${
+          className={`press-sm rounded-full px-3 py-1 ${
             value === key ? "bg-white text-ink shadow-card" : "text-subtle"
           }`}
         >
@@ -116,7 +116,7 @@ export default function PortfolioPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`rounded-full px-5 py-1.5 transition ${
+              className={`press-sm rounded-full px-5 py-1.5 ${
                 tab === key ? "bg-white text-ink shadow-card" : "text-subtle hover:text-ink"
               }`}
             >

@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { ErrorRetry } from "@/components/ErrorRetry";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
+import { fetchJson } from "@/lib/fetchJson";
 import { fixTicker } from "@/lib/format";
 import { InsiderDetail, InsiderResponse } from "@/lib/types";
 
@@ -16,17 +18,21 @@ export default function InsiderPage() {
   const slug = params?.slug as string;
   const [ins, setIns] = useState<InsiderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    fetch(`/api/insider?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json() as Promise<InsiderResponse>)
+    setErr(false);
+    fetchJson<InsiderResponse>(`/api/insider?slug=${encodeURIComponent(slug)}`)
       .then((d) => setIns(d.insider))
+      .catch(() => setErr(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, tick]);
 
   if (loading) return <SkeletonPage />;
+  if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!ins)
     return (
       <div className="py-16 text-center text-sm text-subtle">

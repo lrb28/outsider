@@ -7,10 +7,12 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
+import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
+import { PriceChart } from "@/components/PriceChart";
 import { SkeletonPage } from "@/components/Skeleton";
-import { Sparkline } from "@/components/Sparkline";
 import { TradeFeed } from "@/components/TradeFeed";
+import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
@@ -21,7 +23,10 @@ export default function StockPage() {
   const [stock, setStock] = useState<StockDetail | null>(null);
   const [bars, setBars] = useState<PriceBar[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
   const [actTab, setActTab] = useState<"inv" | "ins">("inv");
+  const [range, setRange] = useState(3); // default 1J
   const liveTicker = fixTicker(ticker, null) ?? ticker;
   const quotes = useQuotes(liveTicker ? [liveTicker] : []);
   const quote = liveTicker ? quotes[liveTicker.toUpperCase()] : undefined;
@@ -29,17 +34,18 @@ export default function StockPage() {
   useEffect(() => {
     if (!ticker) return;
     setLoading(true);
-    fetch(`/api/stock?ticker=${encodeURIComponent(ticker)}`)
-      .then((r) => r.json() as Promise<StockResponse>)
+    setErr(false);
+    fetchJson<StockResponse>(`/api/stock?ticker=${encodeURIComponent(ticker)}`)
       .then((d) => setStock(d.stock))
+      .catch(() => setErr(true))
       .finally(() => setLoading(false));
-    fetch(`/api/prices?ticker=${encodeURIComponent(ticker)}`)
-      .then((r) => r.json() as Promise<PricesResponse>)
+    fetchJson<PricesResponse>(`/api/prices?ticker=${encodeURIComponent(ticker)}`)
       .then((d) => setBars(d.bars))
       .catch(() => setBars([]));
-  }, [ticker]);
+  }, [ticker, tick]);
 
   if (loading) return <SkeletonPage />;
+  if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!stock)
     return (
       <div className="py-16 text-center text-sm text-subtle">
@@ -132,14 +138,24 @@ export default function StockPage() {
       </div>
 
       {bars && bars.length > 1 && (
-        <div className="rounded-2xl bg-card p-4 shadow-card">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-sm text-subtle">Kurs (12 Monate)</span>
-            <span className={`text-sm font-semibold ${up ? "text-bull" : "text-bear"}`}>
-              {chg === null ? "" : `${chg >= 0 ? "+" : ""}${(chg * 100).toFixed(1)} %`}
-            </span>
+        <div className="lcard p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-semibold">Kurs</span>
+            <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
+              {(["1M", "3M", "6M", "1J", "Max"] as const).map((label, i) => (
+                <button
+                  key={label}
+                  onClick={() => setRange(i)}
+                  className={`press-sm rounded-full px-2.5 py-1 ${
+                    range === i ? "bg-white text-ink shadow-card" : "text-subtle"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <Sparkline bars={bars} up={up} height={140} />
+          <PriceChart bars={bars.slice(-[21, 63, 126, 252, bars.length][range])} height={170} />
         </div>
       )}
 
@@ -166,7 +182,7 @@ export default function StockPage() {
                 <button
                   key={k}
                   onClick={() => setActTab(k)}
-                  className={`rounded-full px-3 py-1 transition ${
+                  className={`press-sm rounded-full px-3 py-1 ${
                     actTab === k ? "bg-white text-ink shadow-card" : "text-subtle"
                   }`}
                 >

@@ -22,11 +22,19 @@ import {
 import { HoldingRow, MatchResponse, MatchRow, PriceBar, PricesResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 
-const BENCHMARKS: [string, string][] = [
-  ["SPY", "S&P 500"],
-  ["IVV", "S&P 500"],
-  ["VOO", "S&P 500"],
-  ["QQQ", "Nasdaq 100"],
+// Selectable benchmarks; each label tries a fallback chain of tickers until
+// one has price data in our DB.
+const BENCH_CHOICES: { label: string; tickers: string[] }[] = [
+  { label: "S&P 500", tickers: ["SPY", "IVV", "VOO"] },
+  { label: "Nasdaq 100", tickers: ["QQQ"] },
+];
+
+const RANGES: [string, number][] = [
+  ["1M", 21],
+  ["3M", 63],
+  ["6M", 126],
+  ["1J", 252],
+  ["Max", Number.MAX_SAFE_INTEGER],
 ];
 
 const DONUT_COLORS = ["#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777", "#8b5cf6"];
@@ -50,6 +58,9 @@ export default function MePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const quotes = useQuotes(holdings.map((h) => h.ticker));
   const liveCount = Object.keys(quotes).length;
+  const [range, setRange] = useState(3); // default 1J
+  const [benchIdx, setBenchIdx] = useState(0);
+  const rangeLabel = RANGES[range][0];
 
   // sync with localStorage
   useEffect(() => {
@@ -83,18 +94,19 @@ export default function MePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdings]);
 
-  // benchmark with fallback chain (SPY -> IVV -> VOO -> QQQ)
+  // benchmark for the selected choice (fallback chain within the choice)
   useEffect(() => {
-    if (bench !== undefined) return;
     let on = true;
+    setBench(undefined);
+    const choice = BENCH_CHOICES[benchIdx];
     (async () => {
-      for (const [t, label] of BENCHMARKS) {
+      for (const t of choice.tickers) {
         try {
           const d = (await fetch(`/api/prices?ticker=${t}`).then((r) =>
             r.json(),
           )) as PricesResponse;
           if (d.source === "database" && d.bars.length > 1) {
-            if (on) setBench({ label, bars: d.bars });
+            if (on) setBench({ label: choice.label, bars: d.bars });
             return;
           }
         } catch {
@@ -106,8 +118,7 @@ export default function MePage() {
     return () => {
       on = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [benchIdx]);
 
   // investor match
   useEffect(() => {
@@ -188,21 +199,28 @@ export default function MePage() {
     return out;
   }, [holdings, bars]);
 
-  const benchTrimmed = useMemo(() => {
-    if (!bench || series.length < 2) return null;
-    const start = series[0].date;
+  // range-aware slices of the portfolio series + benchmark
+  const seriesR = useMemo(() => {
+    const n = RANGES[range][1];
+    return n >= series.length ? series : series.slice(-n);
+  }, [series, range]);
+
+  const benchR = useMemo(() => {
+    if (!bench || seriesR.length < 2) return null;
+    const start = seriesR[0].date;
     const t = bench.bars.filter((b) => b.date >= start);
     return t.length > 1 ? t : null;
-  }, [bench, series]);
+  }, [bench, seriesR]);
 
   const perfPortfolio =
-    series.length > 1 ? (series[series.length - 1].close - series[0].close) / series[0].close : null;
-  const perfBench =
-    benchTrimmed && benchTrimmed.length > 1
-      ? (benchTrimmed[benchTrimmed.length - 1].close - benchTrimmed[0].close) /
-        benchTrimmed[0].close
+    seriesR.length > 1
+      ? (seriesR[seriesR.length - 1].close - seriesR[0].close) / seriesR[0].close
       : null;
-  const benchLabel = bench?.label ?? "S&P 500";
+  const perfBench =
+    benchR && benchR.length > 1
+      ? (benchR[benchR.length - 1].close - benchR[0].close) / benchR[0].close
+      : null;
+  const benchLabel = bench?.label ?? BENCH_CHOICES[benchIdx].label;
 
   // invested / P&L (only for positions with a known buy price)
   const investedRows = rows.filter((r) => r.invested !== null && r.value !== null);
@@ -311,7 +329,7 @@ export default function MePage() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => fileRef.current?.click()}
-            className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white shadow-card hover:bg-indigo-600"
+            className="btn-primary"
           >
             CSV hochladen
           </button>
@@ -341,7 +359,7 @@ export default function MePage() {
               placeholder="Kaufpreis $ (optional)"
               className="w-40 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
             />
-            <button className="rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+            <button className="press-sm rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
               + Hinzufügen
             </button>
           </form>
@@ -399,7 +417,7 @@ export default function MePage() {
               >
                 {pct(perfPortfolio)}
               </div>
-              <div className="mt-0.5 text-xs text-subtle">Dein Depot (12M)</div>
+              <div className="mt-0.5 text-xs text-subtle">Dein Depot ({rangeLabel})</div>
             </div>
             <div className="rounded-2xl bg-card p-4 shadow-card">
               <div
@@ -409,7 +427,9 @@ export default function MePage() {
               >
                 {pct(perfBench)}
               </div>
-              <div className="mt-0.5 text-xs text-subtle">{benchLabel} (12M)</div>
+              <div className="mt-0.5 text-xs text-subtle">
+                {benchLabel} ({rangeLabel})
+              </div>
             </div>
             <div className="rounded-2xl bg-card p-4 shadow-card">
               {plSum != null ? (
@@ -444,20 +464,50 @@ export default function MePage() {
               }`}
             >
               {perfPortfolio >= perfBench
-                ? `Dein Depot schlägt den ${benchLabel} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (12 Monate, heutige Stückzahlen).`
-                : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${benchLabel} (12 Monate, heutige Stückzahlen).`}
+                ? `Dein Depot schlägt den ${benchLabel} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (${rangeLabel}, heutige Stückzahlen).`
+                : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${benchLabel} (${rangeLabel}, heutige Stückzahlen).`}
             </div>
           )}
 
           {/* Wertentwicklung + Allokation */}
           <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
             <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold">Wertentwicklung (12M, indexiert)</div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold">Wertentwicklung</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
+                    {BENCH_CHOICES.map((c, i) => (
+                      <button
+                        key={c.label}
+                        onClick={() => setBenchIdx(i)}
+                        className={`press-sm rounded-full px-2.5 py-1 ${
+                          benchIdx === i ? "bg-white text-ink shadow-card" : "text-subtle"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
+                    {RANGES.map(([label], i) => (
+                      <button
+                        key={label}
+                        onClick={() => setRange(i)}
+                        className={`press-sm rounded-full px-2.5 py-1 ${
+                          range === i ? "bg-white text-ink shadow-card" : "text-subtle"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
               <CompareChart
-                a={series}
-                b={benchTrimmed}
+                a={seriesR}
+                b={benchR}
                 labelA="Dein Depot"
-                labelB={benchTrimmed ? benchLabel : null}
+                labelB={benchR ? benchLabel : null}
               />
             </div>
             <div className="rounded-2xl bg-card p-4 shadow-card">
