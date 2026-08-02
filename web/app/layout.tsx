@@ -44,10 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white shadow-card">
                 O
               </div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-base font-semibold tracking-tight">Outsider</span>
-                <span className="text-[11px] text-subtle">Politiker · Insider · Investoren</span>
-              </div>
+              <span className="text-lg font-semibold tracking-tight">Outsider</span>
             </Link>
             <div className="ml-auto flex items-center gap-3">
               <SearchBox />

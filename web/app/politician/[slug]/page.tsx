@@ -76,7 +76,15 @@ export default function PoliticianPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
-        <TradeFeed rows={pol.trades} showActor={false} empty="Noch keine gemeldeten Trades." />
+        <TradeFeed
+          rows={pol.trades}
+          showActor={false}
+          empty={
+            pol.chamber === "House"
+              ? "Noch keine maschinenlesbaren Meldungen. Viele Repräsentantenhaus-Meldungen sind eingescannte PDFs, die sich (noch) nicht automatisch auslesen lassen — Senats-Meldungen funktionieren zuverlässig."
+              : "Noch keine gemeldeten Trades."
+          }
+        />
       </section>
     </div>
   );

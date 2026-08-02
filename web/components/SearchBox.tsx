@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { fixTicker } from "@/lib/format";
-import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
+import {
+  InvestorRow,
+  InvestorsResponse,
+  PoliticianRow,
+  PoliticiansResponse,
+  StockRow,
+  StocksResponse,
+} from "@/lib/types";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
@@ -14,6 +21,7 @@ export function SearchBox() {
   const [open, setOpen] = useState(false);
   const [investors, setInvestors] = useState<InvestorRow[]>([]);
   const [stocks, setStocks] = useState<StockRow[]>([]);
+  const [politicians, setPoliticians] = useState<PoliticianRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -23,10 +31,12 @@ export function SearchBox() {
     Promise.all([
       fetch("/api/investors").then((r) => r.json() as Promise<InvestorsResponse>),
       fetch("/api/stocks").then((r) => r.json() as Promise<StocksResponse>),
+      fetch("/api/politicians").then((r) => r.json() as Promise<PoliticiansResponse>),
     ])
-      .then(([iv, st]) => {
+      .then(([iv, st, po]) => {
         setInvestors(iv.rows);
         setStocks(st.rows);
+        setPoliticians(po.rows);
       })
       .catch(() => {});
   };
@@ -54,7 +64,10 @@ export function SearchBox() {
         )
         .slice(0, 5)
     : [];
-  const hasHits = ivHits.length + stHits.length > 0;
+  const poHits = needle
+    ? politicians.filter((p) => p.name.toLowerCase().includes(needle)).slice(0, 4)
+    : [];
+  const hasHits = ivHits.length + stHits.length + poHits.length > 0;
 
   return (
     <div ref={boxRef} className="relative">
@@ -90,6 +103,28 @@ export function SearchBox() {
                 >
                   <Avatar name={i.person ?? i.fund} size={26} />
                   <span className="truncate text-sm font-medium">{i.person ?? i.fund}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {poHits.length > 0 && (
+            <div className="border-b border-hair py-1">
+              <div className="px-4 py-1 text-[10px] font-medium uppercase tracking-wide text-subtle">
+                Politiker
+              </div>
+              {poHits.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/politician/${p.slug}`}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2 hover:bg-slate-50"
+                >
+                  <Avatar name={p.name} size={26} />
+                  <span className="truncate text-sm font-medium">{p.name}</span>
+                  <span className="ml-auto text-xs text-subtle">
+                    {p.chamber === "House" ? "Repräsentantenhaus" : p.chamber === "Senate" ? "Senat" : ""}
+                  </span>
                 </Link>
               ))}
             </div>

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { CompareChart } from "@/components/CompareChart";
+import { Donut } from "@/components/Donut";
 import { abbrevMoney, companyName, fixTicker, pct } from "@/lib/format";
 import {
   MyHolding,
@@ -19,10 +21,14 @@ import {
 } from "@/lib/myportfolio";
 import { HoldingRow, MatchResponse, MatchRow, PriceBar, PricesResponse } from "@/lib/types";
 
-interface PriceInfo {
-  last: number | null;
-  first: number | null;
-}
+const BENCHMARKS: [string, string][] = [
+  ["SPY", "S&P 500"],
+  ["IVV", "S&P 500"],
+  ["VOO", "S&P 500"],
+  ["QQQ", "Nasdaq 100"],
+];
+
+const DONUT_COLORS = ["#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777", "#8b5cf6"];
 
 function price(v: number | null): string {
   if (v === null || Number.isNaN(v)) return "—";
@@ -31,12 +37,15 @@ function price(v: number | null): string {
 
 export default function MePage() {
   const [holdings, setHoldings] = useState<MyHolding[]>([]);
-  const [prices, setPrices] = useState<Record<string, PriceInfo>>({});
-  const [spy, setSpy] = useState<PriceInfo | null>(null);
+  const [bars, setBars] = useState<Record<string, PriceBar[] | null>>({});
+  const [bench, setBench] = useState<{ label: string; bars: PriceBar[] } | null | undefined>(
+    undefined,
+  );
   const [matches, setMatches] = useState<MatchRow[] | null>(null);
   const [csvMsg, setCsvMsg] = useState<string | null>(null);
   const [ticker, setTicker] = useState("");
   const [shares, setShares] = useState("");
+  const [buyPrice, setBuyPrice] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // sync with localStorage
@@ -47,44 +56,55 @@ export default function MePage() {
     return () => window.removeEventListener("mydepot", sync);
   }, []);
 
-  // fetch prices for held tickers + SPY benchmark
+  // fetch price bars for held tickers
   useEffect(() => {
     let on = true;
-    const need = holdings.map((h) => h.ticker).filter((t) => !(t in prices));
-    need.forEach((t) => {
-      fetch(`/api/prices?ticker=${encodeURIComponent(t)}`)
-        .then((r) => r.json() as Promise<PricesResponse>)
-        .then((d) => {
-          if (!on) return;
-          const bars: PriceBar[] = d.source === "database" ? d.bars : [];
-          setPrices((p) => ({
-            ...p,
-            [t]: {
-              last: bars.length ? bars[bars.length - 1].close : null,
-              first: bars.length ? bars[0].close : null,
-            },
-          }));
-        })
-        .catch(() => on && setPrices((p) => ({ ...p, [t]: { last: null, first: null } })));
-    });
-    if (!spy) {
-      fetch(`/api/prices?ticker=SPY`)
-        .then((r) => r.json() as Promise<PricesResponse>)
-        .then((d) => {
-          if (!on) return;
-          const bars = d.source === "database" ? d.bars : [];
-          setSpy({
-            last: bars.length ? bars[bars.length - 1].close : null,
-            first: bars.length ? bars[0].close : null,
-          });
-        })
-        .catch(() => on && setSpy({ last: null, first: null }));
-    }
+    holdings
+      .map((h) => h.ticker)
+      .filter((t) => !(t in bars))
+      .forEach((t) => {
+        fetch(`/api/prices?ticker=${encodeURIComponent(t)}`)
+          .then((r) => r.json() as Promise<PricesResponse>)
+          .then((d) => {
+            if (!on) return;
+            setBars((p) => ({
+              ...p,
+              [t]: d.source === "database" && d.bars.length > 1 ? d.bars : null,
+            }));
+          })
+          .catch(() => on && setBars((p) => ({ ...p, [t]: null })));
+      });
     return () => {
       on = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdings]);
+
+  // benchmark with fallback chain (SPY -> IVV -> VOO -> QQQ)
+  useEffect(() => {
+    if (bench !== undefined) return;
+    let on = true;
+    (async () => {
+      for (const [t, label] of BENCHMARKS) {
+        try {
+          const d = (await fetch(`/api/prices?ticker=${t}`).then((r) =>
+            r.json(),
+          )) as PricesResponse;
+          if (d.source === "database" && d.bars.length > 1) {
+            if (on) setBench({ label, bars: d.bars });
+            return;
+          }
+        } catch {
+          /* try next */
+        }
+      }
+      if (on) setBench(null);
+    })();
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // investor match
   useEffect(() => {
@@ -93,8 +113,7 @@ export default function MePage() {
       return;
     }
     let on = true;
-    const ts = holdings.map((h) => h.ticker).join(",");
-    fetch(`/api/match?tickers=${encodeURIComponent(ts)}`)
+    fetch(`/api/match?tickers=${encodeURIComponent(holdings.map((h) => h.ticker).join(","))}`)
       .then((r) => r.json() as Promise<MatchResponse>)
       .then((d) => on && setMatches(d.rows))
       .catch(() => on && setMatches([]));
@@ -103,26 +122,77 @@ export default function MePage() {
     };
   }, [holdings]);
 
-  // derived rows
+  // per-holding derived values
   const rows = useMemo(() => {
     return holdings.map((h) => {
-      const p = prices[h.ticker];
-      const value = p?.last != null ? h.shares * p.last : null;
-      const perf12 = p?.last != null && p?.first ? (p.last - p.first) / p.first : null;
-      const gain =
-        p?.last != null && h.buyPrice ? (p.last - h.buyPrice) / h.buyPrice : null;
-      return { ...h, last: p?.last ?? null, value, perf12, gain };
+      const b = bars[h.ticker];
+      const last = b && b.length ? b[b.length - 1].close : null;
+      const value = last != null ? h.shares * last : null;
+      const invested = h.buyPrice ? h.buyPrice * h.shares : null;
+      const plAbs = last != null && h.buyPrice ? (last - h.buyPrice) * h.shares : null;
+      const plPct = last != null && h.buyPrice ? (last - h.buyPrice) / h.buyPrice : null;
+      return { ...h, last, value, invested, plAbs, plPct };
     });
-  }, [holdings, prices]);
+  }, [holdings, bars]);
 
   const total = rows.reduce((a, r) => a + (r.value ?? 0), 0);
   const withValue = rows.filter((r) => r.value !== null);
+  const noPriceCount = rows.length - withValue.length;
+
+  // portfolio value series (constant shares, forward-filled closes)
+  const series = useMemo((): PriceBar[] => {
+    const withBars = holdings
+      .map((h) => ({ h, b: bars[h.ticker] }))
+      .filter((x): x is { h: MyHolding; b: PriceBar[] } => !!x.b && x.b.length > 1);
+    if (withBars.length === 0) return [];
+    const start = withBars
+      .map(({ b }) => b[0].date)
+      .reduce((a, d) => (d > a ? d : a), "0000-00-00");
+    const dates = [...new Set(withBars.flatMap(({ b }) => b.map((x) => x.date)))]
+      .filter((d) => d >= start)
+      .sort();
+    const cur = new Map<string, number>();
+    const idx = new Map<string, number>();
+    const out: PriceBar[] = [];
+    for (const d of dates) {
+      for (const { h, b } of withBars) {
+        let i = idx.get(h.ticker) ?? 0;
+        while (i < b.length && b[i].date <= d) {
+          cur.set(h.ticker, b[i].close);
+          i++;
+        }
+        idx.set(h.ticker, i);
+      }
+      if (cur.size === withBars.length) {
+        let v = 0;
+        for (const { h } of withBars) v += h.shares * (cur.get(h.ticker) ?? 0);
+        out.push({ date: d, close: v });
+      }
+    }
+    return out;
+  }, [holdings, bars]);
+
+  const benchTrimmed = useMemo(() => {
+    if (!bench || series.length < 2) return null;
+    const start = series[0].date;
+    const t = bench.bars.filter((b) => b.date >= start);
+    return t.length > 1 ? t : null;
+  }, [bench, series]);
+
   const perfPortfolio =
-    total > 0
-      ? withValue.reduce((a, r) => a + (r.perf12 ?? 0) * ((r.value ?? 0) / total), 0)
+    series.length > 1 ? (series[series.length - 1].close - series[0].close) / series[0].close : null;
+  const perfBench =
+    benchTrimmed && benchTrimmed.length > 1
+      ? (benchTrimmed[benchTrimmed.length - 1].close - benchTrimmed[0].close) /
+        benchTrimmed[0].close
       : null;
-  const perfSpy = spy?.last != null && spy?.first ? (spy.last - spy.first) / spy.first : null;
-  const noPriceCount = rows.filter((r) => r.value === null).length;
+  const benchLabel = bench?.label ?? "S&P 500";
+
+  // invested / P&L (only for positions with a known buy price)
+  const investedRows = rows.filter((r) => r.invested !== null && r.value !== null);
+  const investedSum = investedRows.reduce((a, r) => a + (r.invested ?? 0), 0);
+  const investedCur = investedRows.reduce((a, r) => a + (r.value ?? 0), 0);
+  const plSum = investedSum > 0 ? investedCur - investedSum : null;
 
   const allocRows: HoldingRow[] = withValue.map((r) => ({
     ticker: r.ticker,
@@ -133,6 +203,19 @@ export default function MePage() {
     shares: r.shares,
     putCall: null,
   }));
+
+  const donutSegs = useMemo(() => {
+    const sorted = [...withValue].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    const top = sorted.slice(0, 6);
+    const rest = sorted.slice(6).reduce((a, r) => a + (r.value ?? 0), 0);
+    const segs = top.map((r, i) => ({
+      label: companyName(r.ticker, null),
+      value: r.value ?? 0,
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
+    }));
+    if (rest > 0) segs.push({ label: "Übrige", value: rest, color: "#cbd5e1" });
+    return segs;
+  }, [withValue]);
 
   const sortedRows = [...rows].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
 
@@ -157,14 +240,28 @@ export default function MePage() {
     e.preventDefault();
     const t = ticker.trim().toUpperCase();
     const s = parseNum(shares);
+    const bp = buyPrice.trim() ? parseNum(buyPrice) : NaN;
     if (!/^[A-Z][A-Z0-9.\-]{0,7}$/.test(t) || !Number.isFinite(s) || s <= 0) {
       setCsvMsg("Bitte gültigen Ticker (z. B. AAPL) und Stückzahl eingeben.");
       return;
     }
-    upsertHolding({ ticker: t, shares: s });
+    upsertHolding({ ticker: t, shares: s, ...(Number.isFinite(bp) && bp > 0 ? { buyPrice: bp } : {}) });
     setTicker("");
     setShares("");
+    setBuyPrice("");
     setCsvMsg(null);
+  };
+
+  const exportCsv = () => {
+    const lines = holdings.map((h) =>
+      h.buyPrice ? `${h.ticker},${h.shares},${h.buyPrice}` : `${h.ticker},${h.shares}`,
+    );
+    const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mein-depot.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   const userWeightWith = (m: MatchRow) => {
@@ -180,7 +277,7 @@ export default function MePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
         <p className="text-sm text-subtle">
-          Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem S&P 500.
+          Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
           Gespeichert wird nur lokal in deinem Browser.
         </p>
       </div>
@@ -201,7 +298,7 @@ export default function MePage() {
             className="hidden"
             onChange={(e) => onFile(e.target.files?.[0] ?? null)}
           />
-          <form onSubmit={onAdd} className="flex items-center gap-2">
+          <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
             <input
               value={ticker}
               onChange={(e) => setTicker(e.target.value)}
@@ -214,17 +311,28 @@ export default function MePage() {
               placeholder="Stück"
               className="w-24 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
             />
+            <input
+              value={buyPrice}
+              onChange={(e) => setBuyPrice(e.target.value)}
+              placeholder="Kaufpreis $ (optional)"
+              className="w-40 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
+            />
             <button className="rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
               + Hinzufügen
             </button>
           </form>
           {holdings.length > 0 && (
-            <button
-              onClick={() => clearHoldings()}
-              className="ml-auto text-xs text-subtle underline hover:text-bear"
-            >
-              Alle löschen
-            </button>
+            <div className="ml-auto flex items-center gap-3">
+              <button onClick={exportCsv} className="text-xs text-subtle underline hover:text-brand">
+                CSV exportieren
+              </button>
+              <button
+                onClick={() => clearHoldings()}
+                className="text-xs text-subtle underline hover:text-bear"
+              >
+                Alle löschen
+              </button>
+            </div>
           )}
         </div>
         <p className="mt-2 text-[11px] text-subtle">
@@ -251,10 +359,6 @@ export default function MePage() {
               <div className="mt-0.5 text-xs text-subtle">Depotwert</div>
             </div>
             <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div className="text-lg font-semibold tracking-tight">{holdings.length}</div>
-              <div className="mt-0.5 text-xs text-subtle">Positionen</div>
-            </div>
-            <div className="rounded-2xl bg-card p-4 shadow-card">
               <div
                 className={`text-lg font-semibold tracking-tight ${
                   perfPortfolio == null ? "" : perfPortfolio >= 0 ? "text-bull" : "text-bear"
@@ -267,28 +371,88 @@ export default function MePage() {
             <div className="rounded-2xl bg-card p-4 shadow-card">
               <div
                 className={`text-lg font-semibold tracking-tight ${
-                  perfSpy == null ? "" : perfSpy >= 0 ? "text-bull" : "text-bear"
+                  perfBench == null ? "" : perfBench >= 0 ? "text-bull" : "text-bear"
                 }`}
               >
-                {pct(perfSpy)}
+                {pct(perfBench)}
               </div>
-              <div className="mt-0.5 text-xs text-subtle">S&P 500 (12M)</div>
+              <div className="mt-0.5 text-xs text-subtle">{benchLabel} (12M)</div>
+            </div>
+            <div className="rounded-2xl bg-card p-4 shadow-card">
+              {plSum != null ? (
+                <>
+                  <div
+                    className={`text-lg font-semibold tracking-tight ${
+                      plSum >= 0 ? "text-bull" : "text-bear"
+                    }`}
+                  >
+                    {plSum >= 0 ? "+" : "-"}
+                    {abbrevMoney(Math.abs(plSum))}
+                  </div>
+                  <div className="mt-0.5 text-xs text-subtle">
+                    Gewinn/Verlust (auf {abbrevMoney(investedSum)} Einstand)
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-semibold tracking-tight">{holdings.length}</div>
+                  <div className="mt-0.5 text-xs text-subtle">Positionen</div>
+                </>
+              )}
             </div>
           </div>
 
-          {perfPortfolio != null && perfSpy != null && (
+          {perfPortfolio != null && perfBench != null && (
             <div
               className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
-                perfPortfolio >= perfSpy
+                perfPortfolio >= perfBench
                   ? "bg-emerald-50 text-emerald-700"
                   : "bg-rose-50 text-rose-700"
               }`}
             >
-              {perfPortfolio >= perfSpy
-                ? `Dein Depot schlägt den S&P 500 um ${((perfPortfolio - perfSpy) * 100).toFixed(1)} Prozentpunkte (12 Monate, gewichtet).`
-                : `Dein Depot liegt ${((perfSpy - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem S&P 500 (12 Monate, gewichtet).`}
+              {perfPortfolio >= perfBench
+                ? `Dein Depot schlägt den ${benchLabel} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (12 Monate, heutige Stückzahlen).`
+                : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${benchLabel} (12 Monate, heutige Stückzahlen).`}
             </div>
           )}
+
+          {/* Wertentwicklung + Allokation */}
+          <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+            <div className="rounded-2xl bg-card p-4 shadow-card">
+              <div className="mb-1 text-sm font-semibold">Wertentwicklung (12M, indexiert)</div>
+              <CompareChart
+                a={series}
+                b={benchTrimmed}
+                labelA="Dein Depot"
+                labelB={benchTrimmed ? benchLabel : null}
+              />
+            </div>
+            <div className="rounded-2xl bg-card p-4 shadow-card">
+              <div className="mb-1 text-sm font-semibold">Allokation</div>
+              <div className="flex items-center justify-center">
+                <Donut
+                  segments={donutSegs}
+                  size={170}
+                  centerTop={abbrevMoney(total || null)}
+                  centerBottom="Depotwert"
+                />
+              </div>
+              <div className="mt-2 space-y-1">
+                {donutSegs.map((s) => (
+                  <div key={s.label} className="flex items-center gap-2 text-xs">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: s.color }}
+                    />
+                    <span className="truncate">{s.label}</span>
+                    <span className="ml-auto font-medium text-subtle">
+                      {total > 0 ? ((s.value / total) * 100).toFixed(1) : "0"} %
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
           <AllocationBar holdings={allocRows} />
 
@@ -315,6 +479,7 @@ export default function MePage() {
                       <div className="font-mono text-xs text-subtle">
                         {fixTicker(r.ticker, company)} · {r.shares.toLocaleString("de-DE")} St.
                         {r.last != null ? ` · ${price(r.last)}` : ""}
+                        {r.buyPrice ? ` · Einstand ${price(r.buyPrice)}` : ""}
                       </div>
                     </div>
                     <div className="text-right">
@@ -323,10 +488,11 @@ export default function MePage() {
                       </div>
                       <div className="text-xs text-subtle">
                         {w != null ? `${w.toFixed(1)} %` : "—"}
-                        {r.gain != null && (
-                          <span className={r.gain >= 0 ? "text-bull" : "text-bear"}>
+                        {r.plPct != null && r.plAbs != null && (
+                          <span className={r.plPct >= 0 ? "text-bull" : "text-bear"}>
                             {" "}
-                            · {pct(r.gain)}
+                            · {pct(r.plPct)} ({r.plAbs >= 0 ? "+" : "-"}
+                            {abbrevMoney(Math.abs(r.plAbs))})
                           </span>
                         )}
                       </div>
