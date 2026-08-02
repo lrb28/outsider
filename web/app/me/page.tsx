@@ -20,6 +20,7 @@ import {
   upsertHolding,
 } from "@/lib/myportfolio";
 import { HoldingRow, MatchResponse, MatchRow, PriceBar, PricesResponse } from "@/lib/types";
+import { useQuotes } from "@/lib/useQuotes";
 
 const BENCHMARKS: [string, string][] = [
   ["SPY", "S&P 500"],
@@ -47,6 +48,8 @@ export default function MePage() {
   const [shares, setShares] = useState("");
   const [buyPrice, setBuyPrice] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const quotes = useQuotes(holdings.map((h) => h.ticker));
+  const liveCount = Object.keys(quotes).length;
 
   // sync with localStorage
   useEffect(() => {
@@ -122,18 +125,31 @@ export default function MePage() {
     };
   }, [holdings]);
 
-  // per-holding derived values
+  // per-holding derived values (live quote wins over EOD close)
   const rows = useMemo(() => {
     return holdings.map((h) => {
       const b = bars[h.ticker];
-      const last = b && b.length ? b[b.length - 1].close : null;
+      const q = quotes[h.ticker.toUpperCase()];
+      const eod = b && b.length ? b[b.length - 1].close : null;
+      const last = q?.price ?? eod;
       const value = last != null ? h.shares * last : null;
       const invested = h.buyPrice ? h.buyPrice * h.shares : null;
       const plAbs = last != null && h.buyPrice ? (last - h.buyPrice) * h.shares : null;
       const plPct = last != null && h.buyPrice ? (last - h.buyPrice) / h.buyPrice : null;
-      return { ...h, last, value, invested, plAbs, plPct };
+      const dayPct = q?.changePct ?? null;
+      const dayAbs =
+        q && q.prevClose != null ? (q.price - q.prevClose) * h.shares : null;
+      return { ...h, last, value, invested, plAbs, plPct, dayPct, dayAbs, live: !!q };
     });
-  }, [holdings, bars]);
+  }, [holdings, bars, quotes]);
+
+  const dayRows = rows.filter((r) => r.dayAbs !== null);
+  const dayAbsSum = dayRows.reduce((a, r) => a + (r.dayAbs ?? 0), 0);
+  const dayBase = dayRows.reduce(
+    (a, r) => a + (r.value ?? 0) - (r.dayAbs ?? 0),
+    0,
+  );
+  const dayPctSum = dayBase > 0 ? dayAbsSum / dayBase : null;
 
   const total = rows.reduce((a, r) => a + (r.value ?? 0), 0);
   const withValue = rows.filter((r) => r.value !== null);
@@ -275,7 +291,15 @@ export default function MePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
+          {liveCount > 0 && (
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+              <span className="animate-live h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Live-Kurse
+            </span>
+          )}
+        </div>
         <p className="text-sm text-subtle">
           Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
           Gespeichert wird nur lokal in deinem Browser.
@@ -356,7 +380,16 @@ export default function MePage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl bg-card p-4 shadow-card">
               <div className="text-lg font-semibold tracking-tight">{abbrevMoney(total || null)}</div>
-              <div className="mt-0.5 text-xs text-subtle">Depotwert</div>
+              <div className="mt-0.5 text-xs text-subtle">
+                Depotwert
+                {dayPctSum != null && (
+                  <span className={dayPctSum >= 0 ? "text-bull" : "text-bear"}>
+                    {" "}
+                    · {dayPctSum >= 0 ? "+" : ""}
+                    {(dayPctSum * 100).toFixed(2)} % heute
+                  </span>
+                )}
+              </div>
             </div>
             <div className="rounded-2xl bg-card p-4 shadow-card">
               <div
@@ -488,6 +521,13 @@ export default function MePage() {
                       </div>
                       <div className="text-xs text-subtle">
                         {w != null ? `${w.toFixed(1)} %` : "—"}
+                        {r.dayPct != null && (
+                          <span className={r.dayPct >= 0 ? "text-bull" : "text-bear"}>
+                            {" "}
+                            · heute {r.dayPct >= 0 ? "+" : ""}
+                            {(r.dayPct * 100).toFixed(2)} %
+                          </span>
+                        )}
                         {r.plPct != null && r.plAbs != null && (
                           <span className={r.plPct >= 0 ? "text-bull" : "text-bear"}>
                             {" "}

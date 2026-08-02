@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getStock } from "@/lib/queries";
+import { withRetry } from "@/lib/retry";
 import { sampleStock } from "@/lib/sampleData";
 import { StockResponse } from "@/lib/types";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker") || "";
   try {
-    const stock = await getStock(ticker);
+    const stock = await withRetry(() => getStock(ticker));
     const body: StockResponse = { source: "database", stock };
     return NextResponse.json(body);
   } catch {

@@ -44,7 +44,7 @@ function GatewayCard({
   return (
     <Link
       href={href}
-      className={`relative flex h-72 w-[300px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-3xl p-5 shadow-card ring-1 ring-black/5 transition hover:shadow-cardhover ${gradient}`}
+      className={`press relative flex h-72 w-[300px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-3xl p-5 shadow-card ring-1 ring-black/5 hover:-translate-y-0.5 hover:shadow-cardhover ${gradient}`}
     >
       <div className="absolute inset-x-0 top-0 h-44">
         {items.slice(0, 3).map((it, i) => {
@@ -52,8 +52,15 @@ function GatewayCard({
           return (
             <div
               key={(it.ticker ?? it.company) + i}
-              className="absolute drop-shadow-md"
-              style={{ left: s.left, top: s.top, transform: `rotate(${s.rot}deg)` }}
+              className="animate-floaty absolute drop-shadow-md"
+              style={
+                {
+                  left: s.left,
+                  top: s.top,
+                  "--rot": `${s.rot}deg`,
+                  animationDelay: `${i * 0.7}s`,
+                } as React.CSSProperties
+              }
             >
               <CompanyLogo ticker={it.ticker} company={it.company} size={s.size} rounded="rounded-2xl" />
             </div>
@@ -84,7 +91,7 @@ function TradeCard({ r, onOpen }: { r: FeedRow; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="w-72 shrink-0 snap-start rounded-3xl bg-card p-4 text-left shadow-card ring-1 ring-hair transition hover:shadow-cardhover"
+      className="press w-72 shrink-0 snap-start rounded-3xl bg-white/80 p-4 text-left shadow-card ring-1 ring-black/5 backdrop-blur hover:-translate-y-0.5 hover:shadow-cardhover"
     >
       <div className="relative mb-3 h-12 w-16">
         <Avatar name={r.entityName} size={46} />
@@ -120,7 +127,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3">
+    <section className="fade-up space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
         {moreHref && (
@@ -179,7 +186,7 @@ export default function HomePage() {
     <div className="space-y-9">
       {/* Gateway hero */}
       {discover && (
-        <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
+        <div className="no-scrollbar fade-up -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
           <GatewayCard
             href="/discover/boughtq"
             title="Frische Käufe der Investoren"
@@ -216,14 +223,14 @@ export default function HomePage() {
       {/* Portfolio matches */}
       {depotCount > 0 && matches.length > 0 && (
         <Section title="Portfolio-Matches" moreHref="/me" moreLabel="Mein Depot ›">
-          <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
+          <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
             {matches.map((m) => {
               const matchPct = Math.min(100, Math.round((m.sharedCount / depotCount) * 100));
               return (
                 <Link
                   key={m.slug}
                   href={`/investor/${m.slug}`}
-                  className="flex w-56 shrink-0 snap-start flex-col items-center rounded-3xl bg-card p-5 text-center shadow-card ring-1 ring-hair transition hover:shadow-cardhover"
+                  className="press flex w-56 shrink-0 snap-start flex-col items-center rounded-3xl bg-white/80 p-5 text-center shadow-card ring-1 ring-black/5 backdrop-blur hover:-translate-y-0.5 hover:shadow-cardhover"
                 >
                   <Avatar name={m.person ?? m.fund} size={64} />
                   <div className="mt-2 w-full truncate text-sm font-semibold">
@@ -253,14 +260,14 @@ export default function HomePage() {
       {/* Spotlight */}
       {spotlight.length > 0 && (
         <Section title="Im Rampenlicht" moreHref="/portfolio">
-          <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
+          <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
             {spotlight.map((iv) => (
               <Link
                 key={iv.slug}
                 href={`/investor/${iv.slug}`}
-                className="w-40 shrink-0 snap-start"
+                className="press w-40 shrink-0 snap-start"
               >
-                <div className="flex h-40 items-center justify-center rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-blue-50 shadow-card ring-1 ring-black/5 transition hover:shadow-cardhover">
+                <div className="flex h-40 items-center justify-center rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-blue-50 shadow-card ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-cardhover">
                   <Avatar name={iv.person ?? iv.fund} size={92} />
                 </div>
                 <div className="mt-2 px-1">
@@ -282,7 +289,7 @@ export default function HomePage() {
             Noch keine Investoren-Trades.
           </div>
         ) : (
-          <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
+          <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
             {instTrades.map((r) => (
               <TradeCard key={r.id} r={r} onOpen={() => setSelected(r)} />
             ))}
@@ -299,7 +306,7 @@ export default function HomePage() {
             Noch keine Insider-Trades.
           </div>
         ) : (
-          <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
+          <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
             {insiderTrades.map((r) => (
               <TradeCard key={r.id} r={r} onOpen={() => setSelected(r)} />
             ))}

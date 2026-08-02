@@ -13,6 +13,7 @@ import { Sparkline } from "@/components/Sparkline";
 import { TradeFeed } from "@/components/TradeFeed";
 import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
+import { useQuotes } from "@/lib/useQuotes";
 
 export default function StockPage() {
   const params = useParams<{ ticker: string }>();
@@ -21,6 +22,9 @@ export default function StockPage() {
   const [bars, setBars] = useState<PriceBar[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [actTab, setActTab] = useState<"inv" | "ins">("inv");
+  const liveTicker = fixTicker(ticker, null) ?? ticker;
+  const quotes = useQuotes(liveTicker ? [liveTicker] : []);
+  const quote = liveTicker ? quotes[liveTicker.toUpperCase()] : undefined;
 
   useEffect(() => {
     if (!ticker) return;
@@ -98,7 +102,31 @@ export default function StockPage() {
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={64} />
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">{stock.company}</h1>
-          <div className="font-mono text-sm text-subtle">{fixTicker(stock.ticker, stock.company) ?? "—"}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm text-subtle">
+              {fixTicker(stock.ticker, stock.company) ?? "—"}
+            </span>
+            {quote && (
+              <span className="flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-sm font-semibold ring-1 ring-black/5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    quote.marketState === "REGULAR" ? "animate-live bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+                $
+                {quote.price.toLocaleString("de-DE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                {quote.changePct != null && (
+                  <span className={quote.changePct >= 0 ? "text-bull" : "text-bear"}>
+                    {quote.changePct >= 0 ? "+" : ""}
+                    {(quote.changePct * 100).toFixed(2)} %
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
         {stock.ticker && <FollowButton kind="stock" id={stock.ticker} />}
       </div>

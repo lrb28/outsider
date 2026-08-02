@@ -45,10 +45,10 @@ export function FollowButton({
   return (
     <button
       onClick={handle}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+      className={`press-sm rounded-full px-4 py-1.5 text-sm font-semibold ${
         on
           ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-200"
-          : "bg-slate-900 text-white hover:bg-slate-800"
+          : "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
       }`}
     >
       {on ? "★ Folge ich" : "☆ Folgen"}

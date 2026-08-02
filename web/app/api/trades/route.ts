@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getTrades } from "@/lib/queries";
+import { withRetry } from "@/lib/retry";
 import { SAMPLE_TRADES } from "@/lib/sampleData";
 import { TradesResponse } from "@/lib/types";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   const offset = Math.max(Number(sp.get("offset") ?? 0) || 0, 0);
 
   try {
-    const rows = await getTrades({ type, q, txnType, limit, offset });
+    const rows = await withRetry(() => getTrades({ type, q, txnType, limit, offset }));
     const body: TradesResponse = {
       source: "database",
       rows,

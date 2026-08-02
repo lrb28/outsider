@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrices } from "@/lib/queries";
+import { withRetry } from "@/lib/retry";
 import { PriceBar, PricesResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ source: "sample", ticker, bars: [] } as PricesResponse);
   }
   try {
-    const bars = await getPrices(ticker);
+    const bars = await withRetry(() => getPrices(ticker));
     if (bars.length === 0) {
       return NextResponse.json({ source: "sample", ticker, bars: sampleBars(ticker) } as PricesResponse);
     }

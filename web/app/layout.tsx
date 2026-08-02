@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Disclaimer } from "@/components/Disclaimer";
-import { Nav } from "@/components/Nav";
+import { BottomNav, Nav } from "@/components/Nav";
 import { SampleBanner } from "@/components/SampleBanner";
 import { SearchBox } from "@/components/SearchBox";
 
@@ -37,11 +37,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="de">
-      <body className="min-h-screen bg-canvas text-ink">
-        <header className="sticky top-0 z-20 border-b border-hair bg-white/85 backdrop-blur">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand text-lg font-bold text-white shadow-card">
+      <body className="min-h-screen text-ink">
+        <header className="sticky top-0 z-20 border-b border-white/40 bg-white/60 backdrop-blur-xl">
+          <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
+            <Link href="/" className="press-sm flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-500/30">
                 O
               </div>
               <span className="text-lg font-semibold tracking-tight">Outsider</span>
@@ -55,10 +55,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
         <SampleBanner />
 
-        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+        <main className="mx-auto max-w-5xl px-4 pb-28 pt-6 md:pb-10">{children}</main>
 
-        <footer className="mt-12 border-t border-hair bg-white">
-          <div className="mx-auto max-w-5xl px-4 py-6">
+        <BottomNav />
+
+        <footer className="mt-12 border-t border-white/50 bg-white/60 backdrop-blur">
+          <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
             <Disclaimer />
           </div>
         </footer>
