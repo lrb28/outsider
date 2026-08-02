@@ -9,6 +9,7 @@ import {
   InsiderDetail,
   InvestorDetail,
   InvestorRow,
+  MatchRow,
   PoliticianDetail,
   PoliticianRow,
   StockDetail,
@@ -316,7 +317,9 @@ export async function getStocks(): Promise<StockRow[]> {
     select s.ticker, s.name as security_name,
            count(distinct c.entity_id) as investors,
            sum(c.market_value) as value,
-           (array_agg(distinct e.full_name))[1:3] as holder_names
+           (array_agg(distinct e.full_name))[1:3] as holder_names,
+           (select count(*) from transactions t
+            where t.security_id = s.id and t.txn_type = 'buy') as buys
     from cur c
     join securities s on s.id = c.security_id
     join entities e on e.id = c.entity_id
@@ -331,6 +334,7 @@ export async function getStocks(): Promise<StockRow[]> {
     company: companyName((r.ticker as string) ?? null, (r.security_name as string) ?? null),
     investors: Number(r.investors) || 0,
     value: r.value !== null ? Number(r.value) : null,
+    buys: Number(r.buys) || 0,
     holderNames: (r.holder_names as string[]) ?? [],
   }));
 }
@@ -391,6 +395,41 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     holders: holderRows,
     trades,
   };
+}
+
+// ── My-depot match: which tracked investors hold the user's tickers ─────────
+export async function getMatch(tickers: string[]): Promise<MatchRow[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const T = [...new Set(tickers.map((t) => t.toUpperCase()))].slice(0, 40);
+  if (T.length === 0) return [];
+  const { rows } = await pool.query(
+    `
+    ${CUR_CTE},
+    tot as (select entity_id, sum(market_value) as v from cur group by entity_id)
+    select e.slug, e.full_name as fund,
+           count(distinct upper(s.ticker)) as n,
+           sum(c.market_value / nullif(t.v, 0)) as w,
+           array_agg(distinct upper(s.ticker)) as ts
+    from cur c
+    join entities e on e.id = c.entity_id and e.type = 'institution'
+    join tot t on t.entity_id = c.entity_id
+    join securities s on s.id = c.security_id
+    where upper(s.ticker) = any($1) and c.put_call is null
+    group by e.id, e.slug, e.full_name
+    order by w desc nulls last
+    limit 6
+    `,
+    [T],
+  );
+  return rows.map((r) => ({
+    slug: r.slug as string,
+    fund: r.fund as string,
+    person: investorPerson(r.fund as string),
+    sharedCount: Number(r.n) || 0,
+    invWeight: r.w !== null ? Number(r.w) : 0,
+    sharedTickers: (r.ts as string[]) ?? [],
+  }));
 }
 
 // ── Price series (for the trade sparkline) ──────────────────────────────────

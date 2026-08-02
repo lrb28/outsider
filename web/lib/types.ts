@@ -76,7 +76,23 @@ export interface StockRow {
   company: string;
   investors: number;
   value: number | null;
+  buys: number;
   holderNames: string[];
+}
+
+// ── My-depot investor match ─────────────────────────────────────────────────
+export interface MatchRow {
+  slug: string;
+  fund: string;
+  person: string | null;
+  sharedCount: number;
+  invWeight: number; // share of the INVESTOR's portfolio in the shared tickers
+  sharedTickers: string[];
+}
+
+export interface MatchResponse {
+  source: "database" | "sample";
+  rows: MatchRow[];
 }
 
 export interface StockHolder {

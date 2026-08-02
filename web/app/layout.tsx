@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 
 import { Disclaimer } from "@/components/Disclaimer";
 import { Nav } from "@/components/Nav";
+import { SampleBanner } from "@/components/SampleBanner";
 import { SearchBox } from "@/components/SearchBox";
 
 const DESC =
@@ -54,6 +55,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </header>
+
+        <SampleBanner />
 
         <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
 

@@ -135,30 +135,57 @@ export function investorPerson(name: string): string | null {
   return t ? t.replace(/_/g, " ") : null;
 }
 
-// One-line description shown on investor pages (Eaves-style bio line).
+// Short bio shown on investor pages (Eaves-style, 2–3 punchy sentences).
+const BIO_BUFFETT =
+  "Das „Orakel von Omaha“. Baute Berkshire Hathaway über sechs Jahrzehnte zur größten Investmentholding der Welt — Value-Investing, Lieblingshaltedauer: für immer. Kündigte 2025 an, den CEO-Posten an Greg Abel zu übergeben.";
+const BIO_BURRY =
+  "Wurde mit seiner Wette gegen den US-Häusermarkt weltberühmt („The Big Short“). Fährt ein kleines, extrem konzentriertes Portfolio und wettet gern gegen den Konsens — zuletzt auch mit Puts auf die KI-Lieblinge.";
+const BIO_ACKMAN =
+  "Aktivistischer Investor: kauft große Anteile an wenigen Firmen und mischt sich aktiv ins Management ein. Bekannt für öffentliche Kampagnen — und ein konzentriertes Portfolio aus rund zehn Positionen.";
+const BIO_DRUCK =
+  "Makro-Legende: managte drei Jahrzehnte Geld ohne ein einziges Verlustjahr und war Soros’ rechte Hand beim Pfund-Trade 1992. Investiert heute über sein Family Office — wenige Wetten, hohe Überzeugung.";
+const BIO_SOROS =
+  "„Der Mann, der die Bank von England brach“ — seine Pfund-Wette 1992 machte ihn zur Legende. Sein Family Office investiert breit über Aktien, Anleihen und Währungen.";
+const BIO_MUNGER =
+  "Buffetts Partner über 45 Jahre und Vize-Chairman von Berkshire (1924–2023). Das Daily-Journal-Depot, das er prägte, hält bis heute nur eine Handvoll langfristiger Positionen.";
+const BIO_DALIO =
+  "Gründete Bridgewater, den größten Hedgefonds der Welt — knapp 1.000 Positionen, extrem diversifiziert. Bekannt für seine „Principles“ und das Allwetter-Portfolio.";
+const BIO_EDELMAN =
+  "Biotech-Spezialist: Perceptive Advisors investiert fast ausschließlich in Life Sciences und gilt als einer der erfolgreichsten Healthcare-Fonds überhaupt.";
+const BIO_PABRAI =
+  "Nennt sich selbst einen „schamlosen Kloner“ von Buffett und Munger. Extrem konzentriert — oft nur eine Handvoll Positionen, gern abseits der ausgetretenen US-Pfade.";
+const BIO_ASCHEN =
+  "Ex-OpenAI-Forscher, schrieb 2024 das viel diskutierte Essay „Situational Awareness“. Gründete danach einen Fonds, der voll auf das KI-Zeitalter setzt — von Chips bis Energie.";
+const BIO_COHEN =
+  "Hedgefonds-Milliardär und Besitzer der New York Mets. Point72 (Nachfolger von SAC Capital) handelt mit Dutzenden Teams tausende Positionen.";
+const BIO_COLEMAN =
+  "„Tiger Cub“ aus dem Stall von Julian Robertson. Tiger Global wurde mit frühen Tech-Wetten wie Facebook und JD.com groß — Fokus: Internet und Software weltweit.";
+const BIO_KLARMAN =
+  "Value-Legende und Autor des Kultbuchs „Margin of Safety“. Baupost investiert geduldig und hält gern viel Cash, wenn nichts günstig ist.";
+
 const INVESTOR_BIO: [string, string][] = [
-  ["buffett", "Legendärer Value-Investor, CEO von Berkshire Hathaway."],
-  ["berkshire", "Legendärer Value-Investor, CEO von Berkshire Hathaway."],
-  ["burry", "Contrarian-Investor, bekannt aus „The Big Short“."],
-  ["scion", "Contrarian-Investor, bekannt aus „The Big Short“."],
-  ["ackman", "Aktivistischer Investor, Gründer von Pershing Square."],
-  ["pershing", "Aktivistischer Investor, Gründer von Pershing Square."],
-  ["druckenmiller", "Makro-Legende, früher Soros' rechte Hand."],
-  ["duquesne", "Makro-Legende, früher Soros' rechte Hand."],
-  ["soros", "Makro-Investor und Philanthrop, „brach die Bank of England“."],
-  ["munger", "Buffetts langjähriger Partner, Value-Investor."],
-  ["daily journal", "Buffetts langjähriger Partner, Value-Investor."],
-  ["dalio", "Gründer von Bridgewater, dem größten Hedgefonds der Welt."],
-  ["bridgewater", "Gründer von Bridgewater, dem größten Hedgefonds der Welt."],
-  ["edelman", "Biotech-Investor, Gründer von Perceptive Advisors."],
-  ["perceptive", "Biotech-Investor, Gründer von Perceptive Advisors."],
-  ["pabrai", "Value-Investor im Stil von Buffett und Munger."],
-  ["dalal", "Value-Investor im Stil von Buffett und Munger."],
-  ["aschenbrenner", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
-  ["situational", "KI-Investor, früher bei OpenAI's Superalignment-Team."],
-  ["point72", "Hedgefonds-Milliardär, Gründer von Point72 (früher SAC Capital)."],
-  ["tiger global", "Tech-Investor, „Tiger Cub“, Gründer von Tiger Global."],
-  ["baupost", "Value-Investor, Gründer der Baupost Group."],
+  ["buffett", BIO_BUFFETT],
+  ["berkshire", BIO_BUFFETT],
+  ["burry", BIO_BURRY],
+  ["scion", BIO_BURRY],
+  ["ackman", BIO_ACKMAN],
+  ["pershing", BIO_ACKMAN],
+  ["druckenmiller", BIO_DRUCK],
+  ["duquesne", BIO_DRUCK],
+  ["soros", BIO_SOROS],
+  ["munger", BIO_MUNGER],
+  ["daily journal", BIO_MUNGER],
+  ["dalio", BIO_DALIO],
+  ["bridgewater", BIO_DALIO],
+  ["edelman", BIO_EDELMAN],
+  ["perceptive", BIO_EDELMAN],
+  ["pabrai", BIO_PABRAI],
+  ["dalal", BIO_PABRAI],
+  ["aschenbrenner", BIO_ASCHEN],
+  ["situational", BIO_ASCHEN],
+  ["point72", BIO_COHEN],
+  ["tiger global", BIO_COLEMAN],
+  ["baupost", BIO_KLARMAN],
 ];
 
 export function investorBio(name: string): string | null {

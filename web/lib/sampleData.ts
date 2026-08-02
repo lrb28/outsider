@@ -137,6 +137,7 @@ export const SAMPLE_STOCKS: StockRow[] = STOCKS.map(([ticker, name, investors, v
   company: companyName(ticker, name),
   investors,
   value,
+  buys: Math.max(1, Math.round(investors / 8)),
   holderNames: holders,
 }));
 

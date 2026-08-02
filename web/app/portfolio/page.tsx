@@ -12,7 +12,7 @@ import { abbrevMoney } from "@/lib/format";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
 type IvSort = "value" | "positions" | "name";
-type StSort = "investors" | "value" | "name";
+type StSort = "investors" | "value" | "buys" | "name";
 
 const IV_SORTS: [IvSort, string][] = [
   ["value", "Wert"],
@@ -22,6 +22,7 @@ const IV_SORTS: [IvSort, string][] = [
 const ST_SORTS: [StSort, string][] = [
   ["investors", "Investoren"],
   ["value", "Wert"],
+  ["buys", "Meistgekauft"],
   ["name", "Name"],
 ];
 
@@ -90,6 +91,8 @@ export default function PortfolioPage() {
         ? x.company.localeCompare(y.company)
         : stSort === "value"
         ? (y.value ?? 0) - (x.value ?? 0)
+        : stSort === "buys"
+        ? y.buys - x.buys
         : y.investors - x.investors,
     );
     return a;
@@ -173,6 +176,7 @@ export default function PortfolioPage() {
                 <div className="text-xs text-subtle">
                   {s.investors} {s.investors === 1 ? "Investor" : "Investoren"} ·{" "}
                   {abbrevMoney(s.value)}
+                  {s.buys > 0 ? ` · ${s.buys} Käufe` : ""}
                 </div>
               </div>
               <FaceStack names={s.holderNames} />
