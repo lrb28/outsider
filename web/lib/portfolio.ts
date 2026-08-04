@@ -7,26 +7,53 @@
 // Gewinne, Dividenden.
 // ────────────────────────────────────────────────────────────────────────────
 
-export type TxnKind = "buy" | "sell" | "dividend" | "deposit" | "withdrawal";
+export type TxnKind =
+  | "buy"
+  | "sell"
+  | "dividend"
+  | "deposit"
+  | "withdrawal"
+  | "interest"
+  /** Stückzahl-Änderung ohne Geldfluss: Aktiensplit, Depotübertrag, Gratisaktie. */
+  | "split";
 
 export interface Txn {
   id: string;
   kind: TxnKind;
   /** YYYY-MM-DD. Leer = "Bestand ohne Kaufdatum" (Alt-Import). */
   date: string;
-  /** Leer bei deposit/withdrawal. */
+  /**
+   * Identität des Papiers: bevorzugt die ISIN aus dem Broker-Export, sonst das
+   * Börsenkürzel. Wird NIE aus dem Namen abgeleitet — sonst wird aus dem
+   * Optionsschein „Call 82,5 $" das echte Kürzel CALL (magicJack VocalTec).
+   */
   ticker: string;
-  /** Stückzahl bei buy/sell. */
+  /** Stückzahl bei buy/sell/split (bei split vorzeichenbehaftet). */
   shares: number;
-  /** Kurs je Stück (USD) bei buy/sell. */
+  /** Kurs je Stück bei buy/sell. */
   price: number;
-  /** Gesamtbetrag (USD) bei dividend/deposit/withdrawal. */
+  /** Gesamtbetrag bei dividend/deposit/withdrawal/interest. */
   amount: number;
-  /** Ordergebühr (USD). */
+  /** Ordergebühr. */
   fee: number;
+  /** Klarname aus dem Export, nur zur Anzeige. */
+  name?: string;
+  /** STOCK | FUND | CRYPTO | DERIVATIVE | PRIVATE_FUND … aus dem Export. */
+  assetClass?: string;
+  /** Währung der Buchung (ISO, z. B. EUR). */
+  currency?: string;
+  /**
+   * Ursprüngliche Reihenfolge aus der Datei. Entscheidend: an einem Tag können
+   * Verkauf und Kauf desselben Papiers stehen. Wird der Verkauf zuerst
+   * verbucht, fällt der Bestand auf null und Stücke gehen dauerhaft verloren.
+   */
+  seq?: number;
 }
 
-const KEY = "outsider:txns:v2";
+// v3: Papiere werden über die ISIN identifiziert. Ältere Importe hatten Ticker
+// aus Namen abgeleitet und dadurch falsche Positionen erzeugt — die werden
+// bewusst nicht übernommen, sondern beim nächsten Import sauber neu aufgebaut.
+const KEY = "outsider:txns:v3";
 const LEGACY_KEY = "outsider:mydepot";
 export const EVENT = "mydepot";
 
@@ -35,7 +62,7 @@ export function newId(): string {
 }
 
 export function makeTxn(p: Partial<Txn> & { kind: TxnKind }): Txn {
-  return {
+  const t: Txn = {
     id: p.id ?? newId(),
     kind: p.kind,
     date: p.date ?? "",
@@ -45,6 +72,11 @@ export function makeTxn(p: Partial<Txn> & { kind: TxnKind }): Txn {
     amount: p.amount ?? 0,
     fee: p.fee ?? 0,
   };
+  if (p.name) t.name = p.name;
+  if (p.assetClass) t.assetClass = p.assetClass;
+  if (p.currency) t.currency = p.currency;
+  if (p.seq !== undefined) t.seq = p.seq;
+  return t;
 }
 
 // ── Speicher ────────────────────────────────────────────────────────────────
@@ -127,9 +159,17 @@ export function clearTxns() {
   if (typeof window !== "undefined") window.localStorage.removeItem(LEGACY_KEY);
 }
 
-/** Undatierte zuerst (sie gelten als "seit Beginn gehalten"), dann chronologisch. */
+/**
+ * Undatierte zuerst (sie gelten als "seit Beginn gehalten"), dann chronologisch
+ * und innerhalb eines Tages in der Reihenfolge des Broker-Exports. Kein
+ * Tiebreaker über die zufällige ID — der würde Käufe hinter ihre Verkäufe
+ * schieben und Bestände vernichten.
+ */
 export function sortTxns(t: Txn[]): Txn[] {
-  return [...t].sort((a, b) => (a.date || "0").localeCompare(b.date || "0") || a.id.localeCompare(b.id));
+  return [...t].sort(
+    (a, b) =>
+      (a.date || "0").localeCompare(b.date || "0") || (a.seq ?? 0) - (b.seq ?? 0),
+  );
 }
 
 // ── Zahlen- und CSV-Parsing ─────────────────────────────────────────────────
@@ -330,27 +370,58 @@ export function parseCsv(text: string): ImportResult {
   };
 }
 
+export const KIND_LABEL: Record<TxnKind, string> = {
+  buy: "Kauf",
+  sell: "Verkauf",
+  dividend: "Dividende",
+  deposit: "Einzahlung",
+  withdrawal: "Auszahlung",
+  interest: "Zinsen",
+  split: "Bestandsänderung",
+};
+
 export function toCsv(txns: Txn[]): string {
-  const head = "Typ;Datum;Ticker;Anzahl;Kurs;Betrag;Gebuehr";
-  const label: Record<TxnKind, string> = {
-    buy: "Kauf",
-    sell: "Verkauf",
-    dividend: "Dividende",
-    deposit: "Einzahlung",
-    withdrawal: "Auszahlung",
-  };
+  const head = "Typ;Datum;ISIN;Name;Anzahl;Kurs;Betrag;Gebuehr;Waehrung";
   const rows = txns.map((t) =>
     [
-      label[t.kind],
+      KIND_LABEL[t.kind],
       t.date,
       t.ticker,
+      (t.name ?? "").replace(/;/g, ","),
       t.shares || "",
       t.price || "",
       t.amount || "",
       t.fee || "",
+      t.currency ?? "",
     ].join(";"),
   );
   return [head, ...rows].join("\n") + "\n";
+}
+
+// ── Währungsumrechnung ──────────────────────────────────────────────────────
+
+/**
+ * Rechnet eine Kursreihe in die Depotwährung um. `fx` ist die Reihe des Paares
+ * Depotwährung→Fremdwährung (z. B. EURUSD=X); die Kurse werden also geteilt.
+ * Fehlt ein Tageskurs, wird der letzte bekannte fortgeschrieben — an Feiertagen
+ * ist das die einzig sinnvolle Annahme.
+ */
+export function convertBars(bars: Bar[], fx: Bar[] | null): Bar[] {
+  if (!fx || fx.length === 0) return bars;
+  const m = new Map(fx.map((b) => [b.date, b.close]));
+  let last = fx[0].close;
+  return bars.map((b) => {
+    const r = m.get(b.date);
+    if (r !== undefined && r > 0) last = r;
+    return { date: b.date, close: last > 0 ? b.close / last : b.close };
+  });
+}
+
+/** Letzter bekannter Umrechnungsfaktor (für Live-Kurse). */
+export function lastFx(fx: Bar[] | null): number {
+  if (!fx || fx.length === 0) return 1;
+  const v = fx[fx.length - 1].close;
+  return v > 0 ? v : 1;
 }
 
 // ── Positionen ──────────────────────────────────────────────────────────────
@@ -427,6 +498,11 @@ export function positionsFrom(txns: Txn[]): Position[] {
     } else if (t.kind === "dividend") {
       p.dividends += t.amount;
       p.fees += t.fee;
+    } else if (t.kind === "split") {
+      // Split, Depotübertrag, Gratisaktie: Stückzahl ändert sich, der
+      // eingesetzte Betrag nicht. Der Einstand je Stück passt sich dadurch
+      // automatisch an (10:1-Split ⇒ Einstand zehntelt sich).
+      p.shares = Math.max(0, p.shares + t.shares);
     }
     p.avgPrice = p.shares > 0 ? p.costBasis / p.shares : null;
   }
@@ -434,14 +510,23 @@ export function positionsFrom(txns: Txn[]): Position[] {
   return [...map.values()];
 }
 
+/** Stückzahl-Änderung einer Buchung (vorzeichenbehaftet). */
+export function shareDelta(t: Txn): number {
+  if (!t.ticker) return 0;
+  if (t.kind === "buy") return t.shares;
+  if (t.kind === "sell") return -t.shares;
+  if (t.kind === "split") return t.shares;
+  return 0;
+}
+
 /** Gehaltene Stückzahl je Ticker an einem Stichtag (undatiertes gilt als "immer gehalten"). */
 export function sharesOn(txns: Txn[], date: string): Map<string, number> {
   const out = new Map<string, number>();
   for (const t of sortTxns(txns)) {
-    if (!t.ticker || (t.kind !== "buy" && t.kind !== "sell")) continue;
+    const d = shareDelta(t);
+    if (d === 0) continue;
     if (t.date && t.date > date) continue;
-    const cur = out.get(t.ticker) ?? 0;
-    out.set(t.ticker, t.kind === "buy" ? cur + t.shares : Math.max(0, cur - t.shares));
+    out.set(t.ticker, Math.max(0, (out.get(t.ticker) ?? 0) + d));
   }
   return out;
 }
@@ -513,17 +598,19 @@ export function buildSeries(
   let invested = 0;
   let dividends = 0;
 
+  const applyShares = (t: Txn) => {
+    const d = shareDelta(t);
+    if (d !== 0) shares.set(t.ticker, Math.max(0, (shares.get(t.ticker) ?? 0) + d));
+  };
+
   // Undatierte Transaktionen gelten ab dem ersten Tag der Reihe.
   for (const t of sorted) {
     if (t.date) break;
     ti++;
-    if (t.kind === "buy" && t.ticker) {
-      shares.set(t.ticker, (shares.get(t.ticker) ?? 0) + t.shares);
-      invested += t.shares * t.price + t.fee;
-    } else if (t.kind === "sell" && t.ticker) {
-      shares.set(t.ticker, Math.max(0, (shares.get(t.ticker) ?? 0) - t.shares));
-      invested -= t.shares * t.price - t.fee;
-    } else if (t.kind === "dividend") dividends += t.amount;
+    applyShares(t);
+    if (t.kind === "buy") invested += t.shares * t.price + t.fee;
+    else if (t.kind === "sell") invested -= t.shares * t.price - t.fee;
+    else if (t.kind === "dividend") dividends += t.amount;
   }
 
   const out: SeriesPoint[] = [];
@@ -541,13 +628,12 @@ export function buildSeries(
     let flow = 0;
     while (ti < sorted.length && sorted[ti].date && sorted[ti].date <= d) {
       const t = sorted[ti++];
-      if (t.kind === "buy" && t.ticker) {
-        shares.set(t.ticker, (shares.get(t.ticker) ?? 0) + t.shares);
+      applyShares(t);
+      if (t.kind === "buy") {
         const c = t.shares * t.price + t.fee;
         invested += c;
         flow += c;
-      } else if (t.kind === "sell" && t.ticker) {
-        shares.set(t.ticker, Math.max(0, (shares.get(t.ticker) ?? 0) - t.shares));
+      } else if (t.kind === "sell") {
         const c = t.shares * t.price - t.fee;
         invested -= c;
         flow -= c;

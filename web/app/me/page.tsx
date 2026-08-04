@@ -7,10 +7,31 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
 import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
-import { abbrevMoney, companyName, fixTicker, formatDate, pct } from "@/lib/format";
+import { companyName, fixTicker, formatDate, pct } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
+import { ImportReport, importCsv, summarize } from "@/lib/brokers";
+import {
+  Resolution,
+  getResolveCache,
+  getUserMap,
+  isIsin,
+  mergeResolveCache,
+  resolveInstrument,
+  setUserSymbol,
+  SYMBOL_RE,
+} from "@/lib/instruments";
+import {
+  cAbbrev,
+  cMoney,
+  cSigned,
+  currencySymbol,
+  loadCurrency,
+  saveCurrency,
+  setCurrency,
+} from "@/lib/money";
 import {
   Bar,
+  KIND_LABEL,
   Txn,
   TxnKind,
   addTxn,
@@ -20,6 +41,7 @@ import {
   buildSeries,
   cashFlows,
   clearTxns,
+  convertBars,
   correlation,
   dailyReturns,
   drawdownSeries,
@@ -27,9 +49,9 @@ import {
   getTxns,
   hitRate,
   indexTo,
+  lastFx,
   makeTxn,
   maxDrawdown,
-  parseCsv,
   parseDate,
   parseNum,
   positionsFrom,
@@ -37,13 +59,13 @@ import {
   removeTxn,
   SeriesPoint,
   seriesReturn,
+  shareDelta,
   sharpe,
   toCsv,
   twr,
   twrAnnualized,
   volatility,
   xirr,
-  TICKER_RE,
 } from "@/lib/portfolio";
 import {
   ASSET_COLOR,
@@ -113,13 +135,9 @@ const POS_COLORS = [
 
 // ── Hilfen ──────────────────────────────────────────────────────────────────
 
-const usd = (v: number | null | undefined): string =>
-  v === null || v === undefined || Number.isNaN(v)
-    ? "—"
-    : `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const signed = (v: number | null): string =>
-  v === null || Number.isNaN(v) ? "—" : `${v >= 0 ? "+" : "−"}${abbrevMoney(Math.abs(v))}`;
+const usd = cMoney;
+const abbrevMoney = cAbbrev;
+const signed = cSigned;
 
 const pct2 = (v: number | null): string =>
   v === null || Number.isNaN(v) ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} %`;
@@ -155,19 +173,22 @@ function returnCurve(bars: Bar[]) {
   return bars.map((b) => ({ date: b.date, value: b.close / base - 1 }));
 }
 
-/** Gehaltene Stückzahl über die Zeit — einmal aufgebaut, dann O(log n) je Abfrage. */
+/** Gehaltene Stückzahl über die Zeit — einmal aufgebaut, dann günstig abfragbar. */
 function sharesTimeline(txns: Txn[], ticker: string): { date: string; shares: number }[] {
   const evs = txns
-    .filter((t) => t.ticker === ticker && (t.kind === "buy" || t.kind === "sell"))
-    .sort((a, b) => (a.date || "0").localeCompare(b.date || "0"));
+    .filter((t) => t.ticker === ticker && shareDelta(t) !== 0)
+    .sort((a, b) => (a.date || "0").localeCompare(b.date || "0") || (a.seq ?? 0) - (b.seq ?? 0));
   const out: { date: string; shares: number }[] = [];
   let s = 0;
   for (const e of evs) {
-    s = e.kind === "buy" ? s + e.shares : Math.max(0, s - e.shares);
+    s = Math.max(0, s + shareDelta(e));
     out.push({ date: e.date || "0000-00-00", shares: s });
   }
   return out;
 }
+
+/** Kleinstbestände aus Rundungsresten (z. B. 4·10⁻⁹ Bitcoin) sind keine Position. */
+const DUST = 1e-9;
 
 function sharesAt(tl: { date: string; shares: number }[], date: string): number {
   let s = 0;
@@ -190,25 +211,93 @@ export default function MePage() {
   const [benchIdx, setBenchIdx] = useState(0);
   const [mode, setMode] = useState<ChartMode>("value");
   const [msg, setMsg] = useState<string | null>(null);
+  const [report, setReport] = useState<ImportReport | null>(null);
+  const [currency, setCurrencyState] = useState("USD");
+  const [mapTick, setMapTick] = useState(0);
 
   // ── Speicher-Sync ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const sync = () => setTxnsState(getTxns());
+    const sync = () => {
+      setTxnsState(getTxns());
+      setMapTick((t) => t + 1);
+    };
     sync();
+    setCurrencyState(loadCurrency());
     window.addEventListener("mydepot", sync);
     return () => window.removeEventListener("mydepot", sync);
   }, []);
 
-  const ownTickers = useMemo(
+  // Depotwährung gilt für die gesamte Seite.
+  setCurrency(currency);
+  const foreign = currency !== "USD";
+  const fxPair = foreign ? `${currency}USD=X` : null;
+
+  /** Schlüssel der Papiere = ISIN aus dem Export (oder Kürzel). */
+  const keys = useMemo(
     () => [...new Set(txns.map((t) => t.ticker).filter(Boolean))],
     [txns],
   );
 
-  // ── Kurshistorie (eigene Werte + Benchmarks in einem Rutsch) ──────────────
+  /** Klarnamen und Anlageklassen aus den Buchungen ziehen. */
+  const meta = useMemo(() => {
+    const m = new Map<string, { name: string; assetClass: string }>();
+    for (const t of txns) {
+      if (!t.ticker) continue;
+      const cur = m.get(t.ticker);
+      if (!cur || (!cur.name && t.name)) {
+        m.set(t.ticker, { name: t.name ?? cur?.name ?? "", assetClass: t.assetClass ?? cur?.assetClass ?? "" });
+      }
+    }
+    return m;
+  }, [txns]);
+
+  /** ISIN → Börsenkürzel. Reihenfolge: eigene Zuordnung, Tabelle, Suche. */
+  const resolutions = useMemo(() => {
+    const userMap = getUserMap();
+    const cache = getResolveCache();
+    const out = new Map<string, Resolution>();
+    for (const k of keys) {
+      const m = meta.get(k);
+      out.set(k, resolveInstrument(k, m?.name ?? null, m?.assetClass ?? null, userMap, cache));
+    }
+    return out;
+    // mapTick zwingt zur Neuberechnung, wenn der Nutzer etwas zuordnet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keys, meta, mapTick]);
+
+  // Offene ISINs serverseitig nachschlagen.
+  const [resolving, setResolving] = useState(false);
   useEffect(() => {
-    const need = [...new Set([...ownTickers, ...BENCHMARKS.map((b) => b.key)])].filter(
-      (t) => !(t in hist),
+    const open = keys.filter(
+      (k) => isIsin(k) && !resolutions.get(k)?.symbol && !resolutions.get(k)?.unpriceable,
     );
+    if (open.length === 0) return;
+    let on = true;
+    setResolving(true);
+    fetchJson<{ symbols: Record<string, string> }>(
+      `/api/resolve?ids=${encodeURIComponent(open.slice(0, 60).join(","))}`,
+    )
+      .then((d) => {
+        if (!on || !d.symbols) return;
+        mergeResolveCache(d.symbols);
+        setMapTick((t) => t + 1);
+      })
+      .catch(() => {})
+      .finally(() => on && setResolving(false));
+    return () => {
+      on = false;
+    };
+  }, [keys, resolutions]);
+
+  const symbols = useMemo(
+    () => [...new Set([...resolutions.values()].map((r) => r.symbol).filter((s): s is string => !!s))],
+    [resolutions],
+  );
+
+  // ── Kurshistorie: eigene Papiere + Benchmarks + Wechselkurs ───────────────
+  useEffect(() => {
+    const want = [...symbols, ...BENCHMARKS.map((b) => b.key), ...(fxPair ? [fxPair] : [])];
+    const need = [...new Set(want)].filter((t) => !(t in hist));
     if (need.length === 0) return;
     let on = true;
     setLoadingHist(true);
@@ -229,32 +318,55 @@ export default function MePage() {
     return () => {
       on = false;
     };
-  }, [ownTickers, hist]);
+  }, [symbols, hist, fxPair]);
 
-  const quotes = useQuotes(ownTickers);
+  /** Wechselkursreihe Depotwährung → USD. */
+  const fxBars = fxPair ? hist[fxPair]?.bars ?? null : null;
+  const fxNow = lastFx(fxBars);
+
+  /** Rechnet eine Kursreihe in die Depotwährung um — je nach Notierung. */
+  const toDepot = useMemo(() => {
+    return (symbol: string): Bar[] => {
+      const e = hist[symbol];
+      if (!e || e.bars.length === 0) return [];
+      const q = (e.currency ?? "USD").toUpperCase();
+      if (q === currency) return e.bars;
+      if (q === "USD" && fxBars) return convertBars(e.bars, fxBars);
+      // Britische Notierungen stehen in Pence.
+      if (q === "GBP" || q === "GBX") return e.bars;
+      return e.bars;
+    };
+  }, [hist, currency, fxBars]);
+
+  const quotes = useQuotes(symbols);
 
   // ── Investoren-Überschneidung ─────────────────────────────────────────────
   useEffect(() => {
-    if (ownTickers.length === 0) {
+    if (symbols.length === 0) {
       setMatches(null);
       return;
     }
     let on = true;
-    fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(ownTickers.join(","))}`)
+    fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(symbols.join(","))}`)
       .then((d) => on && setMatches(d.rows))
       .catch(() => on && setMatches([]));
     return () => {
       on = false;
     };
-  }, [ownTickers]);
+  }, [symbols]);
 
   // ── Abgeleitete Daten ─────────────────────────────────────────────────────
 
+  /** Kursreihen je Papier-Schlüssel, bereits in der Depotwährung. */
   const barsByTicker = useMemo(() => {
     const out: Record<string, Bar[] | null> = {};
-    for (const t of ownTickers) out[t] = hist[t]?.bars?.length ? hist[t].bars : null;
+    for (const k of keys) {
+      const sym = resolutions.get(k)?.symbol;
+      const bars = sym ? toDepot(sym) : [];
+      out[k] = bars.length > 1 ? bars : null;
+    }
     return out;
-  }, [ownTickers, hist]);
+  }, [keys, resolutions, toDepot]);
 
   /**
    * Bestände ohne Kaufdatum (Alt-Import) auf den ersten Tag der Reihe datieren
@@ -280,35 +392,71 @@ export default function MePage() {
   }, [txns, barsByTicker]);
 
   const positions = useMemo(() => positionsFrom(normTxns), [normTxns]);
-  const openPositions = useMemo(() => positions.filter((p) => p.shares > 0.000001), [positions]);
+  const openPositions = useMemo(() => positions.filter((p) => p.shares > DUST), [positions]);
   const assumedCount = txns.filter((t) => !t.date).length;
 
   const series = useMemo(() => buildSeries(normTxns, barsByTicker), [normTxns, barsByTicker]);
 
-  // Positionszeilen mit Live-Kurs
-  const rows = useMemo(() => {
+  /** Alle offenen Positionen samt Auflösung und Live-Kurs. */
+  const allRows = useMemo(() => {
     return openPositions.map((p) => {
-      const q = quotes[p.ticker.toUpperCase()];
+      const res = resolutions.get(p.ticker);
+      const symbol = res?.symbol ?? null;
+      const q = symbol ? quotes[symbol.toUpperCase()] : undefined;
       const bars = barsByTicker[p.ticker];
       const eod = bars && bars.length ? bars[bars.length - 1].close : null;
-      const last = q?.price ?? eod;
+      // Live-Kurs notiert in der Kurswährung — in die Depotwährung umrechnen.
+      const qCur = (q?.currency ?? "USD").toUpperCase();
+      const live = q ? (qCur === currency ? q.price : qCur === "USD" ? q.price / fxNow : q.price) : null;
+      const last = live ?? eod;
       const value = last != null ? p.shares * last : null;
       const unreal = value != null ? value - p.costBasis : null;
       const unrealPct = value != null && p.costBasis > 0 ? value / p.costBasis - 1 : null;
       const dayPct = q?.changePct ?? null;
-      const dayAbs = q && q.prevClose != null ? (q.price - q.prevClose) * p.shares : null;
+      const dayAbs =
+        q && q.prevClose != null && last != null
+          ? ((q.price - q.prevClose) / (q.prevClose || 1)) * (value ?? 0)
+          : null;
       const totalGain = (unreal ?? 0) + p.realized + p.dividends;
-      const company = companyName(p.ticker, hist[p.ticker]?.name ?? null);
-      return { ...p, last, value, unreal, unrealPct, dayPct, dayAbs, totalGain, company, live: !!q };
+      const m = meta.get(p.ticker);
+      const company =
+        m?.name && m.name !== p.ticker
+          ? m.name
+          : companyName(symbol, (symbol && hist[symbol]?.name) || null);
+      return {
+        ...p,
+        symbol,
+        resolution: res ?? null,
+        last,
+        value,
+        unreal,
+        unrealPct,
+        dayPct,
+        dayAbs,
+        totalGain,
+        company,
+        assetClass: m?.assetClass ?? "",
+        live: !!q,
+      };
     });
-  }, [openPositions, quotes, barsByTicker, hist]);
+  }, [openPositions, quotes, barsByTicker, hist, resolutions, meta, currency, fxNow]);
+
+  /** Bewertbar = Kurs vorhanden. Der Rest darf die Kennzahlen nicht verfälschen. */
+  const rows = useMemo(
+    () => allRows.filter((r) => r.value !== null && Math.abs(r.value) >= 0.01),
+    [allRows],
+  );
+  const openIssues = useMemo(
+    () => allRows.filter((r) => r.value === null || Math.abs(r.value) < 0.01),
+    [allRows],
+  );
 
   const total = rows.reduce((a, r) => a + (r.value ?? 0), 0);
   const costTotal = rows.reduce((a, r) => a + r.costBasis, 0);
   const unrealTotal = total - costTotal;
   const realizedTotal = positions.reduce((a, p) => a + p.realized, 0);
   const feesTotal = positions.reduce((a, p) => a + p.fees, 0);
-  const noPrice = rows.filter((r) => r.value === null).length;
+  const noPrice = openIssues.length;
 
   const dayAbsSum = rows.reduce((a, r) => a + (r.dayAbs ?? 0), 0);
   const dayBase = rows.reduce((a, r) => a + (r.value ?? 0) - (r.dayAbs ?? 0), 0);
@@ -325,13 +473,17 @@ export default function MePage() {
     const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
     const perShareYear = new Map<string, number>();
 
-    for (const t of ownTickers) {
-      const evs = hist[t]?.dividends ?? [];
+    for (const t of keys) {
+      const sym = resolutions.get(t)?.symbol;
+      const evs = sym ? hist[sym]?.dividends ?? [] : [];
       if (evs.length === 0) continue;
+      const divCur = ((sym && hist[sym]?.currency) ?? "USD").toUpperCase();
+      const conv = divCur === currency ? 1 : divCur === "USD" ? 1 / fxNow : 1;
       const tl = sharesTimeline(normTxns, t);
       let sum = 0;
       let psYear = 0;
-      for (const e of evs) {
+      for (const raw of evs) {
+        const e = { date: raw.date, amount: raw.amount * conv };
         if (e.date > today) {
           upcoming.push({ ticker: t, date: e.date, amount: e.amount });
           continue;
@@ -360,6 +512,7 @@ export default function MePage() {
         if (ps > 0) costBase += r.costBasis;
         return {
           ticker: r.ticker,
+          symbol: r.symbol,
           company: r.company,
           received: byTicker.get(r.ticker) ?? 0,
           perShare: ps,
@@ -381,7 +534,7 @@ export default function MePage() {
       yieldNow: total > 0 ? forecast / total : null,
       yieldOnCost: costBase > 0 ? forecast / costBase : null,
     };
-  }, [ownTickers, hist, normTxns, rows, total]);
+  }, [keys, resolutions, hist, normTxns, rows, total, currency, fxNow]);
 
   const manualDividends = positions.reduce((a, p) => a + p.dividends, 0);
   const dividendsTotal = Math.max(divInfo.received, manualDividends);
@@ -401,7 +554,7 @@ export default function MePage() {
   }, [series, range, total]);
 
   const bench = BENCHMARKS[benchIdx];
-  const benchBarsFull = hist[bench.key]?.bars ?? [];
+  const benchBarsFull = toDepot(bench.key);
   const benchR = useMemo(() => {
     if (benchBarsFull.length === 0 || seriesR.length < 2) return [];
     return benchBarsFull.filter((b) => b.date >= seriesR[0].date && b.date <= seriesR[seriesR.length - 1].date);
@@ -500,7 +653,7 @@ export default function MePage() {
     const m = new Map<string, number>();
     for (const r of rows) {
       if (r.value === null) continue;
-      const k = pick(r.ticker);
+      const k = pick(r.symbol ?? r.ticker);
       m.set(k, (m.get(k) ?? 0) + r.value);
     }
     return [...m.entries()].map(([label, value]) => ({
@@ -524,24 +677,33 @@ export default function MePage() {
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const res = parseCsv(String(reader.result || ""));
+      const res = importCsv(String(reader.result || ""));
       if (res.txns.length === 0) {
+        setReport(null);
         setMsg(
-          "Keine gültigen Zeilen gefunden. Einfachster Fall: eine Zeile pro Position, z. B. AAPL,10,180",
+          "Keine verwertbaren Buchungen gefunden. Einfachster Fall: eine Zeile pro Position, z. B. AAPL,10,180",
         );
         return;
       }
+      // Ein zweiter Import derselben Datei würde jede Position verdoppeln.
+      if (txns.length > 0) {
+        const replace = confirm(
+          `Es sind bereits ${txns.length} Buchungen gespeichert.\n\n` +
+            "OK = ersetzen (empfohlen bei einem vollständigen Broker-Export)\n" +
+            "Abbrechen = die neuen Buchungen zusätzlich hinzufügen",
+        );
+        if (replace) clearTxns();
+      }
       addTxns(res.txns);
-      setMsg(
-        `${res.txns.length} ${res.format === "transaktionen" ? "Transaktionen" : "Positionen"} importiert` +
-          (res.dated > 0 ? `, ${res.dated} mit Datum` : ", ohne Datum — bitte ggf. ergänzen") +
-          (res.skipped > 0 ? ` (${res.skipped} Zeilen übersprungen)` : "") +
-          ".",
-      );
+      setReport(res);
+      setMsg(null);
+      saveCurrency(res.currency);
+      setCurrencyState(res.currency);
       setTab("positions");
     };
     reader.readAsText(f);
   };
+
 
   const exportCsv = () => {
     const blob = new Blob([toCsv(txns)], { type: "text/csv;charset=utf-8" });
@@ -616,6 +778,8 @@ export default function MePage() {
           {msg}
         </div>
       )}
+
+      {report && <ImportSummary report={report} onClose={() => setReport(null)} />}
 
       {!empty && loadingHist && Object.keys(hist).length === 0 && (
         <div className="lcard p-8 text-center text-sm text-subtle">Kurse werden geladen …</div>
@@ -695,17 +859,28 @@ export default function MePage() {
 
               {assumedCount > 0 && <AssumedHint n={assumedCount} onGo={() => setTab("activity")} />}
               {noPrice > 0 && (
-                <p className="text-[11px] text-subtle">
-                  Für {noPrice} {noPrice === 1 ? "Position" : "Positionen"} liegen keine Kursdaten
-                  vor — Ticker prüfen (z. B. <span className="font-mono">BTC-USD</span> statt BTC).
-                </p>
+                <button
+                  onClick={() => setTab("positions")}
+                  className="press-sm w-full rounded-xl bg-amber-50 px-4 py-3 text-left text-sm text-amber-800 ring-1 ring-amber-100"
+                >
+                  <span className="font-semibold">
+                    {noPrice} {noPrice === 1 ? "Position wird" : "Positionen werden"} nicht bewertet
+                  </span>{" "}
+                  — Optionsscheine, Privatmarkt-Anteile oder Papiere ohne zugeordnetes Kürzel. Sie
+                  fließen bewusst nicht in Depotwert und Rendite ein. Jetzt ansehen und zuordnen ›
+                </button>
               )}
             </>
           )}
 
           {/* ── Positionen ──────────────────────────────────────────────── */}
           {tab === "positions" && (
-            <PositionsTable rows={rows} total={total} onRemove={(t) => removeTicker(t)} />
+            <>
+              <PositionsTable rows={rows} total={total} onRemove={(t) => removeTicker(t)} />
+              {openIssues.length > 0 && (
+                <UnpricedPanel rows={openIssues} resolving={resolving} onRemove={(t) => removeTicker(t)} />
+              )}
+            </>
           )}
 
           {/* ── Performance ─────────────────────────────────────────────── */}
@@ -764,11 +939,7 @@ export default function MePage() {
                 />
               </div>
 
-              <BenchmarkTable
-                hist={hist}
-                seriesR={seriesR}
-                perfPortfolio={perfPortfolio}
-              />
+              <BenchmarkTable barsOf={toDepot} seriesR={seriesR} perfPortfolio={perfPortfolio} />
             </>
           )}
 
@@ -961,7 +1132,7 @@ function ChartCard({
 function TopMovers({
   rows,
 }: {
-  rows: { ticker: string; company: string; dayPct: number | null; dayAbs: number | null; unrealPct: number | null; totalGain: number }[];
+  rows: Row[];
 }) {
   const day = rows.filter((r) => r.dayPct !== null).sort((a, b) => (b.dayPct ?? 0) - (a.dayPct ?? 0));
   const all = rows.filter((r) => r.unrealPct !== null).sort((a, b) => (b.unrealPct ?? 0) - (a.unrealPct ?? 0));
@@ -984,8 +1155,12 @@ function TopMovers({
         {items.map((r) => {
           const v = valueOf(r);
           return (
-            <Link key={r.ticker} href={`/stock/${r.ticker}`} className="flex items-center gap-2.5">
-              <CompanyLogo ticker={r.ticker} company={r.company} size={30} />
+            <Link
+              key={r.ticker}
+              href={r.symbol ? `/stock/${r.symbol}` : "/me"}
+              className="flex items-center gap-2.5"
+            >
+              <CompanyLogo ticker={r.symbol} company={r.company} size={30} />
               <span className="min-w-0 flex-1 truncate text-sm">{r.company}</span>
               <span className="text-xs text-subtle">{subOf(r)}</span>
               <span
@@ -1026,8 +1201,13 @@ function TopMovers({
 }
 
 type Row = {
+  /** ISIN oder Kürzel aus dem Export — die Identität der Position. */
   ticker: string;
+  /** Aufgelöstes Börsenkürzel für Kurse, Logo und Verlinkung. */
+  symbol: string | null;
+  resolution: Resolution | null;
   company: string;
+  assetClass: string;
   shares: number;
   avgPrice: number | null;
   costBasis: number;
@@ -1124,16 +1304,21 @@ function PositionsTable({
                   <tr key={r.ticker} className="border-b border-hair last:border-0 hover:bg-slate-50/70">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <CompanyLogo ticker={r.ticker} company={r.company} size={34} />
+                        <CompanyLogo ticker={r.symbol} company={r.company} size={34} />
                         <div className="min-w-0">
-                          <Link
-                            href={`/stock/${r.ticker}`}
-                            className="block truncate font-medium hover:text-brand"
-                          >
-                            {r.company}
-                          </Link>
+                          {r.symbol ? (
+                            <Link
+                              href={`/stock/${r.symbol}`}
+                              className="block truncate font-medium hover:text-brand"
+                            >
+                              {r.company}
+                            </Link>
+                          ) : (
+                            <div className="truncate font-medium">{r.company}</div>
+                          )}
                           <div className="font-mono text-[11px] text-subtle">
-                            {fixTicker(r.ticker, r.company)} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.
+                            {r.symbol ? fixTicker(r.symbol, r.company) : r.ticker} ·{" "}
+                            {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.
                             {r.avgPrice ? ` · Ø ${usd(r.avgPrice)}` : ""}
                           </div>
                         </div>
@@ -1205,11 +1390,11 @@ function PositionsTable({
 }
 
 function BenchmarkTable({
-  hist,
+  barsOf,
   seriesR,
   perfPortfolio,
 }: {
-  hist: Record<string, HistoryEntry>;
+  barsOf: (symbol: string) => Bar[];
   seriesR: { date: string }[];
   perfPortfolio: number | null;
 }) {
@@ -1217,7 +1402,7 @@ function BenchmarkTable({
   const from = seriesR[0].date;
   const to = seriesR[seriesR.length - 1].date;
   const items = BENCHMARKS.map((b) => {
-    const bars = (hist[b.key]?.bars ?? []).filter((x) => x.date >= from && x.date <= to);
+    const bars = barsOf(b.key).filter((x) => x.date >= from && x.date <= to);
     return { ...b, r: seriesReturn(bars) };
   }).filter((x) => x.r !== null);
 
@@ -1279,6 +1464,7 @@ function DividendsTab({
     forecast: number;
     perPos: {
       ticker: string;
+      symbol: string | null;
       company: string;
       received: number;
       perShare: number;
@@ -1391,7 +1577,7 @@ function DividendsTab({
                   <tr key={p.ticker} className="border-b border-hair last:border-0">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <CompanyLogo ticker={p.ticker} company={p.company} size={30} />
+                        <CompanyLogo ticker={p.symbol} company={p.company} size={30} />
                         <span className="truncate font-medium">{p.company}</span>
                       </div>
                     </td>
@@ -1451,8 +1637,8 @@ function ActivityTab({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const T = ticker.trim().toUpperCase();
-    if (needsTicker && !TICKER_RE.test(T)) {
-      setMsg("Bitte einen gültigen Ticker eingeben, z. B. AAPL oder BTC-USD.");
+    if (needsTicker && !SYMBOL_RE.test(T)) {
+      setMsg("Bitte einen gültigen Ticker oder eine ISIN eingeben, z. B. AAPL oder US0378331005.");
       return;
     }
     const d = parseDate(date);
@@ -1489,19 +1675,15 @@ function ActivityTab({
     setMsg(null);
   };
 
-  const label: Record<TxnKind, string> = {
-    buy: "Kauf",
-    sell: "Verkauf",
-    dividend: "Dividende",
-    deposit: "Einzahlung",
-    withdrawal: "Auszahlung",
-  };
+  const label = KIND_LABEL;
   const badge: Record<TxnKind, string> = {
     buy: "bg-emerald-50 text-emerald-700",
     sell: "bg-rose-50 text-rose-700",
     dividend: "bg-sky-50 text-sky-700",
     deposit: "bg-slate-100 text-slate-600",
     withdrawal: "bg-slate-100 text-slate-600",
+    interest: "bg-amber-50 text-amber-700",
+    split: "bg-violet-50 text-violet-700",
   };
 
   const inputCls =
@@ -1607,10 +1789,17 @@ function ActivityTab({
               <span className="w-24 shrink-0 text-xs text-subtle">
                 {t.date ? formatDate(t.date) : "ohne Datum"}
               </span>
-              <span className="min-w-0 flex-1 truncate font-mono text-sm">{t.ticker || "—"}</span>
+              <span className="min-w-0 flex-1 truncate text-sm">
+                {t.name || t.ticker || "—"}
+                {t.name && t.ticker && (
+                  <span className="ml-1.5 font-mono text-[11px] text-subtle">{t.ticker}</span>
+                )}
+              </span>
               <span className="text-right text-sm tabular-nums">
                 {t.kind === "buy" || t.kind === "sell"
                   ? `${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
+                  : t.kind === "split"
+                  ? `${t.shares > 0 ? "+" : ""}${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.`
                   : usd(t.amount)}
               </span>
               <button
@@ -1697,6 +1886,132 @@ function InvestorsTab({
           ausländische Papiere tauchen dort gar nicht auf.
         </p>
       </Collapse>
+    </div>
+  );
+}
+
+/** Ehrlicher Import-Bericht: was kam an, was blieb bewusst draußen. */
+function ImportSummary({ report, onClose }: { report: ImportReport; onClose: () => void }) {
+  const c = report.counts;
+  const items: [string, number, string][] = [
+    ["Käufe & Verkäufe", c.trades, "text-ink"],
+    ["Dividenden", c.dividends, "text-bull"],
+    ["Splits & Überträge", c.corporate, "text-ink"],
+    ["Ein- & Auszahlungen", c.cash, "text-subtle"],
+  ];
+  return (
+    <div className="lcard p-5">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold">{summarize(report)}</div>
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            {items
+              .filter(([, n]) => n > 0)
+              .map(([label, n, cls]) => (
+                <div key={label}>
+                  <div className={`text-lg font-semibold tabular-nums ${cls}`}>
+                    {n.toLocaleString("de-DE")}
+                  </div>
+                  <div className="text-[11px] text-subtle">{label}</div>
+                </div>
+              ))}
+            <div>
+              <div className="text-lg font-semibold tabular-nums">{report.instruments.length}</div>
+              <div className="text-[11px] text-subtle">Wertpapiere</div>
+            </div>
+          </div>
+          {report.notes.length > 0 && (
+            <ul className="mt-3 space-y-1 text-[11px] text-subtle">
+              {report.notes.map((n, i) => (
+                <li key={i}>· {n}</li>
+              ))}
+            </ul>
+          )}
+          {c.unusable > 0 && (
+            <p className="mt-1 text-[11px] text-subtle">
+              · {c.unusable} Zeilen ohne verwertbare Stückzahl oder Betrag übersprungen.
+            </p>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Schließen"
+          className="press-sm shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm text-subtle hover:bg-slate-200"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Positionen ohne Kurs — mit der Möglichkeit, selbst ein Kürzel zuzuordnen. */
+function UnpricedPanel({
+  rows,
+  resolving,
+  onRemove,
+}: {
+  rows: Row[];
+  resolving: boolean;
+  onRemove: (t: string) => void;
+}) {
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const cost = rows.reduce((a, r) => a + r.costBasis, 0);
+
+  return (
+    <div className="lcard overflow-hidden">
+      <div className="border-b border-hair px-5 py-3.5">
+        <div className="text-sm font-semibold">
+          Nicht bewertet · {rows.length} {rows.length === 1 ? "Position" : "Positionen"}
+        </div>
+        <p className="mt-1 text-[11px] text-subtle">
+          Diese Papiere fließen bewusst nicht in Depotwert, Rendite und Aufteilung ein — lieber eine
+          Lücke als eine erfundene Zahl. Eingesetzt sind hier {cAbbrev(cost)}.
+          {resolving && " Kürzel werden gerade gesucht …"}
+        </p>
+      </div>
+      {rows.map((r) => {
+        const why = r.resolution?.unpriceable;
+        return (
+          <div key={r.ticker} className="flex flex-wrap items-center gap-3 border-b border-hair px-5 py-3 last:border-0">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{r.company}</div>
+              <div className="font-mono text-[11px] text-subtle">
+                {r.ticker} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St. ·
+                Einstand {cAbbrev(r.costBasis)}
+              </div>
+            </div>
+            {why ? (
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-subtle">{why}</span>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={draft[r.ticker] ?? ""}
+                  onChange={(e) => setDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
+                  placeholder="Kürzel, z. B. AAPL"
+                  className="w-36 rounded-full border border-hair bg-white px-3 py-1 text-sm outline-none focus:border-brand"
+                />
+                <button
+                  onClick={() => {
+                    const v = (draft[r.ticker] ?? "").trim().toUpperCase();
+                    if (v && SYMBOL_RE.test(v)) setUserSymbol(r.ticker, v);
+                  }}
+                  className="press-sm rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  Zuordnen
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => onRemove(r.ticker)}
+              aria-label="Entfernen"
+              className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }

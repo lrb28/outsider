@@ -30,7 +30,8 @@ export interface HistoryEntry {
   name: string | null;
 }
 
-const TICKER_RE = /^[A-Z][A-Z0-9.\-]{0,9}$/;
+// Erlaubt auch Devisenpaare (EURUSD=X), Indizes (^GSPC) und Krypto (BTC-USD).
+const TICKER_RE = /^[\^]?[A-Z0-9][A-Z0-9.\-=]{0,11}$/;
 const RANGES = new Set(["1y", "2y", "5y", "10y", "max"]);
 const TTL = 15 * 60_000;
 
