@@ -3,652 +3,1730 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { CompareChart } from "@/components/CompareChart";
-import { Donut } from "@/components/Donut";
-import { abbrevMoney, companyName, fixTicker, pct } from "@/lib/format";
+import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
+import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
+import { abbrevMoney, companyName, fixTicker, formatDate, pct } from "@/lib/format";
+import { fetchJson } from "@/lib/fetchJson";
 import {
-  MyHolding,
-  clearHoldings,
-  getMyHoldings,
+  Bar,
+  Txn,
+  TxnKind,
+  addTxn,
+  addTxns,
+  annualReturns,
+  beta,
+  buildSeries,
+  cashFlows,
+  clearTxns,
+  correlation,
+  dailyReturns,
+  drawdownSeries,
+  extremeDays,
+  getTxns,
+  hitRate,
+  indexTo,
+  makeTxn,
+  maxDrawdown,
   parseCsv,
+  parseDate,
   parseNum,
-  removeHolding,
-  setMyHoldings,
-  upsertHolding,
-} from "@/lib/myportfolio";
-import { HoldingRow, MatchResponse, MatchRow, PriceBar, PricesResponse } from "@/lib/types";
+  positionsFrom,
+  removeTicker,
+  removeTxn,
+  SeriesPoint,
+  seriesReturn,
+  sharpe,
+  toCsv,
+  twr,
+  twrAnnualized,
+  volatility,
+  xirr,
+  TICKER_RE,
+} from "@/lib/portfolio";
+import {
+  ASSET_COLOR,
+  REGION_COLOR,
+  SECTOR_COLOR,
+  assetMeta,
+} from "@/lib/sectors";
+import { MatchResponse, MatchRow } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 
-// Selectable benchmarks; each label tries a fallback chain of tickers until
-// one has price data in our DB.
-const BENCH_CHOICES: { label: string; tickers: string[] }[] = [
-  { label: "S&P 500", tickers: ["SPY", "IVV", "VOO"] },
-  { label: "Nasdaq 100", tickers: ["QQQ"] },
-];
+// ── Konfiguration ───────────────────────────────────────────────────────────
 
-const RANGES: [string, number][] = [
-  ["1M", 21],
-  ["3M", 63],
-  ["6M", 126],
-  ["1J", 252],
-  ["Max", Number.MAX_SAFE_INTEGER],
-];
-
-const DONUT_COLORS = ["#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777", "#8b5cf6"];
-
-function price(v: number | null): string {
-  if (v === null || Number.isNaN(v)) return "—";
-  return `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+interface HistoryEntry {
+  ticker: string;
+  source: "yahoo" | "database" | "none";
+  bars: Bar[];
+  dividends: { date: string; amount: number }[];
+  currency: string | null;
+  name: string | null;
 }
 
-export default function MePage() {
-  const [holdings, setHoldings] = useState<MyHolding[]>([]);
-  const [bars, setBars] = useState<Record<string, PriceBar[] | null>>({});
-  const [bench, setBench] = useState<{ label: string; bars: PriceBar[] } | null | undefined>(
-    undefined,
-  );
-  const [matches, setMatches] = useState<MatchRow[] | null>(null);
-  const [csvMsg, setCsvMsg] = useState<string | null>(null);
-  const [ticker, setTicker] = useState("");
-  const [shares, setShares] = useState("");
-  const [buyPrice, setBuyPrice] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const quotes = useQuotes(holdings.map((h) => h.ticker));
-  const liveCount = Object.keys(quotes).length;
-  const [range, setRange] = useState(3); // default 1J
-  const [benchIdx, setBenchIdx] = useState(0);
-  const rangeLabel = RANGES[range][0];
+const BENCHMARKS = [
+  { key: "SPY", label: "S&P 500" },
+  { key: "QQQ", label: "Nasdaq 100" },
+  { key: "URTH", label: "MSCI World" },
+  { key: "DIA", label: "Dow Jones" },
+  { key: "GLD", label: "Gold" },
+  { key: "BTC-USD", label: "Bitcoin" },
+] as const;
 
-  // sync with localStorage
+type RangeKey = "1M" | "3M" | "6M" | "YTD" | "1J" | "3J" | "Max";
+const RANGES: readonly (readonly [RangeKey, string])[] = [
+  ["1M", "1M"],
+  ["3M", "3M"],
+  ["6M", "6M"],
+  ["YTD", "YTD"],
+  ["1J", "1J"],
+  ["3J", "3J"],
+  ["Max", "Max"],
+];
+
+type Tab =
+  | "overview"
+  | "positions"
+  | "performance"
+  | "allocation"
+  | "dividends"
+  | "activity"
+  | "investors";
+
+const TABS: readonly (readonly [Tab, string])[] = [
+  ["overview", "Übersicht"],
+  ["positions", "Positionen"],
+  ["performance", "Performance"],
+  ["allocation", "Aufteilung"],
+  ["dividends", "Dividenden"],
+  ["activity", "Aktivitäten"],
+  ["investors", "Investoren"],
+];
+
+type ChartMode = "value" | "return" | "drawdown";
+
+const POS_COLORS = [
+  "#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
+  "#8b5cf6", "#14b8a6", "#ef4444", "#65a30d", "#0891b2",
+];
+
+// ── Hilfen ──────────────────────────────────────────────────────────────────
+
+const usd = (v: number | null | undefined): string =>
+  v === null || v === undefined || Number.isNaN(v)
+    ? "—"
+    : `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const signed = (v: number | null): string =>
+  v === null || Number.isNaN(v) ? "—" : `${v >= 0 ? "+" : "−"}${abbrevMoney(Math.abs(v))}`;
+
+const pct2 = (v: number | null): string =>
+  v === null || Number.isNaN(v) ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} %`;
+
+const tone = (v: number | null): "bull" | "bear" | null =>
+  v === null || Number.isNaN(v) ? null : v >= 0 ? "bull" : "bear";
+
+function cutoffFor(range: RangeKey, series: { date: string }[]): string {
+  if (series.length === 0) return "0000-00-00";
+  const last = series[series.length - 1].date;
+  if (range === "Max") return "0000-00-00";
+  if (range === "YTD") return `${last.slice(0, 4)}-01-01`;
+  const days: Record<string, number> = { "1M": 30, "3M": 91, "6M": 182, "1J": 365, "3J": 1095 };
+  const d = new Date(last);
+  d.setDate(d.getDate() - (days[range] ?? 365));
+  return d.toISOString().slice(0, 10);
+}
+
+/** Kumulierte zeitgewichtete Rendite als Kurve (startet bei 0 %). */
+function twrCurve(series: SeriesPoint[]) {
+  const out = [{ date: series[0]?.date ?? "", value: 0 }];
+  let f = 1;
+  for (const { date, r } of dailyReturns(series)) {
+    f *= 1 + r;
+    out.push({ date, value: f - 1 });
+  }
+  return out.filter((p) => p.date);
+}
+
+function returnCurve(bars: Bar[]) {
+  if (bars.length === 0 || bars[0].close === 0) return [];
+  const base = bars[0].close;
+  return bars.map((b) => ({ date: b.date, value: b.close / base - 1 }));
+}
+
+/** Gehaltene Stückzahl über die Zeit — einmal aufgebaut, dann O(log n) je Abfrage. */
+function sharesTimeline(txns: Txn[], ticker: string): { date: string; shares: number }[] {
+  const evs = txns
+    .filter((t) => t.ticker === ticker && (t.kind === "buy" || t.kind === "sell"))
+    .sort((a, b) => (a.date || "0").localeCompare(b.date || "0"));
+  const out: { date: string; shares: number }[] = [];
+  let s = 0;
+  for (const e of evs) {
+    s = e.kind === "buy" ? s + e.shares : Math.max(0, s - e.shares);
+    out.push({ date: e.date || "0000-00-00", shares: s });
+  }
+  return out;
+}
+
+function sharesAt(tl: { date: string; shares: number }[], date: string): number {
+  let s = 0;
+  for (const e of tl) {
+    if (e.date > date) break;
+    s = e.shares;
+  }
+  return s;
+}
+
+// ── Seite ───────────────────────────────────────────────────────────────────
+
+export default function MePage() {
+  const [txns, setTxnsState] = useState<Txn[]>([]);
+  const [hist, setHist] = useState<Record<string, HistoryEntry>>({});
+  const [loadingHist, setLoadingHist] = useState(false);
+  const [matches, setMatches] = useState<MatchRow[] | null>(null);
+  const [tab, setTab] = useState<Tab>("overview");
+  const [range, setRange] = useState<RangeKey>("1J");
+  const [benchIdx, setBenchIdx] = useState(0);
+  const [mode, setMode] = useState<ChartMode>("value");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // ── Speicher-Sync ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const sync = () => setHoldings(getMyHoldings());
+    const sync = () => setTxnsState(getTxns());
     sync();
     window.addEventListener("mydepot", sync);
     return () => window.removeEventListener("mydepot", sync);
   }, []);
 
-  // fetch price bars for held tickers
+  const ownTickers = useMemo(
+    () => [...new Set(txns.map((t) => t.ticker).filter(Boolean))],
+    [txns],
+  );
+
+  // ── Kurshistorie (eigene Werte + Benchmarks in einem Rutsch) ──────────────
   useEffect(() => {
+    const need = [...new Set([...ownTickers, ...BENCHMARKS.map((b) => b.key)])].filter(
+      (t) => !(t in hist),
+    );
+    if (need.length === 0) return;
     let on = true;
-    holdings
-      .map((h) => h.ticker)
-      .filter((t) => !(t in bars))
-      .forEach((t) => {
-        fetch(`/api/prices?ticker=${encodeURIComponent(t)}`)
-          .then((r) => r.json() as Promise<PricesResponse>)
-          .then((d) => {
-            if (!on) return;
-            setBars((p) => ({
-              ...p,
-              [t]: d.source === "database" && d.bars.length > 1 ? d.bars : null,
-            }));
-          })
-          .catch(() => on && setBars((p) => ({ ...p, [t]: null })));
-      });
+    setLoadingHist(true);
+    fetchJson<{ entries: Record<string, HistoryEntry> }>(
+      `/api/history?tickers=${encodeURIComponent(need.join(","))}&range=10y`,
+    )
+      .then((d) => on && setHist((p) => ({ ...p, ...d.entries })))
+      .catch(() => {
+        if (!on) return;
+        setHist((p) => {
+          const next = { ...p };
+          for (const t of need)
+            next[t] = { ticker: t, source: "none", bars: [], dividends: [], currency: null, name: null };
+          return next;
+        });
+      })
+      .finally(() => on && setLoadingHist(false));
     return () => {
       on = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [holdings]);
+  }, [ownTickers, hist]);
 
-  // benchmark for the selected choice (fallback chain within the choice)
-  useEffect(() => {
-    let on = true;
-    setBench(undefined);
-    const choice = BENCH_CHOICES[benchIdx];
-    (async () => {
-      for (const t of choice.tickers) {
-        try {
-          const d = (await fetch(`/api/prices?ticker=${t}`).then((r) =>
-            r.json(),
-          )) as PricesResponse;
-          if (d.source === "database" && d.bars.length > 1) {
-            if (on) setBench({ label: choice.label, bars: d.bars });
-            return;
-          }
-        } catch {
-          /* try next */
-        }
-      }
-      if (on) setBench(null);
-    })();
-    return () => {
-      on = false;
-    };
-  }, [benchIdx]);
+  const quotes = useQuotes(ownTickers);
 
-  // investor match
+  // ── Investoren-Überschneidung ─────────────────────────────────────────────
   useEffect(() => {
-    if (holdings.length === 0) {
+    if (ownTickers.length === 0) {
       setMatches(null);
       return;
     }
     let on = true;
-    fetch(`/api/match?tickers=${encodeURIComponent(holdings.map((h) => h.ticker).join(","))}`)
-      .then((r) => r.json() as Promise<MatchResponse>)
+    fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(ownTickers.join(","))}`)
       .then((d) => on && setMatches(d.rows))
       .catch(() => on && setMatches([]));
     return () => {
       on = false;
     };
-  }, [holdings]);
+  }, [ownTickers]);
 
-  // per-holding derived values (live quote wins over EOD close)
-  const rows = useMemo(() => {
-    return holdings.map((h) => {
-      const b = bars[h.ticker];
-      const q = quotes[h.ticker.toUpperCase()];
-      const eod = b && b.length ? b[b.length - 1].close : null;
-      const last = q?.price ?? eod;
-      const value = last != null ? h.shares * last : null;
-      const invested = h.buyPrice ? h.buyPrice * h.shares : null;
-      const plAbs = last != null && h.buyPrice ? (last - h.buyPrice) * h.shares : null;
-      const plPct = last != null && h.buyPrice ? (last - h.buyPrice) / h.buyPrice : null;
-      const dayPct = q?.changePct ?? null;
-      const dayAbs =
-        q && q.prevClose != null ? (q.price - q.prevClose) * h.shares : null;
-      return { ...h, last, value, invested, plAbs, plPct, dayPct, dayAbs, live: !!q };
+  // ── Abgeleitete Daten ─────────────────────────────────────────────────────
+
+  const barsByTicker = useMemo(() => {
+    const out: Record<string, Bar[] | null> = {};
+    for (const t of ownTickers) out[t] = hist[t]?.bars?.length ? hist[t].bars : null;
+    return out;
+  }, [ownTickers, hist]);
+
+  /**
+   * Bestände ohne Kaufdatum (Alt-Import) auf den ersten Tag der Reihe datieren
+   * und, falls kein Kaufpreis bekannt ist, mit dem Schlusskurs dieses Tages
+   * bewerten. Erst dadurch stimmen zugeführtes Kapital und IZF.
+   */
+  const normTxns = useMemo(() => {
+    const undated = txns.filter((t) => !t.date);
+    if (undated.length === 0) return txns;
+    const probe = buildSeries(txns, barsByTicker);
+    const d0 = probe[0]?.date;
+    if (!d0) return txns;
+    return txns.map((t) => {
+      if (t.date) return t;
+      let price = t.price;
+      if (!price && t.ticker) {
+        const bars = barsByTicker[t.ticker];
+        const b = bars?.find((x) => x.date >= d0) ?? bars?.[0];
+        price = b?.close ?? 0;
+      }
+      return { ...t, date: d0, price };
     });
-  }, [holdings, bars, quotes]);
+  }, [txns, barsByTicker]);
 
-  const dayRows = rows.filter((r) => r.dayAbs !== null);
-  const dayAbsSum = dayRows.reduce((a, r) => a + (r.dayAbs ?? 0), 0);
-  const dayBase = dayRows.reduce(
-    (a, r) => a + (r.value ?? 0) - (r.dayAbs ?? 0),
-    0,
-  );
-  const dayPctSum = dayBase > 0 ? dayAbsSum / dayBase : null;
+  const positions = useMemo(() => positionsFrom(normTxns), [normTxns]);
+  const openPositions = useMemo(() => positions.filter((p) => p.shares > 0.000001), [positions]);
+  const assumedCount = txns.filter((t) => !t.date).length;
+
+  const series = useMemo(() => buildSeries(normTxns, barsByTicker), [normTxns, barsByTicker]);
+
+  // Positionszeilen mit Live-Kurs
+  const rows = useMemo(() => {
+    return openPositions.map((p) => {
+      const q = quotes[p.ticker.toUpperCase()];
+      const bars = barsByTicker[p.ticker];
+      const eod = bars && bars.length ? bars[bars.length - 1].close : null;
+      const last = q?.price ?? eod;
+      const value = last != null ? p.shares * last : null;
+      const unreal = value != null ? value - p.costBasis : null;
+      const unrealPct = value != null && p.costBasis > 0 ? value / p.costBasis - 1 : null;
+      const dayPct = q?.changePct ?? null;
+      const dayAbs = q && q.prevClose != null ? (q.price - q.prevClose) * p.shares : null;
+      const totalGain = (unreal ?? 0) + p.realized + p.dividends;
+      const company = companyName(p.ticker, hist[p.ticker]?.name ?? null);
+      return { ...p, last, value, unreal, unrealPct, dayPct, dayAbs, totalGain, company, live: !!q };
+    });
+  }, [openPositions, quotes, barsByTicker, hist]);
 
   const total = rows.reduce((a, r) => a + (r.value ?? 0), 0);
-  const withValue = rows.filter((r) => r.value !== null);
-  const noPriceCount = rows.length - withValue.length;
+  const costTotal = rows.reduce((a, r) => a + r.costBasis, 0);
+  const unrealTotal = total - costTotal;
+  const realizedTotal = positions.reduce((a, p) => a + p.realized, 0);
+  const feesTotal = positions.reduce((a, p) => a + p.fees, 0);
+  const noPrice = rows.filter((r) => r.value === null).length;
 
-  // portfolio value series (constant shares, forward-filled closes)
-  const series = useMemo((): PriceBar[] => {
-    const withBars = holdings
-      .map((h) => ({ h, b: bars[h.ticker] }))
-      .filter((x): x is { h: MyHolding; b: PriceBar[] } => !!x.b && x.b.length > 1);
-    if (withBars.length === 0) return [];
-    const start = withBars
-      .map(({ b }) => b[0].date)
-      .reduce((a, d) => (d > a ? d : a), "0000-00-00");
-    const dates = [...new Set(withBars.flatMap(({ b }) => b.map((x) => x.date)))]
-      .filter((d) => d >= start)
-      .sort();
-    const cur = new Map<string, number>();
-    const idx = new Map<string, number>();
-    const out: PriceBar[] = [];
-    for (const d of dates) {
-      for (const { h, b } of withBars) {
-        let i = idx.get(h.ticker) ?? 0;
-        while (i < b.length && b[i].date <= d) {
-          cur.set(h.ticker, b[i].close);
-          i++;
+  const dayAbsSum = rows.reduce((a, r) => a + (r.dayAbs ?? 0), 0);
+  const dayBase = rows.reduce((a, r) => a + (r.value ?? 0) - (r.dayAbs ?? 0), 0);
+  const dayPctSum = dayBase > 0 && rows.some((r) => r.dayAbs !== null) ? dayAbsSum / dayBase : null;
+  const liveCount = rows.filter((r) => r.live).length;
+
+  // ── Dividenden aus der Ausschüttungshistorie rekonstruieren ───────────────
+  const divInfo = useMemo(() => {
+    const byTicker = new Map<string, number>();
+    const byMonth = new Map<string, number>();
+    const upcoming: { ticker: string; date: string; amount: number }[] = [];
+    let received = 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+    const perShareYear = new Map<string, number>();
+
+    for (const t of ownTickers) {
+      const evs = hist[t]?.dividends ?? [];
+      if (evs.length === 0) continue;
+      const tl = sharesTimeline(normTxns, t);
+      let sum = 0;
+      let psYear = 0;
+      for (const e of evs) {
+        if (e.date > today) {
+          upcoming.push({ ticker: t, date: e.date, amount: e.amount });
+          continue;
         }
-        idx.set(h.ticker, i);
+        if (e.date >= yearAgo) psYear += e.amount;
+        const sh = sharesAt(tl, e.date);
+        if (sh <= 0) continue;
+        const amt = sh * e.amount;
+        sum += amt;
+        byMonth.set(e.date.slice(0, 7), (byMonth.get(e.date.slice(0, 7)) ?? 0) + amt);
       }
-      if (cur.size === withBars.length) {
-        let v = 0;
-        for (const { h } of withBars) v += h.shares * (cur.get(h.ticker) ?? 0);
-        out.push({ date: d, close: v });
+      if (sum > 0) byTicker.set(t, sum);
+      if (psYear > 0) perShareYear.set(t, psYear);
+      received += sum;
+    }
+
+    // Erwartete Ausschüttung der nächsten 12 Monate = Rate der letzten 12 Monate
+    // × heutige Stückzahl.
+    let forecast = 0;
+    let costBase = 0;
+    const perPos = rows
+      .map((r) => {
+        const ps = perShareYear.get(r.ticker) ?? 0;
+        const annual = ps * r.shares;
+        forecast += annual;
+        if (ps > 0) costBase += r.costBasis;
+        return {
+          ticker: r.ticker,
+          company: r.company,
+          received: byTicker.get(r.ticker) ?? 0,
+          perShare: ps,
+          annual,
+          yieldNow: r.last && r.last > 0 ? ps / r.last : null,
+          yieldOnCost: r.avgPrice && r.avgPrice > 0 ? ps / r.avgPrice : null,
+          value: r.value,
+        };
+      })
+      .filter((x) => x.annual > 0 || x.received > 0)
+      .sort((a, b) => b.annual - a.annual);
+
+    return {
+      received,
+      forecast,
+      perPos,
+      byMonth,
+      upcoming: upcoming.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8),
+      yieldNow: total > 0 ? forecast / total : null,
+      yieldOnCost: costBase > 0 ? forecast / costBase : null,
+    };
+  }, [ownTickers, hist, normTxns, rows, total]);
+
+  const manualDividends = positions.reduce((a, p) => a + p.dividends, 0);
+  const dividendsTotal = Math.max(divInfo.received, manualDividends);
+  const gainTotal = unrealTotal + realizedTotal + dividendsTotal;
+
+  // ── Zeitraum-Zuschnitt + Live-Endpunkt ────────────────────────────────────
+  const seriesR = useMemo(() => {
+    const cut = cutoffFor(range, series);
+    const s = series.filter((p) => p.date >= cut);
+    const use = s.length > 2 ? s : series;
+    if (use.length === 0 || total <= 0) return use;
+    // Letzten Punkt auf den Live-Depotwert heben, damit Chart und Kennzahl
+    // dieselbe Zahl zeigen.
+    const copy = [...use];
+    copy[copy.length - 1] = { ...copy[copy.length - 1], value: total };
+    return copy;
+  }, [series, range, total]);
+
+  const bench = BENCHMARKS[benchIdx];
+  const benchBarsFull = hist[bench.key]?.bars ?? [];
+  const benchR = useMemo(() => {
+    if (benchBarsFull.length === 0 || seriesR.length < 2) return [];
+    return benchBarsFull.filter((b) => b.date >= seriesR[0].date && b.date <= seriesR[seriesR.length - 1].date);
+  }, [benchBarsFull, seriesR]);
+
+  const perfPortfolio = twr(seriesR);
+  const perfBench = seriesReturn(benchR);
+  const perfAnnual = twrAnnualized(seriesR);
+  const izf = useMemo(() => {
+    if (seriesR.length < 2 || total <= 0) return null;
+    const start = seriesR[0].date;
+    const startValue = seriesR[0].value;
+    const flows = cashFlows(normTxns, start).filter((f) => f.date >= start);
+    const all = [
+      ...(startValue > 0 ? [{ date: start, amount: -startValue }] : []),
+      ...flows,
+      { date: seriesR[seriesR.length - 1].date, amount: total },
+    ];
+    return xirr(all);
+  }, [seriesR, normTxns, total]);
+
+  const vol = volatility(seriesR);
+  const shp = sharpe(seriesR);
+  const mdd = maxDrawdown(seriesR);
+  const bta = benchR.length > 20 ? beta(seriesR, benchR) : null;
+  const corr = benchR.length > 20 ? correlation(seriesR, benchR) : null;
+  const hit = hitRate(seriesR);
+  const ext = extremeDays(seriesR);
+  const years = annualReturns(series);
+
+  // ── Chartserien ───────────────────────────────────────────────────────────
+  const chartSeries: ChartSeries[] = useMemo(() => {
+    if (seriesR.length < 2) return [];
+    if (mode === "drawdown") {
+      return [
+        {
+          key: "dd",
+          label: "Rückgang vom Hoch",
+          color: "#e11d48",
+          fill: true,
+          points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
+        },
+      ];
+    }
+    if (mode === "return") {
+      const out: ChartSeries[] = [
+        {
+          key: "twr",
+          label: "Dein Depot",
+          color: "#4f46e5",
+          fill: true,
+          points: twrCurve(seriesR),
+        },
+      ];
+      if (benchR.length > 1) {
+        out.push({
+          key: "bench",
+          label: bench.label,
+          color: "#64748b",
+          dashed: true,
+          points: returnCurve(benchR),
+        });
       }
+      return out;
+    }
+    const out: ChartSeries[] = [
+      {
+        key: "value",
+        label: "Depotwert",
+        color: "#4f46e5",
+        fill: true,
+        points: seriesR.map((p) => ({ date: p.date, value: p.value })),
+      },
+      {
+        key: "invested",
+        label: "Zugeführtes Kapital",
+        color: "#94a3b8",
+        step: true,
+        points: seriesR.map((p) => ({ date: p.date, value: p.invested })),
+      },
+    ];
+    if (benchR.length > 1 && seriesR[0].value > 0) {
+      out.push({
+        key: "bench",
+        label: `${bench.label} (gleicher Einsatz)`,
+        color: "#0ea5e9",
+        dashed: true,
+        points: indexTo(benchR, seriesR[0].value).map((b) => ({ date: b.date, value: b.close })),
+      });
     }
     return out;
-  }, [holdings, bars]);
+  }, [seriesR, benchR, mode, bench.label]);
 
-  // range-aware slices of the portfolio series + benchmark
-  const seriesR = useMemo(() => {
-    const n = RANGES[range][1];
-    return n >= series.length ? series : series.slice(-n);
-  }, [series, range]);
-
-  const benchR = useMemo(() => {
-    if (!bench || seriesR.length < 2) return null;
-    const start = seriesR[0].date;
-    const t = bench.bars.filter((b) => b.date >= start);
-    return t.length > 1 ? t : null;
-  }, [bench, seriesR]);
-
-  const perfPortfolio =
-    seriesR.length > 1
-      ? (seriesR[seriesR.length - 1].close - seriesR[0].close) / seriesR[0].close
-      : null;
-  const perfBench =
-    benchR && benchR.length > 1
-      ? (benchR[benchR.length - 1].close - benchR[0].close) / benchR[0].close
-      : null;
-  const benchLabel = bench?.label ?? BENCH_CHOICES[benchIdx].label;
-
-  // invested / P&L (only for positions with a known buy price)
-  const investedRows = rows.filter((r) => r.invested !== null && r.value !== null);
-  const investedSum = investedRows.reduce((a, r) => a + (r.invested ?? 0), 0);
-  const investedCur = investedRows.reduce((a, r) => a + (r.value ?? 0), 0);
-  const plSum = investedSum > 0 ? investedCur - investedSum : null;
-
-  const allocRows: HoldingRow[] = withValue.map((r) => ({
-    ticker: r.ticker,
-    securityName: r.ticker,
-    company: companyName(r.ticker, null),
-    weight: total > 0 ? (r.value ?? 0) / total : null,
-    value: r.value,
-    shares: r.shares,
-    putCall: null,
-  }));
-
-  const donutSegs = useMemo(() => {
-    const sorted = [...withValue].sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-    const top = sorted.slice(0, 6);
-    const rest = sorted.slice(6).reduce((a, r) => a + (r.value ?? 0), 0);
-    const segs = top.map((r, i) => ({
-      label: companyName(r.ticker, null),
-      value: r.value ?? 0,
-      color: DONUT_COLORS[i % DONUT_COLORS.length],
+  // ── Aufteilungen ──────────────────────────────────────────────────────────
+  const groupSegs = (pick: (t: string) => string, colors: Record<string, string>): Segment[] => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      if (r.value === null) continue;
+      const k = pick(r.ticker);
+      m.set(k, (m.get(k) ?? 0) + r.value);
+    }
+    return [...m.entries()].map(([label, value]) => ({
+      label,
+      value,
+      color: colors[label] ?? "#cbd5e1",
     }));
-    if (rest > 0) segs.push({ label: "Übrige", value: rest, color: "#cbd5e1" });
-    return segs;
-  }, [withValue]);
+  };
 
-  const sortedRows = [...rows].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+  const posSegs: Segment[] = rows
+    .filter((r) => r.value !== null)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+    .map((r, i) => ({ label: r.company, value: r.value as number, color: POS_COLORS[i % POS_COLORS.length] }));
+
+  const weights = posSegs.map((s) => s.value / (total || 1));
+
+  // ── Aktionen ──────────────────────────────────────────────────────────────
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = (f: File | null) => {
     if (!f) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const { holdings: parsed, skipped } = parseCsv(String(reader.result || ""));
-      if (parsed.length === 0) {
-        setCsvMsg("Keine gültigen Zeilen gefunden. Format: TICKER,Anzahl — z. B. AAPL,10");
+      const res = parseCsv(String(reader.result || ""));
+      if (res.txns.length === 0) {
+        setMsg(
+          "Keine gültigen Zeilen gefunden. Einfachster Fall: eine Zeile pro Position, z. B. AAPL,10,180",
+        );
         return;
       }
-      setMyHoldings(parsed);
-      setCsvMsg(
-        `${parsed.length} Positionen importiert${skipped > 0 ? ` (${skipped} Zeilen übersprungen)` : ""}.`,
+      addTxns(res.txns);
+      setMsg(
+        `${res.txns.length} ${res.format === "transaktionen" ? "Transaktionen" : "Positionen"} importiert` +
+          (res.dated > 0 ? `, ${res.dated} mit Datum` : ", ohne Datum — bitte ggf. ergänzen") +
+          (res.skipped > 0 ? ` (${res.skipped} Zeilen übersprungen)` : "") +
+          ".",
       );
+      setTab("positions");
     };
     reader.readAsText(f);
   };
 
-  const onAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    const t = ticker.trim().toUpperCase();
-    const s = parseNum(shares);
-    const bp = buyPrice.trim() ? parseNum(buyPrice) : NaN;
-    if (!/^[A-Z][A-Z0-9.\-]{0,7}$/.test(t) || !Number.isFinite(s) || s <= 0) {
-      setCsvMsg("Bitte gültigen Ticker (z. B. AAPL) und Stückzahl eingeben.");
-      return;
-    }
-    upsertHolding({ ticker: t, shares: s, ...(Number.isFinite(bp) && bp > 0 ? { buyPrice: bp } : {}) });
-    setTicker("");
-    setShares("");
-    setBuyPrice("");
-    setCsvMsg(null);
-  };
-
   const exportCsv = () => {
-    const lines = holdings.map((h) =>
-      h.buyPrice ? `${h.ticker},${h.shares},${h.buyPrice}` : `${h.ticker},${h.shares}`,
-    );
-    const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv" });
+    const blob = new Blob([toCsv(txns)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "mein-depot.csv";
+    a.download = "outsider-depot.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };
 
-  const userWeightWith = (m: MatchRow) => {
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const empty = txns.length === 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Kopf */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
+            {liveCount > 0 && (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                <span className="animate-live h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Live
+              </span>
+            )}
+          </div>
+          {!empty && (
+            <div className="mt-1 flex flex-wrap items-baseline gap-3">
+              <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                {abbrevMoney(total || null)}
+              </span>
+              {dayPctSum != null && (
+                <span
+                  className={`text-sm font-semibold tabular-nums ${
+                    dayPctSum >= 0 ? "text-bull" : "text-bear"
+                  }`}
+                >
+                  {signed(dayAbsSum)} ({pct2(dayPctSum)}) heute
+                </span>
+              )}
+            </div>
+          )}
+          {empty && (
+            <p className="text-sm text-subtle">
+              Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
+              Gespeichert wird nur lokal in deinem Browser.
+            </p>
+          )}
+        </div>
+        {!empty && (
+          <Pills options={TABS} value={tab} onChange={setTab} />
+        )}
+      </div>
+
+      {empty && <EmptyState onPick={() => fileRef.current?.click()} />}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,.txt,text/csv,text/plain"
+        className="hidden"
+        onChange={(e) => {
+          onFile(e.target.files?.[0] ?? null);
+          e.target.value = "";
+        }}
+      />
+
+      {msg && (
+        <div className="rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 ring-1 ring-indigo-100">
+          {msg}
+        </div>
+      )}
+
+      {!empty && loadingHist && Object.keys(hist).length === 0 && (
+        <div className="lcard p-8 text-center text-sm text-subtle">Kurse werden geladen …</div>
+      )}
+
+      {!empty && (
+        <>
+          {/* ── Übersicht ───────────────────────────────────────────────── */}
+          {tab === "overview" && (
+            <>
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+                <Kpi label="Depotwert" value={abbrevMoney(total || null)} sub={`${rows.length} Positionen`} />
+                <Kpi
+                  label="Gewinn gesamt"
+                  value={signed(gainTotal)}
+                  tone={tone(gainTotal)}
+                  sub={costTotal > 0 ? pct2(gainTotal / costTotal) : undefined}
+                  hint="Kursgewinn + realisierte Gewinne + Dividenden"
+                />
+                <Kpi
+                  label="Kursgewinn (offen)"
+                  value={signed(unrealTotal)}
+                  tone={tone(unrealTotal)}
+                  sub={costTotal > 0 ? pct2(unrealTotal / costTotal) : undefined}
+                />
+                <Kpi label="Investiert" value={abbrevMoney(costTotal || null)} sub="Einstand offener Positionen" />
+                <Kpi
+                  label="Dividenden"
+                  value={abbrevMoney(dividendsTotal || null)}
+                  tone={dividendsTotal > 0 ? "bull" : null}
+                  sub="erhalten (geschätzt)"
+                />
+                <Kpi
+                  label="Realisiert"
+                  value={signed(realizedTotal)}
+                  tone={realizedTotal === 0 ? null : tone(realizedTotal)}
+                  sub="aus Verkäufen"
+                />
+              </div>
+
+              <ChartCard
+                mode={mode}
+                setMode={setMode}
+                range={range}
+                setRange={setRange}
+                benchIdx={benchIdx}
+                setBenchIdx={setBenchIdx}
+                chartSeries={chartSeries}
+              />
+
+              {perfPortfolio != null && perfBench != null && (
+                <div
+                  className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
+                    perfPortfolio >= perfBench
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                  }`}
+                >
+                  {perfPortfolio >= perfBench
+                    ? `Dein Depot schlägt den ${bench.label} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (${range}).`
+                    : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${bench.label} (${range}).`}{" "}
+                  Du {pct(perfPortfolio)}, Index {pct(perfBench)}.
+                </div>
+              )}
+
+              <TopMovers rows={rows} />
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" warnAbove={0.3} />
+                <AllocView
+                  segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
+                  total={total}
+                  title="Aufteilung nach Sektor"
+                  warnAbove={0.45}
+                />
+              </div>
+
+              {assumedCount > 0 && <AssumedHint n={assumedCount} onGo={() => setTab("activity")} />}
+              {noPrice > 0 && (
+                <p className="text-[11px] text-subtle">
+                  Für {noPrice} {noPrice === 1 ? "Position" : "Positionen"} liegen keine Kursdaten
+                  vor — Ticker prüfen (z. B. <span className="font-mono">BTC-USD</span> statt BTC).
+                </p>
+              )}
+            </>
+          )}
+
+          {/* ── Positionen ──────────────────────────────────────────────── */}
+          {tab === "positions" && (
+            <PositionsTable rows={rows} total={total} onRemove={(t) => removeTicker(t)} />
+          )}
+
+          {/* ── Performance ─────────────────────────────────────────────── */}
+          {tab === "performance" && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold tracking-tight">Kennzahlen ({range})</h2>
+                <div className="flex flex-wrap gap-2">
+                  <Pills options={BENCHMARKS.map((b) => [b.key, b.label] as const)} value={bench.key} onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))} size="sm" />
+                  <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                <Kpi label="Zeitgewichtete Rendite" value={pct(perfPortfolio)} tone={tone(perfPortfolio)} hint="TTWROR — bereinigt um Ein- und Auszahlungen" />
+                <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
+                <Kpi label="IZF (geldgewichtet)" value={pct(izf)} tone={tone(izf)} hint="Interner Zinsfuß: berücksichtigt, wann du wie viel investiert hast" />
+                <Kpi label={bench.label} value={pct(perfBench)} tone={tone(perfBench)} />
+                <Kpi label="Volatilität p. a." value={vol === null ? "—" : `${(vol * 100).toFixed(1)} %`} hint="Schwankungsbreite der Tagesrenditen" />
+                <Kpi label="Sharpe Ratio" value={shp === null ? "—" : shp.toFixed(2)} tone={shp === null ? null : shp >= 1 ? "bull" : shp < 0 ? "bear" : null} hint="Rendite je Einheit Risiko (risikofrei 3 %)" />
+                <Kpi label="Max. Drawdown" value={mdd ? `${(mdd.dd * 100).toFixed(1)} %` : "—"} tone={mdd ? "bear" : null} sub={mdd ? `Tief am ${formatDate(mdd.date)}` : undefined} />
+                <Kpi label={`Beta zu ${bench.label}`} value={bta === null ? "—" : bta.toFixed(2)} hint="1,0 = bewegt sich wie der Index" />
+                <Kpi label="Korrelation" value={corr === null ? "—" : corr.toFixed(2)} hint="1,0 = läuft exakt parallel zum Index" />
+                <Kpi label="Positive Tage" value={hit === null ? "—" : `${(hit * 100).toFixed(0)} %`} />
+                <Kpi label="Bester Tag" value={ext ? pct2(ext.best.r) : "—"} tone="bull" sub={ext ? formatDate(ext.best.date) : undefined} />
+                <Kpi label="Schwächster Tag" value={ext ? pct2(ext.worst.r) : "—"} tone="bear" sub={ext ? formatDate(ext.worst.date) : undefined} />
+              </div>
+
+              <div className="lcard p-5">
+                <div className="mb-1 text-sm font-semibold">Rendite je Kalenderjahr</div>
+                <p className="mb-3 text-[11px] text-subtle">
+                  Zeitgewichtet — Einzahlungen verfälschen die Zahlen nicht.
+                </p>
+                <ReturnBars data={years} />
+              </div>
+
+              <div className="lcard p-5">
+                <div className="mb-1 text-sm font-semibold">Rückgang vom Höchststand</div>
+                <p className="mb-3 text-[11px] text-subtle">
+                  Wie tief das Depot jeweils unter seinem bisherigen Hoch lag — der ehrlichste
+                  Risikoindikator.
+                </p>
+                <DepotChart
+                  series={[
+                    {
+                      key: "dd2",
+                      label: "Rückgang",
+                      color: "#e11d48",
+                      fill: true,
+                      points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
+                    },
+                  ]}
+                  height={190}
+                  zeroLine
+                  format={(v) => `${(v * 100).toFixed(1)} %`}
+                />
+              </div>
+
+              <BenchmarkTable
+                hist={hist}
+                seriesR={seriesR}
+                perfPortfolio={perfPortfolio}
+              />
+            </>
+          )}
+
+          {/* ── Aufteilung ──────────────────────────────────────────────── */}
+          {tab === "allocation" && (
+            <>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <AllocView segments={posSegs} total={total} title="Nach Position" warnAbove={0.3} />
+                <Concentration weights={weights} count={rows.length} />
+                <AllocView
+                  segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
+                  total={total}
+                  title="Nach Sektor"
+                  warnAbove={0.45}
+                />
+                <AllocView
+                  segments={groupSegs((t) => assetMeta(t).region, REGION_COLOR)}
+                  total={total}
+                  title="Nach Region"
+                  warnAbove={0.9}
+                />
+                <AllocView
+                  segments={groupSegs((t) => assetMeta(t).assetClass, ASSET_COLOR)}
+                  total={total}
+                  title="Nach Anlageklasse"
+                />
+                <div className="lcard p-5">
+                  <div className="mb-1 text-sm font-semibold">Einordnung</div>
+                  <p className="mb-3 text-[11px] text-subtle">
+                    Faustregeln aus der Portfoliotheorie — keine Anlageberatung.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <Check
+                      ok={weights[0] !== undefined && weights[0] <= 0.25}
+                      text={`Größte Position unter 25 % (${((weights[0] ?? 0) * 100).toFixed(0)} %)`}
+                    />
+                    <Check ok={rows.length >= 10} text={`Mindestens 10 Positionen (${rows.length})`} />
+                    <Check
+                      ok={
+                        groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR).filter((s) => s.value > 0)
+                          .length >= 4
+                      }
+                      text="Mindestens 4 Sektoren vertreten"
+                    />
+                    <Check
+                      ok={
+                        groupSegs((t) => assetMeta(t).region, REGION_COLOR).filter((s) => s.value > 0)
+                          .length >= 2
+                      }
+                      text="Mehr als eine Region"
+                    />
+                    <Check
+                      ok={mdd === null || mdd.dd > -0.35}
+                      text={`Maximaler Rückgang unter 35 % (${mdd ? (mdd.dd * 100).toFixed(0) : "—"} %)`}
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-subtle">
+                Sektor und Region stammen aus einer gepflegten Liste der gängigsten Titel.
+                Unbekannte Ticker landen bewusst in „Unbekannt“ statt geraten zu werden.
+              </p>
+            </>
+          )}
+
+          {/* ── Dividenden ──────────────────────────────────────────────── */}
+          {tab === "dividends" && (
+            <DividendsTab info={divInfo} total={total} manual={manualDividends} />
+          )}
+
+          {/* ── Aktivitäten ─────────────────────────────────────────────── */}
+          {tab === "activity" && (
+            <ActivityTab
+              txns={txns}
+              onImport={() => fileRef.current?.click()}
+              onExport={exportCsv}
+              onClear={() => {
+                if (confirm("Wirklich alle Transaktionen löschen?")) {
+                  clearTxns();
+                  setMsg(null);
+                }
+              }}
+              setMsg={setMsg}
+            />
+          )}
+
+          {/* ── Investoren ──────────────────────────────────────────────── */}
+          {tab === "investors" && (
+            <InvestorsTab matches={matches} rows={rows} total={total} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Teilkomponenten ─────────────────────────────────────────────────────────
+
+function EmptyState({ onPick }: { onPick: () => void }) {
+  return (
+    <div className="lcard p-8 text-center">
+      <div className="text-lg font-semibold">Depot anlegen</div>
+      <p className="mx-auto mt-2 max-w-md text-sm text-subtle">
+        Lade eine CSV hoch — entweder eine einfache Bestandsliste oder einen vollständigen
+        Transaktionsexport aus deinem Broker. Daraus rechnen wir Rendite, Risiko, Dividenden und
+        den Vergleich zu Indizes und Star-Investoren.
+      </p>
+      <button onClick={onPick} className="btn-primary mt-5">
+        CSV hochladen
+      </button>
+      <div className="mx-auto mt-5 max-w-lg rounded-xl bg-slate-50 p-4 text-left text-[11px] text-subtle">
+        <div className="font-semibold text-ink">Einfach (nur Bestände):</div>
+        <pre className="mt-1 font-mono">{`AAPL,10,180\nMSFT,5,320`}</pre>
+        <div className="mt-3 font-semibold text-ink">Vollständig (mit Historie):</div>
+        <pre className="mt-1 overflow-x-auto font-mono">{`Typ;Datum;Ticker;Anzahl;Kurs;Gebuehr\nKauf;17.03.2022;AAPL;10;158,20;1\nKauf;02.11.2023;MSFT;5;338,10;1\nVerkauf;14.06.2025;AAPL;4;201,50;1`}</pre>
+        <p className="mt-3">
+          Punkt oder Komma als Dezimaltrenner, Semikolon oder Komma als Spaltentrenner — beides
+          funktioniert. Ohne Datum nehmen wir an, die Position wurde von Beginn an gehalten.
+        </p>
+      </div>
+      <p className="mt-4 text-[11px] text-subtle">
+        Alles bleibt in deinem Browser. Keine Anmeldung, kein Server, keine Weitergabe.
+      </p>
+    </div>
+  );
+}
+
+function ChartCard({
+  mode,
+  setMode,
+  range,
+  setRange,
+  benchIdx,
+  setBenchIdx,
+  chartSeries,
+}: {
+  mode: ChartMode;
+  setMode: (m: ChartMode) => void;
+  range: RangeKey;
+  setRange: (r: RangeKey) => void;
+  benchIdx: number;
+  setBenchIdx: (i: number) => void;
+  chartSeries: ChartSeries[];
+}) {
+  const isPct = mode !== "value";
+  return (
+    <div className="lcard p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Pills
+          options={[
+            ["value", "Wertentwicklung"],
+            ["return", "Rendite %"],
+            ["drawdown", "Drawdown"],
+          ] as const}
+          value={mode}
+          onChange={setMode}
+          size="sm"
+        />
+        <div className="ml-auto flex flex-wrap gap-2">
+          {mode !== "drawdown" && (
+            <Pills
+              options={BENCHMARKS.map((b) => [b.key, b.label] as const)}
+              value={BENCHMARKS[benchIdx].key}
+              onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))}
+              size="sm"
+            />
+          )}
+          <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
+        </div>
+      </div>
+      <DepotChart
+        series={chartSeries}
+        height={260}
+        zeroLine={isPct}
+        format={(v) => (isPct ? `${(v * 100).toFixed(2)} %` : usd(v))}
+        formatAxis={(v) => (isPct ? `${(v * 100).toFixed(0)} %` : abbrevMoney(v))}
+      />
+      <p className="mt-2 text-[11px] text-subtle">
+        {mode === "value"
+          ? "Graue Treppe = netto zugeführtes Kapital. Der Abstand zur blauen Linie ist dein Gewinn."
+          : mode === "return"
+          ? "Zeitgewichtete Rendite — Ein- und Auszahlungen verzerren den Vergleich nicht."
+          : "Rückgang vom jeweils höchsten Stand."}{" "}
+        Fahr mit der Maus über den Chart (am Handy: wischen).
+      </p>
+    </div>
+  );
+}
+
+function TopMovers({
+  rows,
+}: {
+  rows: { ticker: string; company: string; dayPct: number | null; dayAbs: number | null; unrealPct: number | null; totalGain: number }[];
+}) {
+  const day = rows.filter((r) => r.dayPct !== null).sort((a, b) => (b.dayPct ?? 0) - (a.dayPct ?? 0));
+  const all = rows.filter((r) => r.unrealPct !== null).sort((a, b) => (b.unrealPct ?? 0) - (a.unrealPct ?? 0));
+  if (day.length === 0 && all.length === 0) return null;
+
+  const List = ({
+    title,
+    items,
+    valueOf,
+    subOf,
+  }: {
+    title: string;
+    items: typeof rows;
+    valueOf: (r: (typeof rows)[number]) => number | null;
+    subOf: (r: (typeof rows)[number]) => string;
+  }) => (
+    <div className="lcard p-5">
+      <div className="mb-3 text-sm font-semibold">{title}</div>
+      <div className="space-y-2.5">
+        {items.map((r) => {
+          const v = valueOf(r);
+          return (
+            <Link key={r.ticker} href={`/stock/${r.ticker}`} className="flex items-center gap-2.5">
+              <CompanyLogo ticker={r.ticker} company={r.company} size={30} />
+              <span className="min-w-0 flex-1 truncate text-sm">{r.company}</span>
+              <span className="text-xs text-subtle">{subOf(r)}</span>
+              <span
+                className={`w-20 text-right text-sm font-semibold tabular-nums ${
+                  (v ?? 0) >= 0 ? "text-bull" : "text-bear"
+                }`}
+              >
+                {pct2(v)}
+              </span>
+            </Link>
+          );
+        })}
+        {items.length === 0 && <div className="text-sm text-subtle">Keine Daten.</div>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <List
+        title="Top Mover heute"
+        items={[...day.slice(0, 3), ...day.slice(-3).reverse()].filter(
+          (v, i, a) => a.findIndex((x) => x.ticker === v.ticker) === i,
+        )}
+        valueOf={(r) => r.dayPct}
+        subOf={(r) => signed(r.dayAbs)}
+      />
+      <List
+        title="Gewinner & Verlierer gesamt"
+        items={[...all.slice(0, 3), ...all.slice(-3).reverse()].filter(
+          (v, i, a) => a.findIndex((x) => x.ticker === v.ticker) === i,
+        )}
+        valueOf={(r) => r.unrealPct}
+        subOf={(r) => signed(r.totalGain)}
+      />
+    </div>
+  );
+}
+
+type Row = {
+  ticker: string;
+  company: string;
+  shares: number;
+  avgPrice: number | null;
+  costBasis: number;
+  last: number | null;
+  value: number | null;
+  unreal: number | null;
+  unrealPct: number | null;
+  dayPct: number | null;
+  dayAbs: number | null;
+  realized: number;
+  dividends: number;
+  totalGain: number;
+  live: boolean;
+};
+
+type SortKey = "value" | "gain" | "gainPct" | "day" | "name" | "weight";
+
+function PositionsTable({
+  rows,
+  total,
+  onRemove,
+}: {
+  rows: Row[];
+  total: number;
+  onRemove: (t: string) => void;
+}) {
+  const [sort, setSort] = useState<SortKey>("value");
+  const [desc, setDesc] = useState(true);
+
+  const sorted = useMemo(() => {
+    const val = (r: Row): number | string => {
+      switch (sort) {
+        case "name":
+          return r.company;
+        case "gain":
+          return r.unreal ?? -Infinity;
+        case "gainPct":
+          return r.unrealPct ?? -Infinity;
+        case "day":
+          return r.dayPct ?? -Infinity;
+        default:
+          return r.value ?? -Infinity;
+      }
+    };
+    const a = [...rows].sort((x, y) => {
+      const vx = val(x);
+      const vy = val(y);
+      if (typeof vx === "string" || typeof vy === "string")
+        return String(vx).localeCompare(String(vy));
+      return vx - vy;
+    });
+    return desc ? a.reverse() : a;
+  }, [rows, sort, desc]);
+
+  const head: [SortKey, string, string][] = [
+    ["name", "Position", "text-left"],
+    ["value", "Wert", "text-right"],
+    ["day", "Heute", "text-right hidden sm:table-cell"],
+    ["gainPct", "Gewinn", "text-right"],
+    ["weight", "Anteil", "text-right hidden md:table-cell"],
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="lcard overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-hair text-[11px] uppercase tracking-wide text-subtle">
+                {head.map(([key, label, cls]) => (
+                  <th key={key} className={`px-4 py-2.5 font-medium ${cls}`}>
+                    <button
+                      onClick={() => {
+                        if (sort === key) setDesc((d) => !d);
+                        else {
+                          setSort(key);
+                          setDesc(key !== "name");
+                        }
+                      }}
+                      className="press-sm inline-flex items-center gap-1 hover:text-ink"
+                    >
+                      {label}
+                      {sort === key && <span className="text-[9px]">{desc ? "▼" : "▲"}</span>}
+                    </button>
+                  </th>
+                ))}
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r) => {
+                const w = r.value != null && total > 0 ? (r.value / total) * 100 : null;
+                return (
+                  <tr key={r.ticker} className="border-b border-hair last:border-0 hover:bg-slate-50/70">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <CompanyLogo ticker={r.ticker} company={r.company} size={34} />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/stock/${r.ticker}`}
+                            className="block truncate font-medium hover:text-brand"
+                          >
+                            {r.company}
+                          </Link>
+                          <div className="font-mono text-[11px] text-subtle">
+                            {fixTicker(r.ticker, r.company)} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.
+                            {r.avgPrice ? ` · Ø ${usd(r.avgPrice)}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="font-semibold tabular-nums">
+                        {r.value != null ? abbrevMoney(r.value) : "—"}
+                      </div>
+                      <div className="text-[11px] tabular-nums text-subtle">
+                        {r.last != null ? usd(r.last) : "kein Kurs"}
+                      </div>
+                    </td>
+                    <td className="hidden px-4 py-3 text-right sm:table-cell">
+                      <div
+                        className={`font-medium tabular-nums ${
+                          r.dayPct === null ? "text-subtle" : r.dayPct >= 0 ? "text-bull" : "text-bear"
+                        }`}
+                      >
+                        {pct2(r.dayPct)}
+                      </div>
+                      <div className="text-[11px] tabular-nums text-subtle">{signed(r.dayAbs)}</div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div
+                        className={`font-semibold tabular-nums ${
+                          r.unrealPct === null ? "text-subtle" : r.unrealPct >= 0 ? "text-bull" : "text-bear"
+                        }`}
+                      >
+                        {pct2(r.unrealPct)}
+                      </div>
+                      <div className="text-[11px] tabular-nums text-subtle">{signed(r.unreal)}</div>
+                    </td>
+                    <td className="hidden px-4 py-3 text-right md:table-cell">
+                      <div className="font-medium tabular-nums">{w != null ? `${w.toFixed(1)} %` : "—"}</div>
+                      <div className="mt-1 h-1 w-16 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-brand" style={{ width: `${w ?? 0}%` }} />
+                      </div>
+                    </td>
+                    <td className="pr-3 text-right">
+                      <button
+                        onClick={() => onRemove(r.ticker)}
+                        aria-label="Position entfernen"
+                        className="press-sm rounded-full px-1.5 text-slate-300 hover:text-bear"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-subtle">
+                    Keine offenen Positionen.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="text-[11px] text-subtle">
+        „Gewinn“ zeigt den Kursgewinn der offenen Stücke gegenüber deinem Durchschnittseinstand.
+        Realisierte Gewinne und Dividenden findest du unter Performance bzw. Dividenden.
+      </p>
+    </div>
+  );
+}
+
+function BenchmarkTable({
+  hist,
+  seriesR,
+  perfPortfolio,
+}: {
+  hist: Record<string, HistoryEntry>;
+  seriesR: { date: string }[];
+  perfPortfolio: number | null;
+}) {
+  if (seriesR.length < 2) return null;
+  const from = seriesR[0].date;
+  const to = seriesR[seriesR.length - 1].date;
+  const items = BENCHMARKS.map((b) => {
+    const bars = (hist[b.key]?.bars ?? []).filter((x) => x.date >= from && x.date <= to);
+    return { ...b, r: seriesReturn(bars) };
+  }).filter((x) => x.r !== null);
+
+  const all = [
+    { key: "me", label: "Dein Depot", r: perfPortfolio },
+    ...items,
+  ]
+    .filter((x) => x.r !== null)
+    .sort((a, b) => (b.r as number) - (a.r as number));
+
+  if (all.length < 2) return null;
+  const max = Math.max(...all.map((x) => Math.abs(x.r as number)), 0.01);
+
+  return (
+    <div className="lcard p-5">
+      <div className="mb-1 text-sm font-semibold">Wer hätte besser abgeschnitten?</div>
+      <p className="mb-4 text-[11px] text-subtle">
+        Gleicher Zeitraum ({formatDate(from)} – {formatDate(to)}), reine Kursentwicklung der Indizes.
+      </p>
+      <div className="space-y-2.5">
+        {all.map((x) => {
+          const r = x.r as number;
+          const isMe = x.key === "me";
+          return (
+            <div key={x.key} className="flex items-center gap-3 text-sm">
+              <span className={`w-28 shrink-0 truncate ${isMe ? "font-semibold" : "text-subtle"}`}>
+                {x.label}
+              </span>
+              <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`absolute inset-y-0 rounded-full ${
+                    isMe ? "bg-brand" : r >= 0 ? "bg-emerald-400" : "bg-rose-400"
+                  }`}
+                  style={{ left: "0%", width: `${(Math.abs(r) / max) * 100}%` }}
+                />
+              </div>
+              <span
+                className={`w-20 shrink-0 text-right font-semibold tabular-nums ${
+                  r >= 0 ? "text-bull" : "text-bear"
+                }`}
+              >
+                {pct(r)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DividendsTab({
+  info,
+  total,
+  manual,
+}: {
+  info: {
+    received: number;
+    forecast: number;
+    perPos: {
+      ticker: string;
+      company: string;
+      received: number;
+      perShare: number;
+      annual: number;
+      yieldNow: number | null;
+      yieldOnCost: number | null;
+      value: number | null;
+    }[];
+    byMonth: Map<string, number>;
+    upcoming: { ticker: string; date: string; amount: number }[];
+    yieldNow: number | null;
+    yieldOnCost: number | null;
+  };
+  total: number;
+  manual: number;
+}) {
+  const months = [...info.byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-24);
+  const maxM = Math.max(...months.map(([, v]) => v), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi
+          label="Erhalten (gesamt)"
+          value={abbrevMoney(Math.max(info.received, manual) || null)}
+          tone={info.received > 0 ? "bull" : null}
+          sub="aus Ausschüttungshistorie"
+        />
+        <Kpi
+          label="Erwartet nächste 12 M"
+          value={abbrevMoney(info.forecast || null)}
+          sub={info.forecast > 0 ? `≈ ${abbrevMoney(info.forecast / 12)} / Monat` : undefined}
+        />
+        <Kpi
+          label="Dividendenrendite"
+          value={info.yieldNow ? `${(info.yieldNow * 100).toFixed(2)} %` : "—"}
+          sub="auf aktuellen Kurs"
+        />
+        <Kpi
+          label="Rendite auf Einstand"
+          value={info.yieldOnCost ? `${(info.yieldOnCost * 100).toFixed(2)} %` : "—"}
+          tone={
+            info.yieldOnCost && info.yieldNow && info.yieldOnCost > info.yieldNow ? "bull" : null
+          }
+          sub="Yield on Cost"
+        />
+      </div>
+
+      {info.forecast === 0 && info.received === 0 && (
+        <div className="lcard p-8 text-center text-sm text-subtle">
+          Für deine Positionen sind keine Ausschüttungen bekannt — viele Wachstumswerte und ETFs
+          thesaurieren oder zahlen schlicht keine Dividende.
+        </div>
+      )}
+
+      {months.length > 0 && (
+        <div className="lcard p-5">
+          <div className="mb-1 text-sm font-semibold">Ausschüttungen je Monat</div>
+          <p className="mb-4 text-[11px] text-subtle">
+            Rekonstruiert aus der Ausschüttungshistorie und deiner damaligen Stückzahl.
+          </p>
+          <div className="flex h-32 items-end gap-1">
+            {months.map(([m, v]) => (
+              <div key={m} className="group relative flex-1" title={`${m}: ${abbrevMoney(v)}`}>
+                <div
+                  className="w-full rounded-t bg-gradient-to-t from-emerald-400 to-emerald-500 transition-all group-hover:from-emerald-500 group-hover:to-emerald-600"
+                  style={{ height: `${Math.max(3, (v / maxM) * 100)}%` }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="mt-1 flex justify-between text-[10px] text-subtle">
+            <span>{months[0]?.[0]}</span>
+            <span>{months[months.length - 1]?.[0]}</span>
+          </div>
+        </div>
+      )}
+
+      {info.upcoming.length > 0 && (
+        <div className="lcard p-5">
+          <div className="mb-3 text-sm font-semibold">Angekündigte Zahlungen</div>
+          <div className="space-y-2">
+            {info.upcoming.map((u, i) => (
+              <div key={i} className="flex items-center gap-3 text-sm">
+                <CompanyLogo ticker={u.ticker} company={u.ticker} size={26} />
+                <span className="flex-1 font-medium">{u.ticker}</span>
+                <span className="text-xs text-subtle">{formatDate(u.date)}</span>
+                <span className="font-semibold tabular-nums">{usd(u.amount)} / Stück</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {info.perPos.length > 0 && (
+        <div className="lcard overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-hair text-[11px] uppercase tracking-wide text-subtle">
+                  <th className="px-4 py-2.5 text-left font-medium">Position</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Erhalten</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Erwartet / Jahr</th>
+                  <th className="hidden px-4 py-2.5 text-right font-medium sm:table-cell">Rendite</th>
+                  <th className="hidden px-4 py-2.5 text-right font-medium md:table-cell">Auf Einstand</th>
+                </tr>
+              </thead>
+              <tbody>
+                {info.perPos.map((p) => (
+                  <tr key={p.ticker} className="border-b border-hair last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <CompanyLogo ticker={p.ticker} company={p.company} size={30} />
+                        <span className="truncate font-medium">{p.company}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {p.received > 0 ? abbrevMoney(p.received) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-bull">
+                      {p.annual > 0 ? abbrevMoney(p.annual) : "—"}
+                    </td>
+                    <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
+                      {p.yieldNow ? `${(p.yieldNow * 100).toFixed(2)} %` : "—"}
+                    </td>
+                    <td className="hidden px-4 py-3 text-right tabular-nums md:table-cell">
+                      {p.yieldOnCost ? `${(p.yieldOnCost * 100).toFixed(2)} %` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[11px] text-subtle">
+        Die Prognose schreibt die Ausschüttungen der letzten zwölf Monate fort. Erhöhungen,
+        Kürzungen und Sonderdividenden sind darin nicht enthalten — es ist eine Orientierung, keine
+        Zusage. Quellensteuer ist nicht abgezogen.
+      </p>
+    </div>
+  );
+}
+
+function ActivityTab({
+  txns,
+  onImport,
+  onExport,
+  onClear,
+  setMsg,
+}: {
+  txns: Txn[];
+  onImport: () => void;
+  onExport: () => void;
+  onClear: () => void;
+  setMsg: (m: string | null) => void;
+}) {
+  const [kind, setKind] = useState<TxnKind>("buy");
+  const [date, setDate] = useState("");
+  const [ticker, setTicker] = useState("");
+  const [shares, setShares] = useState("");
+  const [price, setPrice] = useState("");
+  const [amount, setAmount] = useState("");
+  const [fee, setFee] = useState("");
+
+  const needsShares = kind === "buy" || kind === "sell";
+  const needsTicker = kind !== "deposit" && kind !== "withdrawal";
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const T = ticker.trim().toUpperCase();
+    if (needsTicker && !TICKER_RE.test(T)) {
+      setMsg("Bitte einen gültigen Ticker eingeben, z. B. AAPL oder BTC-USD.");
+      return;
+    }
+    const d = parseDate(date);
+    if (needsShares) {
+      const s = parseNum(shares);
+      const p = parseNum(price);
+      if (!Number.isFinite(s) || s <= 0) {
+        setMsg("Bitte eine Stückzahl größer als 0 eingeben.");
+        return;
+      }
+      addTxn(
+        makeTxn({
+          kind,
+          ticker: T,
+          date: d,
+          shares: s,
+          price: Number.isFinite(p) && p > 0 ? p : 0,
+          fee: Math.abs(parseNum(fee)) || 0,
+        }),
+      );
+    } else {
+      const a = Math.abs(parseNum(amount));
+      if (!Number.isFinite(a) || a <= 0) {
+        setMsg("Bitte einen Betrag größer als 0 eingeben.");
+        return;
+      }
+      addTxn(makeTxn({ kind, ticker: needsTicker ? T : "", date: d, amount: a, fee: Math.abs(parseNum(fee)) || 0 }));
+    }
+    setTicker("");
+    setShares("");
+    setPrice("");
+    setAmount("");
+    setFee("");
+    setMsg(null);
+  };
+
+  const label: Record<TxnKind, string> = {
+    buy: "Kauf",
+    sell: "Verkauf",
+    dividend: "Dividende",
+    deposit: "Einzahlung",
+    withdrawal: "Auszahlung",
+  };
+  const badge: Record<TxnKind, string> = {
+    buy: "bg-emerald-50 text-emerald-700",
+    sell: "bg-rose-50 text-rose-700",
+    dividend: "bg-sky-50 text-sky-700",
+    deposit: "bg-slate-100 text-slate-600",
+    withdrawal: "bg-slate-100 text-slate-600",
+  };
+
+  const inputCls =
+    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-indigo-100";
+
+  return (
+    <div className="space-y-4">
+      <div className="lcard p-5">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">Transaktion erfassen</span>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button onClick={onImport} className="btn-primary">
+              CSV importieren
+            </button>
+            <button
+              onClick={onExport}
+              className="press-sm rounded-full bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
+            >
+              Exportieren
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
+          <Pills
+            options={(["buy", "sell", "dividend", "deposit", "withdrawal"] as const).map(
+              (k) => [k, label[k]] as const,
+            )}
+            value={kind}
+            onChange={setKind}
+            size="sm"
+          />
+          <input
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            placeholder="Datum (17.03.2022)"
+            className={`w-44 ${inputCls}`}
+          />
+          {needsTicker && (
+            <input
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              placeholder="Ticker"
+              className={`w-32 ${inputCls}`}
+            />
+          )}
+          {needsShares ? (
+            <>
+              <input
+                value={shares}
+                onChange={(e) => setShares(e.target.value)}
+                placeholder="Stück"
+                className={`w-24 ${inputCls}`}
+              />
+              <input
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Kurs $"
+                className={`w-28 ${inputCls}`}
+              />
+            </>
+          ) : (
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="Betrag $"
+              className={`w-32 ${inputCls}`}
+            />
+          )}
+          <input
+            value={fee}
+            onChange={(e) => setFee(e.target.value)}
+            placeholder="Gebühr"
+            className={`w-24 ${inputCls}`}
+          />
+          <button className="press-sm rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+            Hinzufügen
+          </button>
+        </form>
+        <p className="mt-2 text-[11px] text-subtle">
+          Ohne Datum gilt die Position als „von Anfang an gehalten“. Für exakte Rendite, IZF und
+          Dividendenzuordnung lohnt es sich, Datum und Kurs zu ergänzen.
+        </p>
+      </div>
+
+      <div className="lcard overflow-hidden">
+        <div className="flex items-center justify-between border-b border-hair px-5 py-3">
+          <span className="text-sm font-semibold">
+            {txns.length} {txns.length === 1 ? "Buchung" : "Buchungen"}
+          </span>
+          {txns.length > 0 && (
+            <button onClick={onClear} className="text-xs text-subtle underline hover:text-bear">
+              Alle löschen
+            </button>
+          )}
+        </div>
+        <div className="max-h-[32rem] overflow-y-auto">
+          {[...txns].reverse().map((t) => (
+            <div key={t.id} className="flex items-center gap-3 border-b border-hair px-5 py-2.5 last:border-0">
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${badge[t.kind]}`}>
+                {label[t.kind]}
+              </span>
+              <span className="w-24 shrink-0 text-xs text-subtle">
+                {t.date ? formatDate(t.date) : "ohne Datum"}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-mono text-sm">{t.ticker || "—"}</span>
+              <span className="text-right text-sm tabular-nums">
+                {t.kind === "buy" || t.kind === "sell"
+                  ? `${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
+                  : usd(t.amount)}
+              </span>
+              <button
+                onClick={() => removeTxn(t.id)}
+                aria-label="Buchung löschen"
+                className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {txns.length === 0 && (
+            <div className="px-5 py-10 text-center text-sm text-subtle">Noch keine Buchungen.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InvestorsTab({
+  matches,
+  rows,
+  total,
+}: {
+  matches: MatchRow[] | null;
+  rows: Row[];
+  total: number;
+}) {
+  const weightWith = (m: MatchRow) => {
     if (total <= 0) return null;
-    const w = withValue
+    const w = rows
       .filter((r) => m.sharedTickers.includes(r.ticker.toUpperCase()))
       .reduce((a, r) => a + (r.value ?? 0), 0);
     return w / total;
   };
 
+  if (!matches) return <div className="lcard p-8 text-center text-sm text-subtle">Wird geladen …</div>;
+  if (matches.length === 0)
+    return (
+      <div className="lcard p-8 text-center text-sm text-subtle">
+        Keiner der verfolgten Investoren hält aktuell eine deiner Positionen. Das muss nichts
+        Schlechtes heißen — Fonds melden ihre Bestände nur quartalsweise und oft mit Verzögerung.
+      </div>
+    );
+
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
-          {liveCount > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
-              <span className="animate-live h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Live-Kurse
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-subtle">
-          Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
-          Gespeichert wird nur lokal in deinem Browser.
-        </p>
-      </div>
-
-      {/* Import */}
-      <div className="rounded-2xl bg-card p-4 shadow-card">
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="btn-primary"
-          >
-            CSV hochladen
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.txt,text/csv,text/plain"
-            className="hidden"
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
-          />
-          <form onSubmit={onAdd} className="flex flex-wrap items-center gap-2">
-            <input
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              placeholder="Ticker (AAPL)"
-              className="w-32 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
-            />
-            <input
-              value={shares}
-              onChange={(e) => setShares(e.target.value)}
-              placeholder="Stück"
-              className="w-24 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
-            />
-            <input
-              value={buyPrice}
-              onChange={(e) => setBuyPrice(e.target.value)}
-              placeholder="Kaufpreis $ (optional)"
-              className="w-40 rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none focus:border-brand"
-            />
-            <button className="press-sm rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
-              + Hinzufügen
-            </button>
-          </form>
-          {holdings.length > 0 && (
-            <div className="ml-auto flex items-center gap-3">
-              <button onClick={exportCsv} className="text-xs text-subtle underline hover:text-brand">
-                CSV exportieren
-              </button>
-              <button
-                onClick={() => clearHoldings()}
-                className="text-xs text-subtle underline hover:text-bear"
-              >
-                Alle löschen
-              </button>
-            </div>
-          )}
-        </div>
-        <p className="mt-2 text-[11px] text-subtle">
-          CSV-Format: eine Zeile pro Position — <span className="font-mono">TICKER,Anzahl</span>{" "}
-          (optional dritte Spalte Kaufpreis in USD). Beispiel:{" "}
-          <span className="font-mono">AAPL,10,180</span>. Auch mit Semikolon möglich.
-        </p>
-        {csvMsg && <p className="mt-1 text-xs font-medium text-brand">{csvMsg}</p>}
-      </div>
-
-      {holdings.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-hair bg-white/50 p-8 text-center text-sm text-subtle">
-          <span className="font-medium text-ink">Noch keine Positionen.</span> Lade eine CSV hoch
-          oder füge oben deine erste Aktie hinzu.
-        </div>
-      )}
-
-      {holdings.length > 0 && (
-        <>
-          {/* Summary */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div className="text-lg font-semibold tracking-tight">{abbrevMoney(total || null)}</div>
-              <div className="mt-0.5 text-xs text-subtle">
-                Depotwert
-                {dayPctSum != null && (
-                  <span className={dayPctSum >= 0 ? "text-bull" : "text-bear"}>
-                    {" "}
-                    · {dayPctSum >= 0 ? "+" : ""}
-                    {(dayPctSum * 100).toFixed(2)} % heute
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div
-                className={`text-lg font-semibold tracking-tight ${
-                  perfPortfolio == null ? "" : perfPortfolio >= 0 ? "text-bull" : "text-bear"
-                }`}
-              >
-                {pct(perfPortfolio)}
-              </div>
-              <div className="mt-0.5 text-xs text-subtle">Dein Depot ({rangeLabel})</div>
-            </div>
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div
-                className={`text-lg font-semibold tracking-tight ${
-                  perfBench == null ? "" : perfBench >= 0 ? "text-bull" : "text-bear"
-                }`}
-              >
-                {pct(perfBench)}
-              </div>
-              <div className="mt-0.5 text-xs text-subtle">
-                {benchLabel} ({rangeLabel})
-              </div>
-            </div>
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              {plSum != null ? (
-                <>
-                  <div
-                    className={`text-lg font-semibold tracking-tight ${
-                      plSum >= 0 ? "text-bull" : "text-bear"
-                    }`}
-                  >
-                    {plSum >= 0 ? "+" : "-"}
-                    {abbrevMoney(Math.abs(plSum))}
-                  </div>
-                  <div className="mt-0.5 text-xs text-subtle">
-                    Gewinn/Verlust (auf {abbrevMoney(investedSum)} Einstand)
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-lg font-semibold tracking-tight">{holdings.length}</div>
-                  <div className="mt-0.5 text-xs text-subtle">Positionen</div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {perfPortfolio != null && perfBench != null && (
-            <div
-              className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
-                perfPortfolio >= perfBench
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "bg-rose-50 text-rose-700"
-              }`}
+    <div className="space-y-4">
+      <div className="lcard overflow-hidden">
+        {matches.map((m) => {
+          const uw = weightWith(m);
+          return (
+            <Link
+              key={m.slug}
+              href={`/investor/${m.slug}`}
+              className="flex items-center gap-3 border-b border-hair px-4 py-3.5 transition last:border-0 hover:bg-slate-50"
             >
-              {perfPortfolio >= perfBench
-                ? `Dein Depot schlägt den ${benchLabel} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (${rangeLabel}, heutige Stückzahlen).`
-                : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${benchLabel} (${rangeLabel}, heutige Stückzahlen).`}
-            </div>
-          )}
-
-          {/* Wertentwicklung + Allokation */}
-          <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-semibold">Wertentwicklung</span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
-                    {BENCH_CHOICES.map((c, i) => (
-                      <button
-                        key={c.label}
-                        onClick={() => setBenchIdx(i)}
-                        className={`press-sm rounded-full px-2.5 py-1 ${
-                          benchIdx === i ? "bg-white text-ink shadow-card" : "text-subtle"
-                        }`}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
-                    {RANGES.map(([label], i) => (
-                      <button
-                        key={label}
-                        onClick={() => setRange(i)}
-                        className={`press-sm rounded-full px-2.5 py-1 ${
-                          range === i ? "bg-white text-ink shadow-card" : "text-subtle"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+              <Avatar name={m.person ?? m.fund} size={44} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">{m.person ?? m.fund}</div>
+                <div className="truncate text-xs text-subtle">
+                  {m.sharedCount} gemeinsame {m.sharedCount === 1 ? "Aktie" : "Aktien"}:{" "}
+                  {m.sharedTickers.slice(0, 5).join(", ")}
+                  {m.sharedTickers.length > 5 ? " …" : ""}
                 </div>
               </div>
-              <CompareChart
-                a={seriesR}
-                b={benchR}
-                labelA="Dein Depot"
-                labelB={benchR ? benchLabel : null}
-              />
-            </div>
-            <div className="rounded-2xl bg-card p-4 shadow-card">
-              <div className="mb-1 text-sm font-semibold">Allokation</div>
-              <div className="flex items-center justify-center">
-                <Donut
-                  segments={donutSegs}
-                  size={170}
-                  centerTop={abbrevMoney(total || null)}
-                  centerBottom="Depotwert"
-                />
+              <div className="text-right">
+                <div className="text-sm font-semibold tabular-nums">
+                  {uw != null ? `${(uw * 100).toFixed(0)} %` : "—"}
+                </div>
+                <div className="text-[11px] text-subtle">deines Depots</div>
               </div>
-              <div className="mt-2 space-y-1">
-                {donutSegs.map((s) => (
-                  <div key={s.label} className="flex items-center gap-2 text-xs">
-                    <span
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: s.color }}
-                    />
-                    <span className="truncate">{s.label}</span>
-                    <span className="ml-auto font-medium text-subtle">
-                      {total > 0 ? ((s.value / total) * 100).toFixed(1) : "0"} %
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+              <span className="text-slate-300">›</span>
+            </Link>
+          );
+        })}
+      </div>
+      <Collapse title="Wie wird die Überschneidung berechnet?">
+        <p className="text-sm text-subtle">
+          Wir vergleichen deine Ticker mit den zuletzt gemeldeten 13F-Beständen der verfolgten
+          Investoren. „% deines Depots“ ist der Anteil deines Depotwerts, der in Aktien steckt, die
+          dieser Investor ebenfalls hält. Weil 13F-Meldungen bis zu 45 Tage nach Quartalsende
+          erscheinen, ist das immer ein Blick in den Rückspiegel — und Leerverkäufe sowie
+          ausländische Papiere tauchen dort gar nicht auf.
+        </p>
+      </Collapse>
+    </div>
+  );
+}
 
-          <AllocationBar holdings={allocRows} />
+function AssumedHint({ n, onGo }: { n: number; onGo: () => void }) {
+  return (
+    <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-100">
+      <span className="font-semibold">
+        {n} {n === 1 ? "Position hat" : "Positionen haben"} kein Kaufdatum.
+      </span>{" "}
+      Sie werden als „seit Beginn des Charts gehalten“ gerechnet. Ergänze Datum und Kaufkurs, dann
+      stimmen auch IZF und Jahresrenditen.{" "}
+      <button onClick={onGo} className="underline hover:no-underline">
+        Zu den Aktivitäten
+      </button>
+    </div>
+  );
+}
 
-          {/* Holdings table */}
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold tracking-tight">Positionen</h2>
-            <div className="overflow-hidden rounded-2xl bg-card shadow-card">
-              {sortedRows.map((r) => {
-                const company = companyName(r.ticker, null);
-                const w = r.value != null && total > 0 ? (r.value / total) * 100 : null;
-                return (
-                  <div
-                    key={r.ticker}
-                    className="flex items-center gap-3 border-b border-hair px-4 py-3 last:border-0"
-                  >
-                    <CompanyLogo ticker={r.ticker} company={company} size={38} />
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/stock/${r.ticker}`}
-                        className="block truncate text-sm font-medium hover:text-brand"
-                      >
-                        {company}
-                      </Link>
-                      <div className="font-mono text-xs text-subtle">
-                        {fixTicker(r.ticker, company)} · {r.shares.toLocaleString("de-DE")} St.
-                        {r.last != null ? ` · ${price(r.last)}` : ""}
-                        {r.buyPrice ? ` · Einstand ${price(r.buyPrice)}` : ""}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold">
-                        {r.value != null ? abbrevMoney(r.value) : "keine Kursdaten"}
-                      </div>
-                      <div className="text-xs text-subtle">
-                        {w != null ? `${w.toFixed(1)} %` : "—"}
-                        {r.dayPct != null && (
-                          <span className={r.dayPct >= 0 ? "text-bull" : "text-bear"}>
-                            {" "}
-                            · heute {r.dayPct >= 0 ? "+" : ""}
-                            {(r.dayPct * 100).toFixed(2)} %
-                          </span>
-                        )}
-                        {r.plPct != null && r.plAbs != null && (
-                          <span className={r.plPct >= 0 ? "text-bull" : "text-bear"}>
-                            {" "}
-                            · {pct(r.plPct)} ({r.plAbs >= 0 ? "+" : "-"}
-                            {abbrevMoney(Math.abs(r.plAbs))})
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => removeHolding(r.ticker)}
-                      aria-label="Entfernen"
-                      className="shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            {noPriceCount > 0 && (
-              <p className="text-[11px] text-subtle">
-                Für {noPriceCount} {noPriceCount === 1 ? "Position" : "Positionen"} haben wir keine
-                Kursdaten — wir führen Kurse für die US-Aktien, die von den verfolgten Investoren
-                gehalten werden.
-              </p>
-            )}
-          </section>
-
-          {/* Investor match */}
-          {matches && matches.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Welche Investoren dir ähneln
-              </h2>
-              <div className="overflow-hidden rounded-2xl bg-card shadow-card">
-                {matches.map((m) => {
-                  const uw = userWeightWith(m);
-                  return (
-                    <Link
-                      key={m.slug}
-                      href={`/investor/${m.slug}`}
-                      className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-slate-50"
-                    >
-                      <Avatar name={m.person ?? m.fund} size={40} />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold">{m.person ?? m.fund}</div>
-                        <div className="truncate text-xs text-subtle">
-                          {m.sharedCount} gemeinsame {m.sharedCount === 1 ? "Aktie" : "Aktien"}:{" "}
-                          {m.sharedTickers.slice(0, 4).join(", ")}
-                          {m.sharedTickers.length > 4 ? "…" : ""}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold">
-                          {uw != null ? `${(uw * 100).toFixed(0)} %` : "—"}
-                        </div>
-                        <div className="text-xs text-subtle">deines Depots</div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-subtle">
-                „% deines Depots“ = Anteil deines Depotwerts in Aktien, die dieser Investor
-                ebenfalls hält.
-              </p>
-            </section>
-          )}
-        </>
-      )}
+function Check({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <div className="flex items-start gap-2">
+      <span
+        className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
+          ok ? "bg-emerald-500" : "bg-amber-400"
+        }`}
+      >
+        {ok ? "✓" : "!"}
+      </span>
+      <span className={ok ? "text-subtle" : "text-ink"}>{text}</span>
     </div>
   );
 }

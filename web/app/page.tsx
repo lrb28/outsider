@@ -9,7 +9,7 @@ import { SkeletonList } from "@/components/Skeleton";
 import { TradeDetailModal } from "@/components/TradeDetailModal";
 import { Watchlist } from "@/components/Watchlist";
 import { abbrevMoney, companyName, investorPerson, pct, signalLabel } from "@/lib/format";
-import { getMyHoldings } from "@/lib/myportfolio";
+import { getTxns, positionsFrom } from "@/lib/portfolio";
 import {
   CollectionItem,
   DiscoverData,
@@ -170,7 +170,7 @@ export default function HomePage() {
       })
       .finally(() => setLoading(false));
 
-    const hs = getMyHoldings();
+    const hs = positionsFrom(getTxns()).filter((p) => p.shares > 0);
     setDepotCount(hs.length);
     if (hs.length > 0) {
       fetch(`/api/match?tickers=${encodeURIComponent(hs.map((h) => h.ticker).join(","))}`)
