@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -12,8 +12,11 @@ import { fetchJson } from "@/lib/fetchJson";
 import { ImportReport, importCsv, summarize } from "@/lib/brokers";
 import {
   Resolution,
+  getManualPrices,
   getResolveCache,
   getUserMap,
+  priceMismatch,
+  setManualPrice,
   isIsin,
   mergeResolveCache,
   resolveInstrument,
@@ -44,6 +47,7 @@ import {
   convertBars,
   correlation,
   dailyReturns,
+  dayDiff,
   drawdownSeries,
   extremeDays,
   getTxns,
@@ -302,7 +306,7 @@ export default function MePage() {
     let on = true;
     setLoadingHist(true);
     fetchJson<{ entries: Record<string, HistoryEntry> }>(
-      `/api/history?tickers=${encodeURIComponent(need.join(","))}&range=10y`,
+      `/api/history?tickers=${encodeURIComponent(need.join(","))}&range=6y`,
     )
       .then((d) => on && setHist((p) => ({ ...p, ...d.entries })))
       .catch(() => {
@@ -324,19 +328,25 @@ export default function MePage() {
   const fxBars = fxPair ? hist[fxPair]?.bars ?? null : null;
   const fxNow = lastFx(fxBars);
 
-  /** Rechnet eine Kursreihe in die Depotwährung um — je nach Notierung. */
-  const toDepot = useMemo(() => {
-    return (symbol: string): Bar[] => {
-      const e = hist[symbol];
-      if (!e || e.bars.length === 0) return [];
+  /**
+   * Alle Kursreihen einmalig in die Depotwährung umgerechnet.
+   *
+   * Vorher war das eine Funktion, die bei jedem Rendern für jede Serie ein
+   * neues Array mit tausenden Objekten erzeugt hat — bei einem Depot mit 50
+   * Papieren sind das über 100.000 Objekte pro Rendervorgang. Genau daran ist
+   * der Browser erstickt. Jetzt wird nur noch nachgeschlagen.
+   */
+  const depotBars = useMemo(() => {
+    const m = new Map<string, Bar[]>();
+    for (const [sym, e] of Object.entries(hist)) {
+      if (!e || !e.bars || e.bars.length === 0) continue;
       const q = (e.currency ?? "USD").toUpperCase();
-      if (q === currency) return e.bars;
-      if (q === "USD" && fxBars) return convertBars(e.bars, fxBars);
-      // Britische Notierungen stehen in Pence.
-      if (q === "GBP" || q === "GBX") return e.bars;
-      return e.bars;
-    };
+      m.set(sym, q !== currency && q === "USD" && fxBars ? convertBars(e.bars, fxBars) : e.bars);
+    }
+    return m;
   }, [hist, currency, fxBars]);
+
+  const toDepot = useCallback((symbol: string): Bar[] => depotBars.get(symbol) ?? [], [depotBars]);
 
   const quotes = useQuotes(symbols);
 
@@ -397,19 +407,26 @@ export default function MePage() {
 
   const series = useMemo(() => buildSeries(normTxns, barsByTicker), [normTxns, barsByTicker]);
 
-  /** Alle offenen Positionen samt Auflösung und Live-Kurs. */
+  /** Alle offenen Positionen samt Auflösung, Live-Kurs und Plausibilitätsprüfung. */
   const allRows = useMemo(() => {
+    const manual = getManualPrices();
+    const today = new Date().toISOString().slice(0, 10);
     return openPositions.map((p) => {
       const res = resolutions.get(p.ticker);
       const symbol = res?.symbol ?? null;
+      const manualPrice = manual[p.ticker] ?? null;
       const q = symbol ? quotes[symbol.toUpperCase()] : undefined;
       const bars = barsByTicker[p.ticker];
       const eod = bars && bars.length ? bars[bars.length - 1].close : null;
       // Live-Kurs notiert in der Kurswährung — in die Depotwährung umrechnen.
       const qCur = (q?.currency ?? "USD").toUpperCase();
       const live = q ? (qCur === currency ? q.price : qCur === "USD" ? q.price / fxNow : q.price) : null;
-      const last = live ?? eod;
+      const last = manualPrice ?? live ?? eod;
       const value = last != null ? p.shares * last : null;
+      // Passt der Kurs überhaupt zum Einstand? Eine falsch aufgelöste ISIN
+      // erzeugt sonst lautlos eine Rendite von mehreren hundert Prozent.
+      const heldYears = p.firstDate ? Math.max(0.2, dayDiff(p.firstDate, today) / 365.25) : 1;
+      const mismatch = manualPrice ? null : priceMismatch(p.avgPrice, last, heldYears);
       const unreal = value != null ? value - p.costBasis : null;
       const unrealPct = value != null && p.costBasis > 0 ? value / p.costBasis - 1 : null;
       const dayPct = q?.changePct ?? null;
@@ -427,6 +444,8 @@ export default function MePage() {
         ...p,
         symbol,
         resolution: res ?? null,
+        manualPrice,
+        mismatch,
         last,
         value,
         unreal,
@@ -442,14 +461,18 @@ export default function MePage() {
   }, [openPositions, quotes, barsByTicker, hist, resolutions, meta, currency, fxNow]);
 
   /** Bewertbar = Kurs vorhanden. Der Rest darf die Kennzahlen nicht verfälschen. */
+  // Restbestände unter einem halben Euro sind Rundungsreste aus Teilverkäufen
+  // und würden die Prozentwerte nur verzerren.
+  const DUST_VALUE = 0.5;
   const rows = useMemo(
-    () => allRows.filter((r) => r.value !== null && Math.abs(r.value) >= 0.01),
+    () => allRows.filter((r) => r.value !== null && Math.abs(r.value) >= DUST_VALUE),
     [allRows],
   );
-  const openIssues = useMemo(
-    () => allRows.filter((r) => r.value === null || Math.abs(r.value) < 0.01),
+  const dustRows = useMemo(
+    () => allRows.filter((r) => r.value !== null && Math.abs(r.value) < DUST_VALUE),
     [allRows],
   );
+  const openIssues = useMemo(() => allRows.filter((r) => r.value === null), [allRows]);
 
   const total = rows.reduce((a, r) => a + (r.value ?? 0), 0);
   const costTotal = rows.reduce((a, r) => a + r.costBasis, 0);
@@ -457,6 +480,13 @@ export default function MePage() {
   const realizedTotal = positions.reduce((a, p) => a + p.realized, 0);
   const feesTotal = positions.reduce((a, p) => a + p.fees, 0);
   const noPrice = openIssues.length;
+
+  /** Hat der Export echte Ein- und Auszahlungen? Dann ist das die bessere Bezugsgröße. */
+  const hasCashFlows = useMemo(
+    () => txns.some((t) => t.kind === "deposit" || t.kind === "withdrawal"),
+    [txns],
+  );
+  const depositedNet = series.length ? series[series.length - 1].deposited : 0;
 
   const dayAbsSum = rows.reduce((a, r) => a + (r.dayAbs ?? 0), 0);
   const dayBase = rows.reduce((a, r) => a + (r.value ?? 0) - (r.dayAbs ?? 0), 0);
@@ -536,22 +566,45 @@ export default function MePage() {
     };
   }, [keys, resolutions, hist, normTxns, rows, total, currency, fxNow]);
 
-  const manualDividends = positions.reduce((a, p) => a + p.dividends, 0);
-  const dividendsTotal = Math.max(divInfo.received, manualDividends);
+  // Aus dem Broker importierte Dividenden sind die Wahrheit; die Rekonstruktion
+  // aus der Ausschüttungshistorie ist nur der Ersatz, wenn nichts importiert wurde.
+  const bookedDividends = positions.reduce((a, p) => a + p.dividends, 0);
+  const dividendsBooked = bookedDividends > 0;
+  const dividendsTotal = dividendsBooked ? bookedDividends : divInfo.received;
   const gainTotal = unrealTotal + realizedTotal + dividendsTotal;
+  // Bezugsgröße für die Gesamtrendite: was wirklich eingesetzt wurde.
+  const gainBase = hasCashFlows && depositedNet > 0 ? depositedNet : costTotal;
+
+  /**
+   * Dividenden je Papier — auch für längst verkaufte Positionen. Die
+   * Positionsliste zeigt nur offene Werte; die Dividenden davor gehören
+   * trotzdem in die Auswertung.
+   */
+  const dividendsByTicker = useMemo(() => {
+    const m = new Map<string, { name: string; amount: number; open: boolean }>();
+    for (const p of positions) {
+      if (p.dividends <= 0) continue;
+      m.set(p.ticker, {
+        name: meta.get(p.ticker)?.name || p.ticker,
+        amount: p.dividends,
+        open: p.shares > DUST,
+      });
+    }
+    return [...m.entries()]
+      .map(([ticker, v]) => ({ ticker, ...v }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [positions, meta]);
 
   // ── Zeitraum-Zuschnitt + Live-Endpunkt ────────────────────────────────────
   const seriesR = useMemo(() => {
     const cut = cutoffFor(range, series);
     const s = series.filter((p) => p.date >= cut);
-    const use = s.length > 2 ? s : series;
-    if (use.length === 0 || total <= 0) return use;
-    // Letzten Punkt auf den Live-Depotwert heben, damit Chart und Kennzahl
-    // dieselbe Zahl zeigen.
-    const copy = [...use];
-    copy[copy.length - 1] = { ...copy[copy.length - 1], value: total };
-    return copy;
-  }, [series, range, total]);
+    return s.length > 2 ? s : series;
+    // Bewusst OHNE den Live-Depotwert am Ende: die Zeitreihe bleibt auf
+    // Schlusskursen. Sonst entsteht am letzten Tag ein Sprung zwischen zwei
+    // unterschiedlichen Bewertungsquellen — und der taucht dann als
+    // "bester Tag +15 %" in den Kennzahlen auf.
+  }, [series, range]);
 
   const bench = BENCHMARKS[benchIdx];
   const benchBarsFull = toDepot(bench.key);
@@ -630,10 +683,13 @@ export default function MePage() {
       },
       {
         key: "invested",
-        label: "Zugeführtes Kapital",
+        label: hasCashFlows ? "Netto eingezahlt" : "In Wertpapieren gebunden",
         color: "#94a3b8",
         step: true,
-        points: seriesR.map((p) => ({ date: p.date, value: p.invested })),
+        points: seriesR.map((p) => ({
+          date: p.date,
+          value: hasCashFlows ? p.deposited : p.invested,
+        })),
       },
     ];
     if (benchR.length > 1 && seriesR[0].value > 0) {
@@ -646,7 +702,7 @@ export default function MePage() {
       });
     }
     return out;
-  }, [seriesR, benchR, mode, bench.label]);
+  }, [seriesR, benchR, mode, bench.label, hasCashFlows]);
 
   // ── Aufteilungen ──────────────────────────────────────────────────────────
   const groupSegs = (pick: (t: string) => string, colors: Record<string, string>): Segment[] => {
@@ -796,8 +852,14 @@ export default function MePage() {
                   label="Gewinn gesamt"
                   value={signed(gainTotal)}
                   tone={tone(gainTotal)}
-                  sub={costTotal > 0 ? pct2(gainTotal / costTotal) : undefined}
-                  hint="Kursgewinn + realisierte Gewinne + Dividenden"
+                  sub={
+                    gainBase > 0
+                      ? `${pct2(gainTotal / gainBase)} auf ${cAbbrev(gainBase)} ${
+                          hasCashFlows ? "eingezahlt" : "Einstand"
+                        }`
+                      : undefined
+                  }
+                  hint="Kursgewinn der offenen Positionen + realisierte Gewinne + Dividenden"
                 />
                 <Kpi
                   label="Kursgewinn (offen)"
@@ -810,7 +872,7 @@ export default function MePage() {
                   label="Dividenden"
                   value={abbrevMoney(dividendsTotal || null)}
                   tone={dividendsTotal > 0 ? "bull" : null}
-                  sub="erhalten (geschätzt)"
+                  sub={dividendsBooked ? "laut deinen Buchungen" : "geschätzt"}
                 />
                 <Kpi
                   label="Realisiert"
@@ -845,7 +907,7 @@ export default function MePage() {
                 </div>
               )}
 
-              <TopMovers rows={rows} />
+              <TopMovers rows={rows} loading={liveCount === 0} />
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" warnAbove={0.3} />
@@ -879,6 +941,14 @@ export default function MePage() {
               <PositionsTable rows={rows} total={total} onRemove={(t) => removeTicker(t)} />
               {openIssues.length > 0 && (
                 <UnpricedPanel rows={openIssues} resolving={resolving} onRemove={(t) => removeTicker(t)} />
+              )}
+              {dustRows.length > 0 && (
+                <p className="text-[11px] text-subtle">
+                  {dustRows.length}{" "}
+                  {dustRows.length === 1 ? "Restbestand" : "Restbestände"} unter {cAbbrev(0.5)} (
+                  {dustRows.map((r) => r.company).join(", ")}) werden ausgeblendet — das sind
+                  Rundungsreste aus Teilverkäufen, die die Prozentwerte sonst verzerren.
+                </p>
               )}
             </>
           )}
@@ -1007,7 +1077,12 @@ export default function MePage() {
 
           {/* ── Dividenden ──────────────────────────────────────────────── */}
           {tab === "dividends" && (
-            <DividendsTab info={divInfo} total={total} manual={manualDividends} />
+            <DividendsTab
+              info={divInfo}
+              total={total}
+              booked={dividendsBooked ? bookedDividends : 0}
+              perTicker={dividendsByTicker}
+            />
           )}
 
           {/* ── Aktivitäten ─────────────────────────────────────────────── */}
@@ -1129,11 +1204,7 @@ function ChartCard({
   );
 }
 
-function TopMovers({
-  rows,
-}: {
-  rows: Row[];
-}) {
+function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
   const day = rows.filter((r) => r.dayPct !== null).sort((a, b) => (b.dayPct ?? 0) - (a.dayPct ?? 0));
   const all = rows.filter((r) => r.unrealPct !== null).sort((a, b) => (b.unrealPct ?? 0) - (a.unrealPct ?? 0));
   if (day.length === 0 && all.length === 0) return null;
@@ -1173,7 +1244,13 @@ function TopMovers({
             </Link>
           );
         })}
-        {items.length === 0 && <div className="text-sm text-subtle">Keine Daten.</div>}
+        {items.length === 0 && (
+          <div className="text-sm text-subtle">
+            {loading
+              ? "Kurse werden geladen …"
+              : "Noch keine Tagesveränderung — die Börse hat seit dem letzten Schlusskurs nicht gehandelt."}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1206,6 +1283,10 @@ type Row = {
   /** Aufgelöstes Börsenkürzel für Kurse, Logo und Verlinkung. */
   symbol: string | null;
   resolution: Resolution | null;
+  /** Vom Nutzer eingetragener Kurs für nicht handelbare Papiere. */
+  manualPrice: number | null;
+  /** Warnung, wenn Kurs und Einstand nicht zusammenpassen können. */
+  mismatch: string | null;
   company: string;
   assetClass: string;
   shares: number;
@@ -1321,6 +1402,19 @@ function PositionsTable({
                             {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.
                             {r.avgPrice ? ` · Ø ${usd(r.avgPrice)}` : ""}
                           </div>
+                          {r.manualPrice != null && (
+                            <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-subtle">
+                              Kurs manuell gesetzt
+                            </span>
+                          )}
+                          {r.mismatch && (
+                            <span
+                              className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-100"
+                              title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}
+                            >
+                              ⚠ Zuordnung prüfen — {r.mismatch}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -1457,7 +1551,8 @@ function BenchmarkTable({
 function DividendsTab({
   info,
   total,
-  manual,
+  booked,
+  perTicker,
 }: {
   info: {
     received: number;
@@ -1479,19 +1574,24 @@ function DividendsTab({
     yieldOnCost: number | null;
   };
   total: number;
-  manual: number;
+  /** Summe der tatsächlich importierten Dividendenbuchungen (0 = keine da). */
+  booked: number;
+  /** Dividenden je Papier — inklusive längst verkaufter Positionen. */
+  perTicker: { ticker: string; name: string; amount: number; open: boolean }[];
 }) {
   const months = [...info.byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-24);
   const maxM = Math.max(...months.map(([, v]) => v), 1);
+  const receivedTotal = booked > 0 ? booked : info.received;
+  const closed = perTicker.filter((x) => !x.open);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi
           label="Erhalten (gesamt)"
-          value={abbrevMoney(Math.max(info.received, manual) || null)}
-          tone={info.received > 0 ? "bull" : null}
-          sub="aus Ausschüttungshistorie"
+          value={abbrevMoney(receivedTotal || null)}
+          tone={receivedTotal > 0 ? "bull" : null}
+          sub={booked > 0 ? "laut deinen Buchungen" : "aus Ausschüttungshistorie"}
         />
         <Kpi
           label="Erwartet nächste 12 M"
@@ -1513,7 +1613,7 @@ function DividendsTab({
         />
       </div>
 
-      {info.forecast === 0 && info.received === 0 && (
+      {info.forecast === 0 && receivedTotal === 0 && (
         <div className="lcard p-8 text-center text-sm text-subtle">
           Für deine Positionen sind keine Ausschüttungen bekannt — viele Wachstumswerte und ETFs
           thesaurieren oder zahlen schlicht keine Dividende.
@@ -1528,10 +1628,14 @@ function DividendsTab({
           </p>
           <div className="flex h-32 items-end gap-1">
             {months.map(([m, v]) => (
-              <div key={m} className="group relative flex-1" title={`${m}: ${abbrevMoney(v)}`}>
+              <div
+                key={m}
+                className="group relative flex h-full flex-1 items-end"
+                title={`${m}: ${abbrevMoney(v)}`}
+              >
                 <div
                   className="w-full rounded-t bg-gradient-to-t from-emerald-400 to-emerald-500 transition-all group-hover:from-emerald-500 group-hover:to-emerald-600"
-                  style={{ height: `${Math.max(3, (v / maxM) * 100)}%` }}
+                  style={{ height: `${Math.max(4, (v / maxM) * 100)}%` }}
                 />
               </div>
             ))}
@@ -1601,10 +1705,39 @@ function DividendsTab({
         </div>
       )}
 
+      {closed.length > 0 && (
+        <Collapse
+          title={`Dividenden aus verkauften Positionen · ${closed.length}`}
+          right={
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-subtle">
+              {abbrevMoney(closed.reduce((a, x) => a + x.amount, 0))}
+            </span>
+          }
+        >
+          <div className="space-y-2">
+            {closed.map((x) => (
+              <div key={x.ticker} className="flex items-center gap-3 text-sm">
+                <span className="min-w-0 flex-1 truncate">{x.name}</span>
+                <span className="font-mono text-[11px] text-subtle">{x.ticker}</span>
+                <span className="w-24 text-right font-semibold tabular-nums">
+                  {abbrevMoney(x.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] text-subtle">
+            Diese Papiere hältst du nicht mehr. Die Ausschüttungen zählen trotzdem zu deinem
+            Gesamtertrag — sie fehlen nur in der Prognose oben, weil dafür kein Bestand mehr da ist.
+          </p>
+        </Collapse>
+      )}
+
       <p className="text-[11px] text-subtle">
+        {booked > 0
+          ? "„Erhalten“ stammt aus deinen importierten Dividendenbuchungen — netto nach Quellensteuer. "
+          : "„Erhalten“ ist aus der Ausschüttungshistorie und deiner damaligen Stückzahl rekonstruiert; Quellensteuer ist dabei nicht abgezogen. "}
         Die Prognose schreibt die Ausschüttungen der letzten zwölf Monate fort. Erhöhungen,
-        Kürzungen und Sonderdividenden sind darin nicht enthalten — es ist eine Orientierung, keine
-        Zusage. Quellensteuer ist nicht abgezogen.
+        Kürzungen und Sonderdividenden sind darin nicht enthalten — eine Orientierung, keine Zusage.
       </p>
     </div>
   );
@@ -1630,6 +1763,10 @@ function ActivityTab({
   const [price, setPrice] = useState("");
   const [amount, setAmount] = useState("");
   const [fee, setFee] = useState("");
+  // Bei über tausend Buchungen kostet es den Browser spürbar Speicher, alle
+  // Zeilen gleichzeitig im Dokument zu halten. Deshalb stückweise nachladen.
+  const [limit, setLimit] = useState(200);
+  const shown = useMemo(() => [...txns].reverse().slice(0, limit), [txns, limit]);
 
   const needsShares = kind === "buy" || kind === "sell";
   const needsTicker = kind !== "deposit" && kind !== "withdrawal";
@@ -1781,7 +1918,7 @@ function ActivityTab({
           )}
         </div>
         <div className="max-h-[32rem] overflow-y-auto">
-          {[...txns].reverse().map((t) => (
+          {shown.map((t) => (
             <div key={t.id} className="flex items-center gap-3 border-b border-hair px-5 py-2.5 last:border-0">
               <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${badge[t.kind]}`}>
                 {label[t.kind]}
@@ -1813,6 +1950,14 @@ function ActivityTab({
           ))}
           {txns.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-subtle">Noch keine Buchungen.</div>
+          )}
+          {shown.length < txns.length && (
+            <button
+              onClick={() => setLimit((n) => n + 200)}
+              className="press-sm w-full border-t border-hair px-5 py-3 text-sm font-medium text-brand hover:bg-slate-50"
+            >
+              Weitere 200 anzeigen ({txns.length - shown.length} übrig)
+            </button>
           )}
         </div>
       </div>
@@ -1956,7 +2101,16 @@ function UnpricedPanel({
   onRemove: (t: string) => void;
 }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
   const cost = rows.reduce((a, r) => a + r.costBasis, 0);
+
+  const saveManual = (r: Row) => {
+    const v = parseNum(priceDraft[r.ticker] ?? "");
+    if (Number.isFinite(v) && v > 0) {
+      setManualPrice(r.ticker, v);
+      setPriceDraft((d) => ({ ...d, [r.ticker]: "" }));
+    }
+  };
 
   return (
     <div className="lcard overflow-hidden">
@@ -1966,7 +2120,9 @@ function UnpricedPanel({
         </div>
         <p className="mt-1 text-[11px] text-subtle">
           Diese Papiere fließen bewusst nicht in Depotwert, Rendite und Aufteilung ein — lieber eine
-          Lücke als eine erfundene Zahl. Eingesetzt sind hier {cAbbrev(cost)}.
+          Lücke als eine erfundene Zahl. Eingesetzt sind hier {cAbbrev(cost)}. Für Optionsscheine
+          kannst du den aktuellen Kurs aus deinem Broker eintragen; die Position zählt dann normal
+          mit.
           {resolving && " Kürzel werden gerade gesucht …"}
         </p>
       </div>
@@ -1982,7 +2138,30 @@ function UnpricedPanel({
               </div>
             </div>
             {why ? (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-subtle">{why}</span>
+              // Optionsscheine und Privatmarkt-Anteile haben keinen öffentlichen
+              // Kurs — dafür kann der aktuelle Wert aus dem Broker übernommen
+              // werden. Klar als manuell gekennzeichnet.
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-subtle"
+                  title={why}
+                >
+                  {why.split(" — ")[0]}
+                </span>
+                <input
+                  value={priceDraft[r.ticker] ?? ""}
+                  onChange={(e) => setPriceDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && saveManual(r)}
+                  placeholder={`Kurs je Stück (${currencySymbol().trim()})`}
+                  className="w-40 rounded-full border border-hair bg-white px-3 py-1 text-sm outline-none focus:border-brand"
+                />
+                <button
+                  onClick={() => saveManual(r)}
+                  className="press-sm rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white hover:bg-slate-800"
+                >
+                  Wert setzen
+                </button>
+              </div>
             ) : (
               <div className="flex items-center gap-1.5">
                 <input

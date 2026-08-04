@@ -104,6 +104,27 @@ ok("NVIDIA-ISIN gültig", I.isinValid("US67066G1040"), "—", "true");
 ok("Tippfehler erkannt", !I.isinValid("US0378331006"), "—", "false");
 ok("Kürzel ist keine ISIN", !I.isIsin("AAPL"), "—", "false");
 
+// ── Plausibilitätsprüfung des Kurses ───────────────────────────────────────
+// Der zweitteuerste Fehler: eine ISIN wird der falschen Börsennotierung
+// zugeordnet. Der ETF, den man für 13 € gekauft hat, steht plötzlich bei 127 €
+// und meldet 861 % Gewinn. Das muss auffallen — echte Kursgewinne aber nicht.
+console.log("\nPlausibilität von Kurs und Einstand");
+{
+  const cases = [
+    ["falsch zugeordneter ETF (13,18 → 126,73 nach 2 J)", 13.18, 126.73, 2, true],
+    ["Palantir, echter Verlauf (33,38 → 141,01)", 33.38, 141.01, 3, false],
+    ["Microsoft, echter Verlauf (333,82 → 427,22)", 333.82, 427.22, 4, false],
+    ["Broadcom, echter Verlauf (155,14 → 362,50)", 155.14, 362.5, 3, false],
+    ["ETF nahe am Einstand (29,71 → 29,85)", 29.71, 29.85, 1, false],
+    ["echte Verzehnfachung über 8 Jahre", 10, 100, 8, false],
+    ["Kurs bricht auf 5 % ein", 100, 5, 2, true],
+  ];
+  for (const [name, avg, last, y, shouldWarn] of cases) {
+    const w = I.priceMismatch(avg, last, y);
+    ok(name, !!w === shouldWarn, w || "keine Warnung", shouldWarn ? "Warnung" : "keine Warnung");
+  }
+}
+
 // ── Währungsumrechnung ─────────────────────────────────────────────────────
 console.log("\nWährungsumrechnung");
 {

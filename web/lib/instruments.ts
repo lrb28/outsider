@@ -99,15 +99,13 @@ export const ISIN_TICKER: Record<string, string> = {
   GB0009252882: "GSK", DK0060534915: "NVO", SE0000108656: "ERIC",
   LU1778762911: "SPOT", IE00B4BNMY34: "ACN",
 
-  // ── ETFs (deutsche Notierung, damit die Währung zum Depot passt) ──────────
+  // ── ETFs ──────────────────────────────────────────────────────────────────
+  // Nur Papiere, bei denen die Zuordnung zweifelsfrei ist. Alles andere geht
+  // an die Yahoo-Suche: ein falsch zugeordneter ETF erzeugt sonst Kurse, die
+  // um den Faktor 10 danebenliegen — und damit erfundene Renditen.
   IE00B5BMR087: "SXR8.DE", // iShares Core S&P 500 UCITS Acc
   IE00B53SZB19: "SXRV.DE", // iShares Nasdaq 100 UCITS Acc
   IE00B4L5Y983: "EUNL.DE", // iShares Core MSCI World UCITS Acc
-  IE00BK5BQT80: "VWCE.DE", // Vanguard FTSE All-World Acc
-  IE00B3RBWM25: "VGWL.DE", // Vanguard FTSE All-World Dist
-  IE00B3YCGJ38: "VUSA.DE", // Vanguard S&P 500 UCITS
-  IE00BKM4GZ66: "IS3N.DE", // iShares Core MSCI EM IMI
-  LU0290358497: "DBXN.DE",
 
   // ── Krypto ────────────────────────────────────────────────────────────────
   BTC: "BTC-USD", ETH: "ETH-USD", SOL: "SOL-USD", XRP: "XRP-USD",
@@ -136,6 +134,61 @@ export function unpriceableReason(
   if (/^(DE000[A-Z]{2}\d|CH\d{10})/.test(isin) && /\b(call|put|long|short|faktor)\b/.test(n))
     return "Optionsschein / Zertifikat — kein öffentlicher Kurs";
   return null;
+}
+
+/**
+ * Warnt, wenn der abgerufene Kurs nicht zum Einstand passen kann.
+ *
+ * Der teuerste Fehler beim Auflösen einer ISIN ist die falsche Notierung: ein
+ * ETF, den man für 13 € gekauft hat, wird plötzlich mit 127 € bewertet und
+ * meldet 861 % Gewinn. Ein echter Kursverlauf schafft so etwas selten in
+ * wenigen Jahren — ein Zuordnungsfehler immer.
+ */
+export function priceMismatch(
+  avgPrice: number | null,
+  lastPrice: number | null,
+  years: number,
+): string | null {
+  if (!avgPrice || !lastPrice || avgPrice <= 0 || lastPrice <= 0) return null;
+  const ratio = lastPrice / avgPrice;
+  // Grenze wächst mit der Haltedauer, aber langsam: 7,2× nach einem Jahr,
+  // 8,4× nach zwei, 15× nach acht Jahren. Ein Zuordnungsfehler liegt fast immer
+  // um den Faktor 10 daneben; eine echte Vervielfachung braucht Zeit.
+  const limit = Math.min(15, 6 * (1 + Math.max(0, years) / 5));
+  if (ratio > limit) return `Kurs ist ${ratio.toFixed(0)}× so hoch wie dein Einstand`;
+  if (ratio < 1 / limit) return `Kurs ist nur ${(ratio * 100).toFixed(1)} % deines Einstands`;
+  return null;
+}
+
+// ── Manuelle Kurse für nicht handelbare Papiere ─────────────────────────────
+//
+// Optionsscheine und Privatmarkt-Anteile haben keinen öffentlichen Kurs. Statt
+// sie dauerhaft auszublenden, kann der aktuelle Wert aus dem Broker eingetragen
+// werden — klar als manuell gekennzeichnet.
+
+const PRICE_KEY = "outsider:manualprice";
+
+export function getManualPrices(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(PRICE_KEY) || "{}");
+    if (!raw || typeof raw !== "object") return {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw)) if (typeof v === "number" && v > 0) out[k] = v;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function setManualPrice(key: string, price: number | null) {
+  if (typeof window === "undefined") return;
+  const m = getManualPrices();
+  const K = key.toUpperCase();
+  if (price && price > 0) m[K] = price;
+  else delete m[K];
+  window.localStorage.setItem(PRICE_KEY, JSON.stringify(m));
+  window.dispatchEvent(new CustomEvent("mydepot"));
 }
 
 // ── Benutzer-Zuordnungen (localStorage) ─────────────────────────────────────

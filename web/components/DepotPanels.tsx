@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Donut } from "@/components/Donut";
-import { abbrevMoney } from "@/lib/format";
+import { cAbbrev as abbrevMoney } from "@/lib/money";
 
 // ── Kennzahlen-Kachel ───────────────────────────────────────────────────────
 

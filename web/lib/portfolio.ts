@@ -542,8 +542,14 @@ export interface SeriesPoint {
   date: string;
   /** Kurswert aller Positionen. */
   value: number;
-  /** Netto zugeführtes Kapital (Käufe − Verkäufe, kumuliert). */
+  /** Netto in Wertpapieren gebundenes Kapital (Käufe − Verkäufe, kumuliert). */
   invested: number;
+  /**
+   * Netto auf das Konto eingezahltes Geld (Einzahlungen − Auszahlungen).
+   * Anschaulicher als `invested`, weil es nicht negativ wird, sobald man mehr
+   * verkauft als gekauft hat.
+   */
+  deposited: number;
   /** Kumulierte Dividenden bis zu diesem Tag. */
   dividends: number;
   /** Externer Netto-Zufluss an genau diesem Tag (Käufe − Verkäufe). */
@@ -596,6 +602,7 @@ export function buildSeries(
   const sorted = sortTxns(txns);
   let ti = 0;
   let invested = 0;
+  let deposited = 0;
   let dividends = 0;
 
   const applyShares = (t: Txn) => {
@@ -611,6 +618,8 @@ export function buildSeries(
     if (t.kind === "buy") invested += t.shares * t.price + t.fee;
     else if (t.kind === "sell") invested -= t.shares * t.price - t.fee;
     else if (t.kind === "dividend") dividends += t.amount;
+    else if (t.kind === "deposit") deposited += t.amount;
+    else if (t.kind === "withdrawal") deposited -= t.amount;
   }
 
   const out: SeriesPoint[] = [];
@@ -638,6 +647,8 @@ export function buildSeries(
         invested -= c;
         flow -= c;
       } else if (t.kind === "dividend") dividends += t.amount;
+      else if (t.kind === "deposit") deposited += t.amount;
+      else if (t.kind === "withdrawal") deposited -= t.amount;
     }
 
     let value = 0;
@@ -646,7 +657,7 @@ export function buildSeries(
       const c = closes.get(tk);
       if (c !== undefined) value += s * c;
     }
-    out.push({ date: d, value, invested, dividends, flow });
+    out.push({ date: d, value, invested, deposited, dividends, flow });
   }
   return out;
 }
