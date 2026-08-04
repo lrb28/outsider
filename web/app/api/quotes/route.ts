@@ -16,7 +16,9 @@ export interface Quote {
 }
 
 const cache = new Map<string, { at: number; q: Quote }>();
-const TTL = 60_000;
+// 15 s: der Client fragt alle 20 s, der Cache darf also nicht länger halten,
+// sonst sieht man denselben Kurs zweimal.
+const TTL = 15_000;
 
 async function fetchQuote(ticker: string): Promise<Quote | null> {
   const hit = cache.get(ticker);

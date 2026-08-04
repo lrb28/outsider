@@ -554,6 +554,12 @@ export interface SeriesPoint {
   dividends: number;
   /** Externer Netto-Zufluss an genau diesem Tag (Käufe − Verkäufe). */
   flow: number;
+  /**
+   * Anzahl gehaltener Papiere ohne Kurs an diesem Tag. Ändert sich diese Zahl,
+   * springt der Depotwert aus reinen Datengründen — etwa weil die Kurshistorie
+   * eines ETFs erst später beginnt. Solche Tage dürfen nicht als Rendite zählen.
+   */
+  missing: number;
 }
 
 /**
@@ -652,12 +658,14 @@ export function buildSeries(
     }
 
     let value = 0;
+    let missing = 0;
     for (const [tk, s] of shares) {
       if (s <= 0) continue;
       const c = closes.get(tk);
       if (c !== undefined) value += s * c;
+      else missing++;
     }
-    out.push({ date: d, value, invested, deposited, dividends, flow });
+    out.push({ date: d, value, invested, deposited, dividends, flow, missing });
   }
   return out;
 }
@@ -675,6 +683,10 @@ export function dailyReturns(series: SeriesPoint[]): { date: string; r: number }
     const cur = series[i];
     const base = prev.value;
     if (base <= 0) continue;
+    // Ein Papier ist neu dazugekommen oder weggefallen, weil seine Kurshistorie
+    // dort beginnt bzw. endet. Der Wertsprung ist ein Datenartefakt, keine
+    // Rendite — sonst steht am Ende "bester Tag +16 %" im Depot.
+    if (cur.missing !== prev.missing) continue;
     const divGain = cur.dividends - prev.dividends;
     const r = (cur.value - cur.flow + divGain - base) / base;
     if (Number.isFinite(r) && r > -0.99 && r < 5) out.push({ date: cur.date, r });

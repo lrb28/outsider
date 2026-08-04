@@ -14,7 +14,9 @@ export interface Quote {
   t: number;
 }
 
-export function useQuotes(tickers: string[], intervalMs = 60_000) {
+// 20 Sekunden: nah genug an "live", ohne Yahoo zu überrennen. Der Abruf pausiert
+// automatisch, sobald der Tab im Hintergrund liegt.
+export function useQuotes(tickers: string[], intervalMs = 20_000) {
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const key = [...new Set(tickers.filter(Boolean).map((t) => t.toUpperCase()))]
     .sort()

@@ -97,6 +97,7 @@ export const ISIN_TICKER: Record<string, string> = {
   NL0010273215: "ASML", NL0011585146: "RACE", NL0000235190: "AIR.PA",
   CH0038863350: "NESN.SW", CH0012032048: "ROG.SW", CH0012005267: "NOVN.SW",
   GB0009252882: "GSK", DK0060534915: "NVO", SE0000108656: "ERIC",
+  USY384721251: "HYMTF", // Hyundai Motor GDR — außerbörslich in den USA
   LU1778762911: "SPOT", IE00B4BNMY34: "ACN",
 
   // ── ETFs ──────────────────────────────────────────────────────────────────
@@ -106,6 +107,12 @@ export const ISIN_TICKER: Record<string, string> = {
   IE00B5BMR087: "SXR8.DE", // iShares Core S&P 500 UCITS Acc
   IE00B53SZB19: "SXRV.DE", // iShares Nasdaq 100 UCITS Acc
   IE00B4L5Y983: "EUNL.DE", // iShares Core MSCI World UCITS Acc
+  IE00B3YCGJ38: "SPXS.DE", // Invesco S&P 500 UCITS Acc — notiert bei ~13 €
+  IE000SB4G4I4: "BCFP.DE", // Amundi Nasdaq-100 II UCITS Acc
+  IE000XZSV718: "500U.DE", // Amundi S&P 500 II UCITS Acc
+  LU1781541179: "LCUW.DE", // Amundi Core MSCI World UCITS Acc
+  LU1829221024: "ANX.DE", // Amundi Nasdaq-100 UCITS EUR Acc
+  IE00BLRPRL42: "QQQ3.L", // WisdomTree Nasdaq 100 3x — notiert in Pence
 
   // ── Krypto ────────────────────────────────────────────────────────────────
   BTC: "BTC-USD", ETH: "ETH-USD", SOL: "SOL-USD", XRP: "XRP-USD",

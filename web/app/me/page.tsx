@@ -6,6 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
+import { DivEntry, DividendChart, DividendSplit } from "@/components/DividendChart";
+import { LiveValue } from "@/components/LiveValue";
 import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
 import { companyName, fixTicker, formatDate, pct } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
@@ -576,6 +578,46 @@ export default function MePage() {
   const gainBase = hasCashFlows && depositedNet > 0 ? depositedNet : costTotal;
 
   /**
+   * Einzelne Ausschüttungen für die interaktive Grafik: Monat, Papier, Betrag.
+   * Bevorzugt aus den importierten Buchungen — die sind exakt und netto. Nur
+   * wenn keine vorliegen, wird aus der Ausschüttungshistorie rekonstruiert.
+   */
+  const divEntries: DivEntry[] = useMemo(() => {
+    const nameOf = (t: string) => meta.get(t)?.name || t;
+    const booked = normTxns.filter((t) => t.kind === "dividend" && t.date && t.amount > 0);
+    if (booked.length > 0) {
+      return booked.map((t) => ({
+        month: t.date.slice(0, 7),
+        ticker: t.ticker,
+        name: nameOf(t.ticker),
+        amount: t.amount,
+      }));
+    }
+    const out: DivEntry[] = [];
+    const today = new Date().toISOString().slice(0, 10);
+    for (const k of keys) {
+      const sym = resolutions.get(k)?.symbol;
+      const evs = sym ? hist[sym]?.dividends ?? [] : [];
+      if (evs.length === 0) continue;
+      const divCur = ((sym && hist[sym]?.currency) ?? "USD").toUpperCase();
+      const conv = divCur === currency ? 1 : divCur === "USD" ? 1 / fxNow : 1;
+      const tl = sharesTimeline(normTxns, k);
+      for (const e of evs) {
+        if (e.date > today) continue;
+        const sh = sharesAt(tl, e.date);
+        if (sh <= 0) continue;
+        out.push({
+          month: e.date.slice(0, 7),
+          ticker: k,
+          name: nameOf(k),
+          amount: sh * e.amount * conv,
+        });
+      }
+    }
+    return out;
+  }, [normTxns, keys, resolutions, hist, meta, currency, fxNow]);
+
+  /**
    * Dividenden je Papier — auch für längst verkaufte Positionen. Die
    * Positionsliste zeigt nur offene Werte; die Dividenden davor gehören
    * trotzdem in die Auswertung.
@@ -790,16 +832,19 @@ export default function MePage() {
           </div>
           {!empty && (
             <div className="mt-1 flex flex-wrap items-baseline gap-3">
-              <span className="text-3xl font-semibold tracking-tight tabular-nums">
-                {abbrevMoney(total || null)}
-              </span>
+              <LiveValue
+                value={total}
+                format={(v) => cMoney(v)}
+                className="text-3xl font-semibold tracking-tight"
+              />
               {dayPctSum != null && (
                 <span
                   className={`text-sm font-semibold tabular-nums ${
                     dayPctSum >= 0 ? "text-bull" : "text-bear"
                   }`}
                 >
-                  {signed(dayAbsSum)} ({pct2(dayPctSum)}) heute
+                  {dayAbsSum >= 0 ? "+" : "−"}
+                  {cMoney(Math.abs(dayAbsSum))} ({pct2(dayPctSum)}) heute
                 </span>
               )}
             </div>
@@ -910,12 +955,12 @@ export default function MePage() {
               <TopMovers rows={rows} loading={liveCount === 0} />
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" warnAbove={0.3} />
+                <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" />
                 <AllocView
                   segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
                   total={total}
                   title="Aufteilung nach Sektor"
-                  warnAbove={0.45}
+                 
                 />
               </div>
 
@@ -923,13 +968,12 @@ export default function MePage() {
               {noPrice > 0 && (
                 <button
                   onClick={() => setTab("positions")}
-                  className="press-sm w-full rounded-xl bg-amber-50 px-4 py-3 text-left text-sm text-amber-800 ring-1 ring-amber-100"
+                  className="press-sm w-full rounded-xl bg-slate-50 px-4 py-3 text-left text-sm text-subtle ring-1 ring-black/5 hover:bg-slate-100"
                 >
-                  <span className="font-semibold">
-                    {noPrice} {noPrice === 1 ? "Position wird" : "Positionen werden"} nicht bewertet
+                  <span className="font-semibold text-ink">
+                    {noPrice} {noPrice === 1 ? "Position ohne Kurs" : "Positionen ohne Kurs"}
                   </span>{" "}
-                  — Optionsscheine, Privatmarkt-Anteile oder Papiere ohne zugeordnetes Kürzel. Sie
-                  fließen bewusst nicht in Depotwert und Rendite ein. Jetzt ansehen und zuordnen ›
+                  — Optionsscheine und Privatmarkt-Anteile. Kurs eintragen und mitzählen lassen ›
                 </button>
               )}
             </>
@@ -1017,19 +1061,19 @@ export default function MePage() {
           {tab === "allocation" && (
             <>
               <div className="grid gap-4 lg:grid-cols-2">
-                <AllocView segments={posSegs} total={total} title="Nach Position" warnAbove={0.3} />
+                <AllocView segments={posSegs} total={total} title="Nach Position" />
                 <Concentration weights={weights} count={rows.length} />
                 <AllocView
                   segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
                   total={total}
                   title="Nach Sektor"
-                  warnAbove={0.45}
+                 
                 />
                 <AllocView
                   segments={groupSegs((t) => assetMeta(t).region, REGION_COLOR)}
                   total={total}
                   title="Nach Region"
-                  warnAbove={0.9}
+                 
                 />
                 <AllocView
                   segments={groupSegs((t) => assetMeta(t).assetClass, ASSET_COLOR)}
@@ -1082,6 +1126,7 @@ export default function MePage() {
               total={total}
               booked={dividendsBooked ? bookedDividends : 0}
               perTicker={dividendsByTicker}
+              entries={divEntries}
             />
           )}
 
@@ -1409,10 +1454,10 @@ function PositionsTable({
                           )}
                           {r.mismatch && (
                             <span
-                              className="mt-1 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-amber-100"
+                              className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-subtle"
                               title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}
                             >
-                              ⚠ Zuordnung prüfen — {r.mismatch}
+                              Zuordnung prüfen · {r.mismatch}
                             </span>
                           )}
                         </div>
@@ -1553,6 +1598,7 @@ function DividendsTab({
   total,
   booked,
   perTicker,
+  entries,
 }: {
   info: {
     received: number;
@@ -1578,9 +1624,9 @@ function DividendsTab({
   booked: number;
   /** Dividenden je Papier — inklusive längst verkaufter Positionen. */
   perTicker: { ticker: string; name: string; amount: number; open: boolean }[];
+  /** Einzelne Ausschüttungen für die interaktiven Grafiken. */
+  entries: DivEntry[];
 }) {
-  const months = [...info.byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-24);
-  const maxM = Math.max(...months.map(([, v]) => v), 1);
   const receivedTotal = booked > 0 ? booked : info.received;
   const closed = perTicker.filter((x) => !x.open);
 
@@ -1620,31 +1666,11 @@ function DividendsTab({
         </div>
       )}
 
-      {months.length > 0 && (
-        <div className="lcard p-5">
-          <div className="mb-1 text-sm font-semibold">Ausschüttungen je Monat</div>
-          <p className="mb-4 text-[11px] text-subtle">
-            Rekonstruiert aus der Ausschüttungshistorie und deiner damaligen Stückzahl.
-          </p>
-          <div className="flex h-32 items-end gap-1">
-            {months.map(([m, v]) => (
-              <div
-                key={m}
-                className="group relative flex h-full flex-1 items-end"
-                title={`${m}: ${abbrevMoney(v)}`}
-              >
-                <div
-                  className="w-full rounded-t bg-gradient-to-t from-emerald-400 to-emerald-500 transition-all group-hover:from-emerald-500 group-hover:to-emerald-600"
-                  style={{ height: `${Math.max(4, (v / maxM) * 100)}%` }}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="mt-1 flex justify-between text-[10px] text-subtle">
-            <span>{months[0]?.[0]}</span>
-            <span>{months[months.length - 1]?.[0]}</span>
-          </div>
-        </div>
+      {entries.length > 0 && (
+        <>
+          <DividendChart entries={entries} />
+          <DividendSplit entries={entries} />
+        </>
       )}
 
       {info.upcoming.length > 0 && (
@@ -2197,7 +2223,7 @@ function UnpricedPanel({
 
 function AssumedHint({ n, onGo }: { n: number; onGo: () => void }) {
   return (
-    <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-100">
+    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-subtle ring-1 ring-black/5">
       <span className="font-semibold">
         {n} {n === 1 ? "Position hat" : "Positionen haben"} kein Kaufdatum.
       </span>{" "}
@@ -2215,10 +2241,10 @@ function Check({ ok, text }: { ok: boolean; text: string }) {
     <div className="flex items-start gap-2">
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-          ok ? "bg-emerald-500" : "bg-amber-400"
+          ok ? "bg-emerald-500" : "bg-slate-300"
         }`}
       >
-        {ok ? "✓" : "!"}
+        {ok ? "✓" : "·"}
       </span>
       <span className={ok ? "text-subtle" : "text-ink"}>{text}</span>
     </div>

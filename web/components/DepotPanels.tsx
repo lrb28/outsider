@@ -57,6 +57,7 @@ export function AllocView({
   warnAbove?: number;
   emptyNote?: string;
 }) {
+  const [hover, setHover] = useState<number | null>(null);
   const sorted = [...segments].filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
   if (sorted.length === 0 || total <= 0) {
     return (
@@ -66,9 +67,10 @@ export function AllocView({
       </div>
     );
   }
-  const top = sorted[0];
-  const topShare = top.value / total;
-  const warn = warnAbove !== undefined && topShare > warnAbove;
+  const shown = sorted.slice(0, 8);
+  // Beim Überfahren zeigt die Mitte das ausgewählte Segment, sonst das größte.
+  const focus = hover !== null && shown[hover] ? shown[hover] : sorted[0];
+  const focusShare = focus.value / total;
 
   return (
     <div className="lcard p-5">
@@ -78,17 +80,32 @@ export function AllocView({
       </div>
 
       <div className="flex flex-col items-center gap-5 sm:flex-row">
-        <Donut
-          segments={sorted.slice(0, 8)}
-          size={150}
-          centerTop={`${(topShare * 100).toFixed(0)} %`}
-          centerBottom={top.label.length > 14 ? top.label.slice(0, 13) + "…" : top.label}
-        />
+        <div className="shrink-0">
+          <Donut
+            segments={shown}
+            size={150}
+            countTo={focusShare * 100}
+            countFormat={(v) => `${v.toFixed(0)} %`}
+            centerBottom={focus.label.length > 15 ? focus.label.slice(0, 14) + "…" : focus.label}
+            activeIndex={hover}
+            onHover={setHover}
+          />
+          <div className="mt-1 text-center text-xs font-semibold tabular-nums">
+            {abbrevMoney(focus.value)}
+          </div>
+        </div>
         <div className="w-full flex-1 space-y-1.5">
-          {sorted.slice(0, 8).map((s) => {
+          {shown.map((s, i) => {
             const p = (s.value / total) * 100;
+            const dim = hover !== null && hover !== i;
             return (
-              <div key={s.label} className="text-xs">
+              <div
+                key={s.label}
+                className="cursor-default rounded-lg px-1 py-0.5 text-xs transition-colors hover:bg-slate-50"
+                style={{ opacity: dim ? 0.45 : 1 }}
+                onMouseEnter={() => setHover(i)}
+                onMouseLeave={() => setHover(null)}
+              >
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -104,8 +121,12 @@ export function AllocView({
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${Math.max(1, p)}%`, backgroundColor: s.color }}
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(1, p)}%`,
+                      backgroundColor: s.color,
+                      transition: "width 900ms cubic-bezier(0.22,1,0.36,1)",
+                    }}
                   />
                 </div>
               </div>
@@ -113,14 +134,6 @@ export function AllocView({
           })}
         </div>
       </div>
-
-      {warn && (
-        <div className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-100">
-          <span className="font-semibold">Klumpenrisiko:</span> „{top.label}“ macht{" "}
-          {(topShare * 100).toFixed(0)} % aus. Fällt dieser Block um 20 %, kostet das dein Depot rund{" "}
-          {(topShare * 20).toFixed(1)} %.
-        </div>
-      )}
     </div>
   );
 }
