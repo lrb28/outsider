@@ -198,6 +198,35 @@ export function setManualPrice(key: string, price: number | null) {
   window.dispatchEvent(new CustomEvent("mydepot"));
 }
 
+// ── Kürzel, die keine Kurse liefern ─────────────────────────────────────────
+//
+// Auch eine sorgfältig gepflegte Tabelle kann danebenliegen: ein Börsenplatz
+// wird eingestellt, ein Kürzel umbenannt. Liefert ein zugeordnetes Symbol keine
+// Kursreihe, wird es hier vermerkt — danach greift die Suche statt der Tabelle.
+
+const BAD_KEY = "outsider:badsymbols";
+
+export function getBadSymbols(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(BAD_KEY) || "[]");
+    return new Set(Array.isArray(raw) ? raw.filter((s) => typeof s === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Meldet ein Symbol als kursfrei. Gibt true zurück, wenn es neu war. */
+export function markBadSymbol(symbol: string): boolean {
+  if (typeof window === "undefined") return false;
+  const s = getBadSymbols();
+  const S = symbol.toUpperCase();
+  if (s.has(S)) return false;
+  s.add(S);
+  window.localStorage.setItem(BAD_KEY, JSON.stringify([...s]));
+  return true;
+}
+
 // ── Benutzer-Zuordnungen (localStorage) ─────────────────────────────────────
 
 const MAP_KEY = "outsider:isinmap";
@@ -258,6 +287,8 @@ export function resolveInstrument(
   assetClass: string | null,
   userMap: Record<string, string>,
   resolveCache: Record<string, string>,
+  /** Symbole, die bereits ohne Kursreihe zurückkamen. */
+  bad: Set<string> = new Set(),
 ): Resolution {
   const key = (id || "").trim().toUpperCase();
   if (!key) return { symbol: null, source: "offen", unpriceable: null };
@@ -267,8 +298,15 @@ export function resolveInstrument(
   const why = unpriceableReason(key, assetClass, name);
   if (why) return { symbol: null, source: "offen", unpriceable: why };
 
-  if (ISIN_TICKER[key]) return { symbol: ISIN_TICKER[key], source: "tabelle", unpriceable: null };
-  if (resolveCache[key]) return { symbol: resolveCache[key], source: "suche", unpriceable: null };
+  // Erst die Suche, falls das Tabellen-Kürzel sich als kursfrei erwiesen hat.
+  const fromTable = ISIN_TICKER[key];
+  if (fromTable && !bad.has(fromTable)) {
+    return { symbol: fromTable, source: "tabelle", unpriceable: null };
+  }
+  const cached = resolveCache[key];
+  if (cached && !bad.has(cached)) {
+    return { symbol: cached, source: "suche", unpriceable: null };
+  }
 
   // Kein ISIN, aber ein plausibles Börsenkürzel? Dann direkt verwenden.
   if (!isIsin(key) && SYMBOL_RE.test(key) && key.length <= 8) {

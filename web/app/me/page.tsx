@@ -9,6 +9,7 @@ import { CountUp } from "@/components/Donut";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
 import { DivEntry, DividendChart, DividendSplit } from "@/components/DividendChart";
 import { LiveValue } from "@/components/LiveValue";
+import { RiskPoint, RiskReturnMap } from "@/components/PerformancePanels";
 import {
   CapitalFlow,
   ContributionBars,
@@ -22,7 +23,9 @@ import { fetchJson } from "@/lib/fetchJson";
 import { ImportReport, importCsv, summarize } from "@/lib/brokers";
 import {
   Resolution,
+  getBadSymbols,
   getManualPrices,
+  markBadSymbol,
   getResolveCache,
   getUserMap,
   priceMismatch,
@@ -280,10 +283,11 @@ export default function MePage() {
   const resolutions = useMemo(() => {
     const userMap = getUserMap();
     const cache = getResolveCache();
+    const bad = getBadSymbols();
     const out = new Map<string, Resolution>();
     for (const k of keys) {
       const m = meta.get(k);
-      out.set(k, resolveInstrument(k, m?.name ?? null, m?.assetClass ?? null, userMap, cache));
+      out.set(k, resolveInstrument(k, m?.name ?? null, m?.assetClass ?? null, userMap, cache, bad));
     }
     return out;
     // mapTick zwingt zur Neuberechnung, wenn der Nutzer etwas zuordnet.
@@ -292,11 +296,19 @@ export default function MePage() {
 
   // Offene ISINs serverseitig nachschlagen.
   const [resolving, setResolving] = useState(false);
+  const searched = useRef<Set<string>>(new Set());
   useEffect(() => {
     const open = keys.filter(
-      (k) => isIsin(k) && !resolutions.get(k)?.symbol && !resolutions.get(k)?.unpriceable,
+      (k) =>
+        isIsin(k) &&
+        !resolutions.get(k)?.symbol &&
+        !resolutions.get(k)?.unpriceable &&
+        !searched.current.has(k),
     );
     if (open.length === 0) return;
+    // Jede ISIN wird höchstens einmal je Sitzung nachgeschlagen, sonst dreht
+    // sich die Suche im Kreis, wenn sie dasselbe untaugliche Kürzel liefert.
+    open.forEach((k) => searched.current.add(k));
     let on = true;
     setResolving(true);
     fetchJson<{ symbols: Record<string, string> }>(
@@ -344,6 +356,22 @@ export default function MePage() {
       on = false;
     };
   }, [symbols, hist, fxPair]);
+
+  /**
+   * Ein zugeordnetes Kürzel liefert keine Kurse? Dann taugt es nicht — merken
+   * und beim nächsten Durchlauf über die Suche neu bestimmen. Ohne das bleibt
+   * ein falscher Tabelleneintrag für immer stecken.
+   */
+  useEffect(() => {
+    let changed = false;
+    for (const [, res] of resolutions) {
+      const sym = res.symbol;
+      if (!sym) continue;
+      const e = hist[sym];
+      if (e && e.source === "none" && markBadSymbol(sym)) changed = true;
+    }
+    if (changed) setMapTick((t) => t + 1);
+  }, [resolutions, hist]);
 
   /** Wechselkursreihe Depotwährung → USD. */
   const fxBars = fxPair ? hist[fxPair]?.bars ?? null : null;
@@ -597,6 +625,33 @@ export default function MePage() {
   const gainTotal = unrealTotal + realizedTotal + dividendsTotal;
   // Bezugsgröße für die Gesamtrendite: was wirklich eingesetzt wurde.
   const gainBase = hasCashFlows && depositedNet > 0 ? depositedNet : costTotal;
+
+  /** Schwankung je Position — Grundlage für die Risiko-Ertrags-Karte. */
+  const riskPoints: RiskPoint[] = useMemo(() => {
+    return rows
+      .map((r, i) => {
+        const bars = barsByTicker[r.ticker];
+        if (!bars || bars.length < 40 || r.unrealPct === null) return null;
+        const slice = bars.slice(-252);
+        const rets: number[] = [];
+        for (let j = 1; j < slice.length; j++) {
+          const p0 = slice[j - 1].close;
+          if (p0 > 0) rets.push(slice[j].close / p0 - 1);
+        }
+        if (rets.length < 30) return null;
+        const m = rets.reduce((a, x) => a + x, 0) / rets.length;
+        const v = rets.reduce((a, x) => a + (x - m) ** 2, 0) / (rets.length - 1);
+        return {
+          ticker: r.ticker,
+          name: r.company,
+          vol: Math.sqrt(v) * Math.sqrt(252),
+          ret: r.unrealPct,
+          weight: total > 0 ? (r.value ?? 0) / total : 0,
+          color: POS_COLORS[i % POS_COLORS.length],
+        } as RiskPoint;
+      })
+      .filter((p): p is RiskPoint => p !== null);
+  }, [rows, barsByTicker, total]);
 
   /**
    * Einzelne Ausschüttungen für die interaktive Grafik: Monat, Papier, Betrag.
@@ -1171,6 +1226,8 @@ export default function MePage() {
               {/* ── Risiko ──────────────────────────────────────────────── */}
               {perfView === "risiko" && (
                 <>
+                  <RiskReturnMap points={riskPoints} />
+
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                     <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
                     <Kpi
