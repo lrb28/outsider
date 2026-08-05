@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  color: #0f172a;
+  background-color: #f6f7fb;
+}
+
+/* Liquid canvas: soft aurora gradients that give the whole app depth. */
+body {
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, rgba(99, 102, 241, 0.14), transparent 60%),
+    radial-gradient(50rem 34rem at -10% 20%, rgba(56, 189, 248, 0.12), transparent 60%),
+    radial-gradient(44rem 30rem at 50% 120%, rgba(168, 85, 247, 0.1), transparent 60%);
+  background-attachment: fixed;
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+@layer components {
+  /* Springy press feedback (Trade-Republic feel) — put on anything tappable. */
+  .press {
+    @apply transition-all duration-200 ease-out active:scale-[0.97];
+  }
+  .press-sm {
+    @apply transition-all duration-150 ease-out active:scale-95;
+  }
+  /* Liquid card: frosted white, soft ring, lifts on hover. */
+  .lcard {
+    @apply rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur transition-all duration-200 ease-out;
+  }
+  .lcard-hover {
+    @apply hover:-translate-y-0.5 hover:shadow-cardhover;
+  }
+  /* Primary gradient button. */
+  .btn-primary {
+    @apply rounded-full bg-gradient-to-b from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 ease-out hover:shadow-indigo-500/40 active:scale-[0.97];
+  }
+}
+
+/* Gentle float for hero logos. */
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+  50% {
+    transform: translateY(-7px) rotate(var(--rot, 0deg));
+  }
+}
+.animate-floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+
+/* Section entrance. */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-up {
+  animation: fadeUp 0.45s ease-out both;
+}
+
+/* Live pulse dot. */
+@keyframes livePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.animate-live {
+  animation: livePulse 1.6s ease-in-out infinite;
+}
+
+/* Hide horizontal scrollbars on card rails. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Balken, die von der Mittelachse nach außen wachsen (Gewinnbeitrag). */
+@keyframes growX {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}

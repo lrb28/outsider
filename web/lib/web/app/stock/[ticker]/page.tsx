@@ -1,0 +1,264 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { Avatar } from "@/components/Avatar";
+import { CompanyLogo } from "@/components/CompanyLogo";
+import { Donut } from "@/components/Donut";
+import { ErrorRetry } from "@/components/ErrorRetry";
+import { FollowButton } from "@/components/FollowButton";
+import { PriceChart } from "@/components/PriceChart";
+import { SkeletonPage } from "@/components/Skeleton";
+import { TradeFeed } from "@/components/TradeFeed";
+import { fetchJson } from "@/lib/fetchJson";
+import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
+import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
+import { useQuotes } from "@/lib/useQuotes";
+
+export default function StockPage() {
+  const params = useParams<{ ticker: string }>();
+  const ticker = params?.ticker as string;
+  const [stock, setStock] = useState<StockDetail | null>(null);
+  const [bars, setBars] = useState<PriceBar[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState(false);
+  const [tick, setTick] = useState(0);
+  const [actTab, setActTab] = useState<"inv" | "ins">("inv");
+  const [range, setRange] = useState(3); // default 1J
+  const liveTicker = fixTicker(ticker, null) ?? ticker;
+  const quotes = useQuotes(liveTicker ? [liveTicker] : []);
+  const quote = liveTicker ? quotes[liveTicker.toUpperCase()] : undefined;
+
+  useEffect(() => {
+    if (!ticker) return;
+    setLoading(true);
+    setErr(false);
+    fetchJson<StockResponse>(`/api/stock?ticker=${encodeURIComponent(ticker)}`)
+      .then((d) => setStock(d.stock))
+      .catch(() => setErr(true))
+      .finally(() => setLoading(false));
+    fetchJson<PricesResponse>(`/api/prices?ticker=${encodeURIComponent(ticker)}`)
+      .then((d) => setBars(d.bars))
+      .catch(() => setBars([]));
+  }, [ticker, tick]);
+
+  if (loading) return <SkeletonPage />;
+  if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
+  if (!stock)
+    return (
+      <div className="py-16 text-center text-sm text-subtle">
+        Aktie nicht gefunden.{" "}
+        <Link href="/discover" className="text-brand underline">
+          Zurück zu Discover
+        </Link>
+      </div>
+    );
+
+  const buys = stock.trades.filter((t) => t.txnType === "buy").length;
+  const sells = stock.trades.filter((t) => t.txnType === "sell").length;
+
+  // Investor activity this quarter: who bought / sold / just held (institutions).
+  const insts = stock.trades.filter((t) => t.entityType === "institution");
+  const boughtSet = new Set(insts.filter((t) => t.txnType === "buy").map((t) => t.entitySlug ?? t.entityName));
+  const soldSet = new Set(insts.filter((t) => t.txnType === "sell").map((t) => t.entitySlug ?? t.entityName));
+  const heldCount = stock.holders.filter(
+    (h) => !boughtSet.has(h.slug) && !soldSet.has(h.slug),
+  ).length;
+  const act = [
+    { label: "Gekauft", value: boughtSet.size, color: "#16a34a" },
+    { label: "Gehalten", value: heldCount, color: "#94a3b8" },
+    { label: "Verkauft", value: soldSet.size, color: "#dc2626" },
+  ];
+  const actTotal = act.reduce((a, s) => a + s.value, 0);
+
+  // Insider activity from Form 4 trades (no holdings snapshot, so no "held").
+  const insiderTrades = stock.trades.filter((t) => t.entityType === "corporate_insider");
+  const insBought = new Set(insiderTrades.filter((t) => t.txnType === "buy").map((t) => t.entityName));
+  const insSold = new Set(insiderTrades.filter((t) => t.txnType === "sell").map((t) => t.entityName));
+  const insAct = [
+    { label: "Gekauft", value: insBought.size, color: "#16a34a" },
+    { label: "Verkauft", value: insSold.size, color: "#dc2626" },
+  ];
+  const insTotal = insBought.size + insSold.size;
+
+  const curSegs = actTab === "inv" ? act : insAct;
+  const curTotal = actTab === "inv" ? actTotal : insTotal;
+  const curTop = [...curSegs].sort((a, b) => b.value - a.value)[0];
+
+  const up = bars && bars.length > 1 ? bars[bars.length - 1].close >= bars[0].close : true;
+  const chg =
+    bars && bars.length > 1 ? (bars[bars.length - 1].close - bars[0].close) / bars[0].close : null;
+
+  const stats = [
+    { label: "Verfolgte Investoren", value: stock.investors.toLocaleString("de-DE") },
+    { label: "Gehaltener Wert", value: abbrevMoney(stock.value) },
+    { label: "Käufe (verfolgt)", value: String(buys), cls: "text-bull" },
+    { label: "Verkäufe (verfolgt)", value: String(sells), cls: "text-bear" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
+        ‹ Discover
+      </Link>
+
+      <div className="flex items-center gap-4">
+        <CompanyLogo ticker={stock.ticker} company={stock.company} size={64} />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-semibold tracking-tight">{stock.company}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-sm text-subtle">
+              {fixTicker(stock.ticker, stock.company) ?? "—"}
+            </span>
+            {quote && (
+              <span className="flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-sm font-semibold ring-1 ring-black/5">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    quote.marketState === "REGULAR" ? "animate-live bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+                $
+                {quote.price.toLocaleString("de-DE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                {quote.changePct != null && (
+                  <span className={quote.changePct >= 0 ? "text-bull" : "text-bear"}>
+                    {quote.changePct >= 0 ? "+" : ""}
+                    {(quote.changePct * 100).toFixed(2)} %
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+        {stock.ticker && <FollowButton kind="stock" id={stock.ticker} />}
+      </div>
+
+      {bars && bars.length > 1 && (
+        <div className="lcard p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-semibold">Kurs</span>
+            <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
+              {(["1M", "3M", "6M", "1J", "Max"] as const).map((label, i) => (
+                <button
+                  key={label}
+                  onClick={() => setRange(i)}
+                  className={`press-sm rounded-full px-2.5 py-1 ${
+                    range === i ? "bg-white text-ink shadow-card" : "text-subtle"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <PriceChart bars={bars.slice(-[21, 63, 126, 252, bars.length][range])} height={170} />
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
+            <div className={`text-lg font-semibold tracking-tight ${s.cls ?? ""}`}>{s.value}</div>
+            <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {(actTotal > 0 || insTotal > 0) && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">Aktivität</h2>
+            <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
+              {(
+                [
+                  ["inv", "Investoren"],
+                  ["ins", "Insider"],
+                ] as const
+              ).map(([k, l]) => (
+                <button
+                  key={k}
+                  onClick={() => setActTab(k)}
+                  className={`press-sm rounded-full px-3 py-1 ${
+                    actTab === k ? "bg-white text-ink shadow-card" : "text-subtle"
+                  }`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {curTotal === 0 ? (
+            <div className="rounded-2xl bg-card p-6 text-center text-sm text-subtle shadow-card">
+              Keine {actTab === "inv" ? "Investoren" : "Insider"}-Aktivität in dieser Meldung.
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-6 rounded-2xl bg-card p-5 shadow-card sm:flex-row">
+              <Donut
+                segments={curSegs}
+                centerTop={`${Math.round((curTop.value / curTotal) * 100)} %`}
+                centerBottom={curTop.label}
+              />
+              <div className="w-full flex-1 space-y-2.5">
+                {curSegs.map((s) => (
+                  <div key={s.label} className="flex items-center gap-2 text-sm">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="text-ink">{s.label}</span>
+                    <span className="text-xs text-subtle">
+                      {s.value}{" "}
+                      {actTab === "inv"
+                        ? s.value === 1
+                          ? "Investor"
+                          : "Investoren"
+                        : "Insider"}
+                    </span>
+                    <span className="ml-auto font-semibold">
+                      {Math.round((s.value / curTotal) * 100)} %
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold tracking-tight">Wer hält diese Aktie</h2>
+        <div className="overflow-hidden rounded-2xl bg-card shadow-card">
+          {stock.holders.map((h) => (
+            <Link
+              key={h.slug || h.fund}
+              href={h.slug ? `/investor/${h.slug}` : "#"}
+              className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-slate-50"
+            >
+              <Avatar name={h.person ?? h.fund} size={40} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">{h.person ?? h.fund}</div>
+                <div className="truncate text-xs text-subtle">{h.fund}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-semibold">{weightPct(h.weight)}</div>
+                <div className="text-xs text-subtle">{abbrevMoney(h.value)}</div>
+              </div>
+            </Link>
+          ))}
+          {stock.holders.length === 0 && (
+            <div className="px-4 py-10 text-center text-sm text-subtle">
+              Aktuell hält keiner der verfolgten Investoren diese Aktie.
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+        <TradeFeed rows={stock.trades} empty="Keine gemeldeten Trades für diese Aktie." />
+      </section>
+    </div>
+  );
+}
