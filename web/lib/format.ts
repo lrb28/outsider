@@ -69,6 +69,77 @@ export function signalLabel(txnType: string, putCall: string | null): {
   return { text: txnType, tone: "neutral" };
 }
 
+// ── Personennamen aus SEC-Meldungen ──────────────────────────────────────────
+//
+// Form 4 nennt den Meldenden als "NACHNAME VORNAME MITTELNAME", oft komplett
+// in Großbuchstaben: "BARTON RICHARD N". So gelesen wirkt jede Seite wie ein
+// Behördenausdruck. Hier wird daraus "Richard N. Barton".
+
+const NAME_SUFFIX = new Set(["JR", "SR", "II", "III", "IV", "V", "MD", "PHD"]);
+const NAME_PARTICLE = new Set(["van", "von", "de", "del", "der", "den", "di", "da", "la", "le"]);
+
+function titleCasePart(w: string): string {
+  const low = w.toLowerCase();
+  if (NAME_PARTICLE.has(low)) return low;
+  // O'Brien, McDonald-Smith
+  return low
+    .split(/(['\-])/)
+    .map((p, i) => (i % 2 === 1 ? p : p.charAt(0).toUpperCase() + p.slice(1)))
+    .join("");
+}
+
+/**
+ * "BARTON RICHARD N" → "Richard N. Barton"
+ * "Zuckerberg Mark"  → "Mark Zuckerberg"
+ * "SMITH BRADFORD L JR" → "Bradford L. Smith Jr."
+ *
+ * Firmennamen bleiben unangetastet — erkennbar an Rechtsformen und Ziffern.
+ */
+export function personName(raw: string | null | undefined): string {
+  const s = (raw || "").trim().replace(/\s+/g, " ");
+  if (!s) return "";
+  // Sieht nach einem Unternehmen aus? Dann nicht anfassen.
+  if (/\b(inc|corp|llc|lp|ltd|plc|trust|fund|capital|partners|holdings?|group|management|gmbh|ag|s\.?a)\b/i.test(s))
+    return s;
+  if (/\d/.test(s)) return s;
+  if (s.includes(",")) {
+    // Manche Quellen liefern bereits "Nachname, Vorname".
+    const [last, rest] = s.split(",", 2);
+    const given = (rest || "").trim();
+    if (given) return `${formatGiven(given)} ${titleCasePart(last.trim())}`.trim();
+  }
+
+  const parts = s.split(" ").filter(Boolean);
+  if (parts.length < 2) return titleCasePart(s);
+
+  // Anhängsel wie JR/III hinten abtrennen und später wieder anfügen.
+  const suffixes: string[] = [];
+  while (parts.length > 2 && NAME_SUFFIX.has(parts[parts.length - 1].replace(/\./g, "").toUpperCase())) {
+    suffixes.unshift(parts.pop() as string);
+  }
+  if (parts.length < 2) return titleCasePart(s);
+
+  const last = parts.shift() as string;
+  const given = parts.join(" ");
+  const suffix = suffixes.map((x) => {
+    const u = x.replace(/\./g, "").toUpperCase();
+    return u === "JR" || u === "SR" ? `${u.charAt(0)}${u.slice(1).toLowerCase()}.` : u;
+  });
+  return [formatGiven(given), titleCasePart(last), ...suffix].filter(Boolean).join(" ");
+}
+
+/** Vornamen sauber setzen; einzelne Buchstaben bekommen einen Punkt. */
+function formatGiven(given: string): string {
+  return given
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => {
+      const clean = w.replace(/\./g, "");
+      return clean.length === 1 ? `${clean.toUpperCase()}.` : titleCasePart(clean);
+    })
+    .join(" ");
+}
+
 export function initials(name: string): string {
   const parts = name.replace(/\(.*?\)/g, "").trim().split(/\s+/).filter(Boolean);
   const a = parts[0]?.[0] ?? "?";

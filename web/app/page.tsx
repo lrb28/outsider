@@ -182,6 +182,28 @@ export default function HomePage() {
 
   const spotlight = investors.filter((i) => i.person).slice(0, 10);
 
+  /**
+   * Ein einzelner 13F-Bericht oder eine Form-4-Serie erzeugt Dutzende Zeilen zum
+   * selben Akteur bzw. zur selben Aktie. Ungefiltert stand hier viermal
+   * dieselbe Karte. Deshalb je Akteur und je Aktie nur die jüngste zeigen.
+   */
+  const varied = (rows: FeedRow[], n = 8) => {
+    const seenEntity = new Set<string>();
+    const seenTicker = new Set<string>();
+    const out: FeedRow[] = [];
+    for (const r of rows) {
+      const e = r.entitySlug ?? r.entityName;
+      const t = r.ticker ?? "";
+      if (seenEntity.has(e) || (t && seenTicker.has(t))) continue;
+      seenEntity.add(e);
+      if (t) seenTicker.add(t);
+      out.push(r);
+      if (out.length >= n) break;
+    }
+    // Lieber ein paar Wiederholungen als eine fast leere Reihe.
+    return out.length >= 3 ? out : rows.slice(0, n);
+  };
+
   return (
     <div className="space-y-9">
       {/* Gateway hero */}
@@ -290,7 +312,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
-            {instTrades.map((r) => (
+            {varied(instTrades).map((r) => (
               <TradeCard key={r.id} r={r} onOpen={() => setSelected(r)} />
             ))}
           </div>
@@ -307,7 +329,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1">
-            {insiderTrades.map((r) => (
+            {varied(insiderTrades).map((r) => (
               <TradeCard key={r.id} r={r} onOpen={() => setSelected(r)} />
             ))}
           </div>

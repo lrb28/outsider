@@ -52,8 +52,8 @@ export default function InvestorPage() {
     return (
       <div className="py-16 text-center text-sm text-subtle">
         Investor nicht gefunden.{" "}
-        <Link href="/portfolio" className="text-brand underline">
-          Zurück zum Portfolio
+        <Link href="/discover" className="text-brand underline">
+          Zurück zu Discover
         </Link>
       </div>
     );
@@ -74,8 +74,8 @@ export default function InvestorPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/portfolio" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Portfolio
+      <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
+        ‹ Discover
       </Link>
 
       <div className="flex items-start gap-4">

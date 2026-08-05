@@ -1,5 +1,12 @@
 import { getPool } from "./db";
-import { abbrevMoney, companyName, investorBio, investorPerson, sizeDisplay } from "./format";
+import {
+  abbrevMoney,
+  companyName,
+  investorBio,
+  investorPerson,
+  personName,
+  sizeDisplay,
+} from "./format";
 import {
   CollectionInvestor,
   CollectionItem,
@@ -72,7 +79,13 @@ function toFeedRow(r: Record<string, unknown>): FeedRow {
   const num = (v: unknown) => (v !== null && v !== undefined ? Number(v) : null);
   return {
     id: r.id as number,
-    entityName: r.entity_name as string,
+    // Form 4 meldet den Meldenden als "NACHNAME VORNAME MITTELNAME" in
+    // Großbuchstaben. Einmal hier lesbar gemacht, damit jede Seite dieselbe
+    // Schreibweise zeigt.
+    entityName:
+      r.entity_type === "corporate_insider"
+        ? personName(r.entity_name as string)
+        : (r.entity_name as string),
     entitySlug: (r.entity_slug as string) ?? null,
     entityType: r.entity_type as FeedRow["entityType"],
     highlight: Boolean(r.highlight),
@@ -300,7 +313,7 @@ export async function getInsider(slug: string): Promise<InsiderDetail | null> {
   const first = trades[0];
   return {
     slug: e.slug as string,
-    name: e.name as string,
+    name: personName(e.name as string),
     role: (e.role as string) ?? null,
     company: first ? companyName(first.ticker, first.securityName) : null,
     ticker: first?.ticker ?? null,

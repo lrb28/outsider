@@ -30,6 +30,7 @@ export function CompanyLogo({
   rounded?: string;
 }) {
   const [step, setStep] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const t = fixTicker(ticker, company);
   if (!t) return tile(ticker, company, size, rounded);
 
@@ -39,14 +40,29 @@ export function CompanyLogo({
   ];
   if (step >= srcs.length) return tile(ticker, company, size, rounded);
 
+  // Bis das Logo geladen ist, steht bereits das Monogramm an derselben Stelle.
+  // Vorher blitzten sekundenlang leere weiße Kacheln auf — das ließ die Seite
+  // kaputt aussehen, obwohl nur ein Bild unterwegs war.
   return (
-    <img
-      src={srcs[step]}
-      alt=""
-      loading="lazy"
+    <span
       style={{ width: size, height: size, minWidth: size }}
-      onError={() => setStep((s) => s + 1)}
-      className={`shrink-0 ${rounded} bg-white object-contain p-0.5 ring-1 ring-hair`}
-    />
+      className={`relative inline-block shrink-0 ${rounded}`}
+    >
+      {!loaded && (
+        <span className="absolute inset-0">{tile(ticker, company, size, rounded)}</span>
+      )}
+      <img
+        src={srcs[step]}
+        alt=""
+        loading="lazy"
+        style={{ width: size, height: size, minWidth: size, opacity: loaded ? 1 : 0 }}
+        onError={() => {
+          setLoaded(false);
+          setStep((s) => s + 1);
+        }}
+        onLoad={() => setLoaded(true)}
+        className={`absolute inset-0 shrink-0 ${rounded} bg-white object-contain p-0.5 ring-1 ring-hair transition-opacity duration-300`}
+      />
+    </span>
   );
 }

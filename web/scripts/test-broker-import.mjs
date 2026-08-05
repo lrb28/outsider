@@ -171,6 +171,29 @@ console.log("\nPlausibilität von Kurs und Einstand");
   }
 }
 
+// ── Personennamen aus SEC-Meldungen ────────────────────────────────────────
+// Form 4 liefert "NACHNAME VORNAME MITTELNAME" in Großbuchstaben. Ungefiltert
+// steht auf jeder Seite "BARTON RICHARD N" statt "Richard N. Barton".
+console.log("\nNamen aus Form-4-Meldungen");
+{
+  const F = await import("../.tmp-format.mjs");
+  const cases = [
+    ["BARTON RICHARD N", "Richard N. Barton"],
+    ["KILGORE LESLIE J", "Leslie J. Kilgore"],
+    ["SMITH BRADFORD L", "Bradford L. Smith"],
+    ["MATHER ANN", "Ann Mather"],
+    ["Zuckerberg Mark", "Mark Zuckerberg"],
+    ["Karbowski Jeffrey William", "Jeffrey William Karbowski"],
+    ["HASTINGS REED JR", "Reed Hastings Jr."],
+    ["Berkshire Hathaway Inc", "Berkshire Hathaway Inc"],
+    ["Point72 Asset Management", "Point72 Asset Management"],
+  ];
+  for (const [inp, exp] of cases) {
+    const got = F.personName(inp);
+    ok(`„${inp}“`, got === exp, got, exp);
+  }
+}
+
 // ── Währungsumrechnung ─────────────────────────────────────────────────────
 console.log("\nWährungsumrechnung");
 {
