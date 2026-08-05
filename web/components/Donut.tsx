@@ -85,7 +85,10 @@ export function Donut({
   onHover?: (i: number | null) => void;
 }) {
   const total = segments.reduce((a, s) => a + s.value, 0) || 1;
-  const r = (size - thickness) / 2;
+  // Beim Überfahren wächst ein Segment um 5 px. Ohne diesen Rand würde der
+  // dickere Ring am Rand der Zeichenfläche abgeschnitten.
+  const GROW = 6;
+  const r = (size - thickness - GROW) / 2;
   const c = 2 * Math.PI * r;
   const progress = useGrow(1, 1000);
 

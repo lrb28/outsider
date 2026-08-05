@@ -104,6 +104,52 @@ ok("NVIDIA-ISIN gültig", I.isinValid("US67066G1040"), "—", "true");
 ok("Tippfehler erkannt", !I.isinValid("US0378331006"), "—", "false");
 ok("Kürzel ist keine ISIN", !I.isIsin("AAPL"), "—", "false");
 
+// ── Split-Rückrechnung ─────────────────────────────────────────────────────
+// Kurshistorien sind split-bereinigt. Ohne Rückrechnung der Stückzahlen
+// verzehnfacht sich der Depotwert am Split-Tag und erscheint als Tagesgewinn.
+console.log("\nSplits und bereinigte Kurse");
+{
+  const csv =
+    "date,type,symbol,shares,price\n" +
+    "2024-01-02,BUY,US67066G1040,1,500\n" +
+    "2024-06-10,SPLIT,US67066G1040,9,\n";
+  const adj = P.adjustForSplits(B.importCsv(csv).txns);
+  const buy = adj.find((t) => t.kind === "buy");
+  ok("Kauf rückwirkend auf 10 Stück", near(buy.shares, 10), buy.shares, 10);
+  ok("Kurs entsprechend gezehntelt", near(buy.price, 50), buy.price, 50);
+  ok("Split-Buchung ist verrechnet", !adj.some((t) => t.kind === "split"), "—", "keine mehr");
+  const [p] = P.positionsFrom(adj);
+  ok("Bestand bleibt 10", near(p.shares, 10), p.shares, 10);
+  ok("Einstand unverändert 500", near(p.costBasis, 500), p.costBasis, 500);
+
+  // Mit bereinigter Kurshistorie darf am Split-Tag KEIN Sprung entstehen.
+  const bars = [
+    { date: "2024-06-07", close: 50 },
+    { date: "2024-06-10", close: 50 },
+    { date: "2024-06-11", close: 51 },
+  ];
+  const s = P.buildSeries(adj, { US67066G1040: bars });
+  const rets = P.dailyReturns(s);
+  ok(
+    "kein Scheingewinn am Split-Tag",
+    rets.every((r) => Math.abs(r.r) < 0.1),
+    rets.map((r) => `${r.date}:${(r.r * 100).toFixed(0)}%`).join(" "),
+    "alle < 10 %",
+  );
+}
+{
+  // Depotübertrag raus/rein darf NICHT als Split gedeutet werden.
+  const csv =
+    "date,type,symbol,shares,price\n" +
+    "2024-01-02,BUY,US0378331005,5,100\n" +
+    "2025-05-07,MIGRATION,US0378331005,-5,178\n" +
+    "2025-05-07,MIGRATION,US0378331005,5,178\n";
+  const adj = P.adjustForSplits(B.importCsv(csv).txns);
+  const [p] = P.positionsFrom(adj);
+  ok("Übertrag bleibt neutral", near(p.shares, 5), p.shares, 5);
+  ok("Kaufkurs unverändert", near(adj.find((t) => t.kind === "buy").price, 100), "—", 100);
+}
+
 // ── Plausibilitätsprüfung des Kurses ───────────────────────────────────────
 // Der zweitteuerste Fehler: eine ISIN wird der falschen Börsennotierung
 // zugeordnet. Der ETF, den man für 13 € gekauft hat, steht plötzlich bei 127 €

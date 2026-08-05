@@ -519,6 +519,59 @@ export function shareDelta(t: Txn): number {
   return 0;
 }
 
+/**
+ * Rechnet Aktiensplits rückwirkend in die Stückzahlen ein.
+ *
+ * Kursanbieter liefern Historien split-bereinigt: nach dem 10:1-Split von
+ * NVIDIA steht dort auch für 2023 der gezehntelte Kurs. Unsere Stückzahlen
+ * springen aber erst am Split-Tag nach oben — der Depotwert würde sich an
+ * diesem Tag verzehnfachen und als Tagesgewinn von 900 % erscheinen.
+ *
+ * Deshalb werden alle Käufe und Verkäufe vor dem Split mit dem Verhältnis
+ * multipliziert und ihr Kurs entsprechend geteilt. Der eingesetzte Betrag
+ * bleibt exakt gleich, die Reihe passt anschließend zur bereinigten Historie.
+ */
+export function adjustForSplits(txns: Txn[]): Txn[] {
+  const out = sortTxns(txns).map((t) => ({ ...t }));
+  const shares = new Map<string, number>();
+
+  for (let i = 0; i < out.length; i++) {
+    const t = out[i];
+    if (!t.ticker) continue;
+
+    if (t.kind === "split") {
+      const before = shares.get(t.ticker) ?? 0;
+      const after = before + t.shares;
+      // Nur echte Kapitalmaßnahmen: es muss vorher und nachher ein Bestand da
+      // sein. Depotüberträge (raus/rein am selben Tag) fallen hier heraus.
+      if (before > 1e-9 && after > 1e-9) {
+        const ratio = after / before;
+        if (ratio > 1.05 || ratio < 0.95) {
+          for (let j = 0; j < i; j++) {
+            const p = out[j];
+            if (p.ticker !== t.ticker) continue;
+            if (p.kind === "buy" || p.kind === "sell") {
+              p.shares *= ratio;
+              p.price /= ratio;
+            }
+          }
+          shares.set(t.ticker, after);
+          // Die Buchung ist verrechnet — sie darf nicht noch einmal wirken.
+          out[i] = { ...t, shares: 0 };
+          continue;
+        }
+      }
+      shares.set(t.ticker, Math.max(0, after));
+      continue;
+    }
+
+    const d = shareDelta(t);
+    if (d !== 0) shares.set(t.ticker, Math.max(0, (shares.get(t.ticker) ?? 0) + d));
+  }
+
+  return out.filter((t) => !(t.kind === "split" && t.shares === 0));
+}
+
 /** Gehaltene Stückzahl je Ticker an einem Stichtag (undatiertes gilt als "immer gehalten"). */
 export function sharesOn(txns: Txn[], date: string): Map<string, number> {
   const out = new Map<string, number>();

@@ -5,9 +5,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { CountUp } from "@/components/Donut";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
 import { DivEntry, DividendChart, DividendSplit } from "@/components/DividendChart";
 import { LiveValue } from "@/components/LiveValue";
+import {
+  CapitalFlow,
+  ContributionBars,
+  MonthHeatmap,
+  ReturnTreemap,
+  TreeItem,
+} from "@/components/PerformanceViews";
 import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
 import { companyName, fixTicker, formatDate, pct } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
@@ -41,6 +49,7 @@ import {
   TxnKind,
   addTxn,
   addTxns,
+  adjustForSplits,
   annualReturns,
   beta,
   buildSeries,
@@ -58,6 +67,7 @@ import {
   lastFx,
   makeTxn,
   maxDrawdown,
+  monthlyReturns,
   parseDate,
   parseNum,
   positionsFrom,
@@ -133,6 +143,14 @@ const TABS: readonly (readonly [Tab, string])[] = [
 ];
 
 type ChartMode = "value" | "return" | "drawdown";
+
+type PerfView = "verlauf" | "positionen" | "risiko" | "kapital";
+const PERF_VIEWS: readonly (readonly [PerfView, string])[] = [
+  ["verlauf", "Verlauf"],
+  ["positionen", "Positionen"],
+  ["risiko", "Risiko"],
+  ["kapital", "Kapital"],
+];
 
 const POS_COLORS = [
   "#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
@@ -216,6 +234,7 @@ export default function MePage() {
   const [range, setRange] = useState<RangeKey>("1J");
   const [benchIdx, setBenchIdx] = useState(0);
   const [mode, setMode] = useState<ChartMode>("value");
+  const [perfView, setPerfView] = useState<PerfView>("verlauf");
   const [msg, setMsg] = useState<string | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [currency, setCurrencyState] = useState("USD");
@@ -387,20 +406,22 @@ export default function MePage() {
    */
   const normTxns = useMemo(() => {
     const undated = txns.filter((t) => !t.date);
-    if (undated.length === 0) return txns;
+    if (undated.length === 0) return adjustForSplits(txns);
     const probe = buildSeries(txns, barsByTicker);
     const d0 = probe[0]?.date;
     if (!d0) return txns;
-    return txns.map((t) => {
-      if (t.date) return t;
-      let price = t.price;
-      if (!price && t.ticker) {
-        const bars = barsByTicker[t.ticker];
-        const b = bars?.find((x) => x.date >= d0) ?? bars?.[0];
-        price = b?.close ?? 0;
-      }
-      return { ...t, date: d0, price };
-    });
+    return adjustForSplits(
+      txns.map((t) => {
+        if (t.date) return t;
+        let price = t.price;
+        if (!price && t.ticker) {
+          const bars = barsByTicker[t.ticker];
+          const b = bars?.find((x) => x.date >= d0) ?? bars?.[0];
+          price = b?.close ?? 0;
+        }
+        return { ...t, date: d0, price };
+      }),
+    );
   }, [txns, barsByTicker]);
 
   const positions = useMemo(() => positionsFrom(normTxns), [normTxns]);
@@ -679,6 +700,65 @@ export default function MePage() {
   const hit = hitRate(seriesR);
   const ext = extremeDays(seriesR);
   const years = annualReturns(series);
+  const monthsAll = useMemo(() => monthlyReturns(series), [series]);
+
+  /** Kacheln der Depot-Landkarte: Fläche = Wert, Farbe = Rendite. */
+  const treeItems: TreeItem[] = useMemo(
+    () =>
+      rows
+        .filter((r) => r.value !== null)
+        .map((r) => ({
+          key: r.ticker,
+          label: r.company,
+          value: r.value as number,
+          ret: r.unrealPct,
+          gain: r.unreal ?? 0,
+        })),
+    [rows],
+  );
+
+  /** Beitrag zum Gesamtgewinn — offene Positionen und realisierte Verkäufe. */
+  const contribItems = useMemo(() => {
+    const m = new Map<string, { label: string; gain: number }>();
+    for (const p of positions) {
+      const g = p.realized + p.dividends;
+      const open = rows.find((r) => r.ticker === p.ticker);
+      const total = g + (open?.unreal ?? 0);
+      if (Math.abs(total) < 0.01) continue;
+      m.set(p.ticker, { label: meta.get(p.ticker)?.name || p.ticker, gain: total });
+    }
+    return [...m.entries()].map(([key, v]) => ({ key, ...v }));
+  }, [positions, rows, meta]);
+
+  /** Ein- und Auszahlungen je Monat für den Kapitalfluss. */
+  const capitalFlows = useMemo(() => {
+    const m = new Map<string, { in: number; out: number }>();
+    for (const t of normTxns) {
+      if (!t.date) continue;
+      const key = t.date.slice(0, 7);
+      const cur = m.get(key) ?? { in: 0, out: 0 };
+      if (t.kind === "deposit") cur.in += t.amount;
+      else if (t.kind === "withdrawal") cur.out += t.amount;
+      else continue;
+      m.set(key, cur);
+    }
+    if (m.size === 0) return [];
+    // Lückenlose Monatsreihe, damit Pausen sichtbar bleiben.
+    const keysSorted = [...m.keys()].sort();
+    const out: { month: string; in: number; out: number }[] = [];
+    const [y0, m0] = keysSorted[0].split("-").map(Number);
+    const [y1, m1] = keysSorted[keysSorted.length - 1].split("-").map(Number);
+    for (let y = y0, mo = m0; y < y1 || (y === y1 && mo <= m1); ) {
+      const k = `${y}-${String(mo).padStart(2, "0")}`;
+      out.push({ month: k, in: m.get(k)?.in ?? 0, out: m.get(k)?.out ?? 0 });
+      mo++;
+      if (mo > 12) {
+        mo = 1;
+        y++;
+      }
+    }
+    return out;
+  }, [normTxns]);
 
   // ── Chartserien ───────────────────────────────────────────────────────────
   const chartSeries: ChartSeries[] = useMemo(() => {
@@ -1000,60 +1080,218 @@ export default function MePage() {
           {/* ── Performance ─────────────────────────────────────────────── */}
           {tab === "performance" && (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold tracking-tight">Kennzahlen ({range})</h2>
-                <div className="flex flex-wrap gap-2">
-                  <Pills options={BENCHMARKS.map((b) => [b.key, b.label] as const)} value={bench.key} onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))} size="sm" />
-                  <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
+              {/* Kopf: die drei Renditezahlen, die wirklich zählen */}
+              <div className="lcard overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-5">
+                  <Pills
+                    options={PERF_VIEWS}
+                    value={perfView}
+                    onChange={setPerfView}
+                    size="sm"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Pills
+                      options={BENCHMARKS.map((b) => [b.key, b.label] as const)}
+                      value={bench.key}
+                      onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))}
+                      size="sm"
+                    />
+                    <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
+                  </div>
+                </div>
+
+                <div className="grid gap-px bg-hair p-px sm:grid-cols-3">
+                  <BigStat
+                    label="Zeitgewichtet"
+                    value={perfPortfolio}
+                    sub="Wie gut deine Auswahl war — unabhängig davon, wann du eingezahlt hast."
+                  />
+                  <BigStat
+                    label="Geldgewichtet (IZF)"
+                    value={izf}
+                    sub="Was dein Geld tatsächlich verdient hat, inklusive Timing der Einzahlungen."
+                  />
+                  <BigStat
+                    label={bench.label}
+                    value={perfBench}
+                    sub={
+                      perfPortfolio != null && perfBench != null
+                        ? `Du liegst ${Math.abs((perfPortfolio - perfBench) * 100).toFixed(1)} Punkte ${
+                            perfPortfolio >= perfBench ? "davor" : "dahinter"
+                          }.`
+                        : "Gleicher Zeitraum, reine Kursentwicklung."
+                    }
+                    muted
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                <Kpi label="Zeitgewichtete Rendite" value={pct(perfPortfolio)} tone={tone(perfPortfolio)} hint="TTWROR — bereinigt um Ein- und Auszahlungen" />
-                <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
-                <Kpi label="IZF (geldgewichtet)" value={pct(izf)} tone={tone(izf)} hint="Interner Zinsfuß: berücksichtigt, wann du wie viel investiert hast" />
-                <Kpi label={bench.label} value={pct(perfBench)} tone={tone(perfBench)} />
-                <Kpi label="Volatilität p. a." value={vol === null ? "—" : `${(vol * 100).toFixed(1)} %`} hint="Schwankungsbreite der Tagesrenditen" />
-                <Kpi label="Sharpe Ratio" value={shp === null ? "—" : shp.toFixed(2)} tone={shp === null ? null : shp >= 1 ? "bull" : shp < 0 ? "bear" : null} hint="Rendite je Einheit Risiko (risikofrei 3 %)" />
-                <Kpi label="Max. Drawdown" value={mdd ? `${(mdd.dd * 100).toFixed(1)} %` : "—"} tone={mdd ? "bear" : null} sub={mdd ? `Tief am ${formatDate(mdd.date)}` : undefined} />
-                <Kpi label={`Beta zu ${bench.label}`} value={bta === null ? "—" : bta.toFixed(2)} hint="1,0 = bewegt sich wie der Index" />
-                <Kpi label="Korrelation" value={corr === null ? "—" : corr.toFixed(2)} hint="1,0 = läuft exakt parallel zum Index" />
-                <Kpi label="Positive Tage" value={hit === null ? "—" : `${(hit * 100).toFixed(0)} %`} />
-                <Kpi label="Bester Tag" value={ext ? pct2(ext.best.r) : "—"} tone="bull" sub={ext ? formatDate(ext.best.date) : undefined} />
-                <Kpi label="Schwächster Tag" value={ext ? pct2(ext.worst.r) : "—"} tone="bear" sub={ext ? formatDate(ext.worst.date) : undefined} />
-              </div>
+              {/* ── Verlauf ─────────────────────────────────────────────── */}
+              {perfView === "verlauf" && (
+                <>
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Monatsrenditen</div>
+                    <p className="mb-3 text-[11px] text-subtle">
+                      Jede Kachel ein Monat, jede Zeile ein Jahr.
+                    </p>
+                    <MonthHeatmap months={monthsAll} years={years} />
+                  </div>
 
-              <div className="lcard p-5">
-                <div className="mb-1 text-sm font-semibold">Rendite je Kalenderjahr</div>
-                <p className="mb-3 text-[11px] text-subtle">
-                  Zeitgewichtet — Einzahlungen verfälschen die Zahlen nicht.
-                </p>
-                <ReturnBars data={years} />
-              </div>
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Rendite je Kalenderjahr</div>
+                    <p className="mb-3 text-[11px] text-subtle">
+                      Zeitgewichtet — Einzahlungen verfälschen die Zahlen nicht.
+                    </p>
+                    <ReturnBars data={years} />
+                  </div>
 
-              <div className="lcard p-5">
-                <div className="mb-1 text-sm font-semibold">Rückgang vom Höchststand</div>
-                <p className="mb-3 text-[11px] text-subtle">
-                  Wie tief das Depot jeweils unter seinem bisherigen Hoch lag — der ehrlichste
-                  Risikoindikator.
-                </p>
-                <DepotChart
-                  series={[
-                    {
-                      key: "dd2",
-                      label: "Rückgang",
-                      color: "#e11d48",
-                      fill: true,
-                      points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
-                    },
-                  ]}
-                  height={190}
-                  zeroLine
-                  format={(v) => `${(v * 100).toFixed(1)} %`}
-                />
-              </div>
+                  <BenchmarkTable barsOf={toDepot} seriesR={seriesR} perfPortfolio={perfPortfolio} />
+                </>
+              )}
 
-              <BenchmarkTable barsOf={toDepot} seriesR={seriesR} perfPortfolio={perfPortfolio} />
+              {/* ── Positionen ──────────────────────────────────────────── */}
+              {perfView === "positionen" && (
+                <>
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Landkarte deines Depots</div>
+                    <p className="mb-3 text-[11px] text-subtle">
+                      Fläche = Anteil am Depot, Farbe = Rendite. Große rote Kacheln kosten am
+                      meisten.
+                    </p>
+                    <ReturnTreemap items={treeItems} />
+                  </div>
+
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Wer den Gewinn gemacht hat</div>
+                    <ContributionBars items={contribItems} />
+                  </div>
+                </>
+              )}
+
+              {/* ── Risiko ──────────────────────────────────────────────── */}
+              {perfView === "risiko" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+                    <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
+                    <Kpi
+                      label="Volatilität p. a."
+                      value={vol === null ? "—" : `${(vol * 100).toFixed(1)} %`}
+                      hint="Schwankungsbreite der Tagesrenditen"
+                    />
+                    <Kpi
+                      label="Sharpe Ratio"
+                      value={shp === null ? "—" : shp.toFixed(2)}
+                      tone={shp === null ? null : shp >= 1 ? "bull" : shp < 0 ? "bear" : null}
+                      sub={
+                        shp === null
+                          ? undefined
+                          : shp >= 1
+                          ? "gutes Verhältnis"
+                          : shp >= 0.5
+                          ? "solide"
+                          : "viel Risiko je Rendite"
+                      }
+                    />
+                    <Kpi
+                      label="Max. Drawdown"
+                      value={mdd ? `${(mdd.dd * 100).toFixed(1)} %` : "—"}
+                      tone={mdd ? "bear" : null}
+                      sub={mdd ? `Tief am ${formatDate(mdd.date)}` : undefined}
+                    />
+                    <Kpi
+                      label={`Beta zu ${bench.label}`}
+                      value={bta === null ? "—" : bta.toFixed(2)}
+                      sub={
+                        bta === null
+                          ? undefined
+                          : bta > 1.15
+                          ? "schwankt stärker als der Index"
+                          : bta < 0.85
+                          ? "ruhiger als der Index"
+                          : "läuft wie der Index"
+                      }
+                    />
+                    <Kpi
+                      label="Korrelation"
+                      value={corr === null ? "—" : corr.toFixed(2)}
+                      hint="1,0 = läuft exakt parallel zum Index"
+                    />
+                    <Kpi
+                      label="Positive Tage"
+                      value={hit === null ? "—" : `${(hit * 100).toFixed(0)} %`}
+                    />
+                    <Kpi
+                      label="Bester / schwächster Tag"
+                      value={ext ? pct2(ext.best.r) : "—"}
+                      tone="bull"
+                      sub={ext ? `${pct2(ext.worst.r)} am ${formatDate(ext.worst.date)}` : undefined}
+                    />
+                  </div>
+
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Rückgang vom Höchststand</div>
+                    <p className="mb-3 text-[11px] text-subtle">
+                      Wie tief das Depot jeweils unter seinem bisherigen Hoch lag — der ehrlichste
+                      Risikoindikator.
+                    </p>
+                    <DepotChart
+                      series={[
+                        {
+                          key: "dd2",
+                          label: "Rückgang",
+                          color: "#e11d48",
+                          fill: true,
+                          points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
+                        },
+                      ]}
+                      height={190}
+                      zeroLine
+                      format={(v) => `${(v * 100).toFixed(1)} %`}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* ── Kapital ─────────────────────────────────────────────── */}
+              {perfView === "kapital" && (
+                <>
+                  <div className="lcard p-5">
+                    <div className="mb-1 text-sm font-semibold">Kapitalfluss</div>
+                    <p className="mb-3 text-[11px] text-subtle">
+                      Grün nach oben: eingezahlt. Rot nach unten: entnommen.
+                    </p>
+                    <CapitalFlow flows={capitalFlows} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <Kpi
+                      label="Gebühren gesamt"
+                      value={abbrevMoney(feesTotal || null)}
+                      sub={
+                        depositedNet > 0
+                          ? `${((feesTotal / depositedNet) * 100).toFixed(2)} % des eingesetzten Geldes`
+                          : undefined
+                      }
+                    />
+                    <Kpi
+                      label="Realisiert"
+                      value={signed(realizedTotal)}
+                      tone={realizedTotal === 0 ? null : tone(realizedTotal)}
+                      sub="aus Verkäufen"
+                    />
+                    <Kpi
+                      label="Dividenden"
+                      value={abbrevMoney(dividendsTotal || null)}
+                      tone={dividendsTotal > 0 ? "bull" : null}
+                    />
+                    <Kpi
+                      label="Buchungen"
+                      value={txns.length.toLocaleString("de-DE")}
+                      sub={`${positions.length} Papiere insgesamt`}
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -2217,6 +2455,37 @@ function UnpricedPanel({
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Große Renditezahl mit Erklärsatz — der Kopf des Performance-Reiters. */
+function BigStat({
+  label,
+  value,
+  sub,
+  muted,
+}: {
+  label: string;
+  value: number | null;
+  sub: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className="bg-card p-5">
+      <div className="text-xs text-subtle">{label}</div>
+      <div
+        className={`mt-1 text-3xl font-semibold tracking-tight tabular-nums ${
+          value === null ? "" : muted ? "text-ink" : value >= 0 ? "text-bull" : "text-bear"
+        }`}
+      >
+        {value === null ? (
+          "—"
+        ) : (
+          <CountUp to={value * 100} format={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)} %`} />
+        )}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-subtle">{sub}</p>
     </div>
   );
 }
