@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime
+from datetime import datetime, date
 
 from outsider_ingest import config
 from outsider_ingest.db import Repository, connect
@@ -47,8 +47,7 @@ def ingest_senate(max_records: int | None = None) -> int:
     txns.sort(key=lambda t: t.disclosed_at or "", reverse=True)  # newest first
     txns = txns[:max_records]
     if not txns:
-        print("Senate: no ticker'd transactions found")
-        return 0
+        raise RuntimeError("Senate source returned no transactions with valid tickers")
 
     conn = connect(config.DATABASE_URL)
     repo = Repository(conn)
@@ -83,6 +82,11 @@ def ingest_senate(max_records: int | None = None) -> int:
     repo.commit()
     print(f"Senate: {n} transactions ingested (capped at {max_records}, "
           f"{len(entity_ids)} senators, {len(filing_ids)} filings)")
+    known_dates = [t.disclosed_at for t in txns if t.disclosed_at]
+    latest = max(known_dates) if known_dates else None
+    print(f"Senate coverage: latest disclosure={latest}; {sum(t.disclosed_at is None for t in txns)} undated")
+    if not latest or (date.today() - date.fromisoformat(latest)).days > 90:
+        raise RuntimeError("Senate source is historical or undated; refresh did not establish current coverage")
     return n
 
 

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { ErrorRetry } from "@/components/ErrorRetry";
+import { fetchCatalogue } from "@/lib/fetchJson";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FaceStack } from "@/components/FaceStack";
@@ -60,17 +62,20 @@ export default function PortfolioPage() {
   const [ivSort, setIvSort] = useState<IvSort>("value");
   const [stSort, setStSort] = useState<StSort>("investors");
 
+  const [error,setError] = useState(false);const [retry,setRetry] = useState(0);
   useEffect(() => {
+    setLoading(true);setError(false);
     Promise.all([
-      fetch("/api/investors").then((r) => r.json() as Promise<InvestorsResponse>),
-      fetch("/api/stocks").then((r) => r.json() as Promise<StocksResponse>),
+      fetchCatalogue<InvestorsResponse>("/api/investors"),
+      fetchCatalogue<StocksResponse>("/api/stocks"),
     ])
       .then(([iv, st]) => {
         setInvestors(iv.rows);
         setStocks(st.rows);
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [retry]);
 
   const sortedInvestors = useMemo(() => {
     const a = [...investors];
@@ -97,6 +102,8 @@ export default function PortfolioPage() {
     );
     return a;
   }, [stocks, stSort]);
+
+  if (error) return <ErrorRetry onRetry={() => setRetry(r => r+1)}/>;
 
   return (
     <div className="space-y-5">

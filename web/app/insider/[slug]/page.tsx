@@ -23,12 +23,14 @@ export default function InsiderPage() {
 
   useEffect(() => {
     if (!slug) return;
+    const controller = new AbortController();
     setLoading(true);
     setErr(false);
-    fetchJson<InsiderResponse>(`/api/insider?slug=${encodeURIComponent(slug)}`)
+    fetchJson<InsiderResponse>(`/api/insider?slug=${encodeURIComponent(slug)}`, {signal:controller.signal})
       .then((d) => setIns(d.insider))
-      .catch(() => setErr(true))
-      .finally(() => setLoading(false));
+      .catch(() => {if(!controller.signal.aborted) setErr(true);})
+      .finally(() => {if(!controller.signal.aborted) setLoading(false);});
+    return () => controller.abort();
   }, [slug, tick]);
 
   if (loading) return <SkeletonPage />;
@@ -43,8 +45,8 @@ export default function InsiderPage() {
       </div>
     );
 
-  const buys = ins.trades.filter((t) => t.txnType === "buy").length;
-  const sells = ins.trades.filter((t) => t.txnType === "sell").length;
+  const buys = ins.trades.filter((t) => t.txnType === "buy" && t.transactionCode === "P" && !t.isDerivative).length;
+  const sells = ins.trades.filter((t) => t.txnType === "sell" && t.transactionCode === "S" && !t.isDerivative).length;
 
   return (
     <div className="space-y-6">
@@ -76,16 +78,16 @@ export default function InsiderPage() {
         </div>
         <div className="rounded-2xl bg-card p-4 shadow-card">
           <div className="text-lg font-semibold tracking-tight text-bull">{buys}</div>
-          <div className="mt-0.5 text-xs text-subtle">Käufe</div>
+          <div className="mt-0.5 text-xs text-subtle">Bestätigte Käufe (geladen)</div>
         </div>
         <div className="rounded-2xl bg-card p-4 shadow-card">
           <div className="text-lg font-semibold tracking-tight text-bear">{sells}</div>
-          <div className="mt-0.5 text-xs text-subtle">Verkäufe</div>
+          <div className="mt-0.5 text-xs text-subtle">Bestätigte Verkäufe (geladen)</div>
         </div>
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
         <TradeFeed rows={ins.trades} showActor={false} empty="Noch keine gemeldeten Trades." />
       </section>
     </div>

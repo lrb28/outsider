@@ -1,21 +1,12 @@
-import { NextResponse } from "next/server";
-
-import { withRetry } from "@/lib/retry";
+import { dataResponse } from "@/lib/apiResponse";
 import { getStats } from "@/lib/stats";
-
+import { SAMPLE_TRADES, SAMPLE_INVESTORS, SAMPLE_POLITICIANS } from "@/lib/sampleData";
 export const dynamic = "force-dynamic";
-
 export async function GET() {
-  try {
-    return NextResponse.json(await withRetry(() => getStats()));
-  } catch {
-    // no DB yet -> sample counts so the header still renders
-    return NextResponse.json({
-      entities: 4,
-      institutions: 1,
-      insiders: 1,
-      politicians: 2,
-      trades: 27,
-    });
-  }
+  return dataResponse(getStats, () => ({
+    entities: new Set(SAMPLE_TRADES.map(r => r.entityName)).size,
+    institutions: SAMPLE_INVESTORS.length, insiders: new Set(SAMPLE_TRADES.filter(r => r.entityType === "corporate_insider").map(r => r.entityName)).size,
+    politicians: SAMPLE_POLITICIANS.length, trades: SAMPLE_TRADES.length,
+    latestDisclosure: null, latestPrice: null, priceSymbols: 0, freshPriceSymbols: 0, groups: [],
+  }));
 }

@@ -26,7 +26,7 @@ def test_parses_issuer_owner_and_transactions():
 
     grant = txns[1]
     assert grant.code == "A"
-    assert grant.txn_type == "buy"          # award/acquire
+    assert grant.txn_type == "exchange"     # grant is not a purchase
     assert grant.acquired_disposed == "A"
 
     deriv = txns[2]

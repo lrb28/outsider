@@ -13,7 +13,7 @@ import { PriceChart } from "@/components/PriceChart";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, fixTicker, weightPct } from "@/lib/format";
+import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 
@@ -25,23 +25,27 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(false);
   const [tick, setTick] = useState(0);
+  const [priceError,setPriceError] = useState(false);
   const [actTab, setActTab] = useState<"inv" | "ins">("inv");
   const [range, setRange] = useState(3); // default 1J
-  const liveTicker = fixTicker(ticker, null) ?? ticker;
+  const liveTicker = ticker;
   const quotes = useQuotes(liveTicker ? [liveTicker] : []);
   const quote = liveTicker ? quotes[liveTicker.toUpperCase()] : undefined;
 
   useEffect(() => {
     if (!ticker) return;
+    const controller = new AbortController();
+    setPriceError(false); setBars(null);
     setLoading(true);
     setErr(false);
-    fetchJson<StockResponse>(`/api/stock?ticker=${encodeURIComponent(ticker)}`)
+    fetchJson<StockResponse>(`/api/stock?ticker=${encodeURIComponent(ticker)}`, {signal:controller.signal})
       .then((d) => setStock(d.stock))
-      .catch(() => setErr(true))
-      .finally(() => setLoading(false));
-    fetchJson<PricesResponse>(`/api/prices?ticker=${encodeURIComponent(ticker)}`)
+      .catch(() => {if(!controller.signal.aborted) setErr(true);})
+      .finally(() => {if(!controller.signal.aborted) setLoading(false);});
+    fetchJson<PricesResponse>(`/api/prices?ticker=${encodeURIComponent(ticker)}`, {signal:controller.signal})
       .then((d) => setBars(d.bars))
-      .catch(() => setBars([]));
+      .catch(() => {if(!controller.signal.aborted) {setBars([]);setPriceError(true);}});
+    return () => controller.abort();
   }, [ticker, tick]);
 
   if (loading) return <SkeletonPage />;
@@ -51,7 +55,7 @@ export default function StockPage() {
       <div className="py-16 text-center text-sm text-subtle">
         Aktie nicht gefunden.{" "}
         <Link href="/discover" className="text-brand underline">
-          Zurück zu Discover
+          Zurück zu Entdecken
         </Link>
       </div>
     );
@@ -59,24 +63,34 @@ export default function StockPage() {
   const buys = stock.trades.filter((t) => t.txnType === "buy").length;
   const sells = stock.trades.filter((t) => t.txnType === "sell").length;
 
-  // Investor activity this quarter: who bought / sold / just held (institutions).
-  const insts = stock.trades.filter((t) => t.entityType === "institution");
-  const boughtSet = new Set(insts.filter((t) => t.txnType === "buy").map((t) => t.entitySlug ?? t.entityName));
-  const soldSet = new Set(insts.filter((t) => t.txnType === "sell").map((t) => t.entitySlug ?? t.entityName));
-  const heldCount = stock.holders.filter(
-    (h) => !boughtSet.has(h.slug) && !soldSet.has(h.slug),
-  ).length;
+  // Investorenaktivität: jeder Investor landet in genau einem Topf. Die Meldungen
+  // reichen über mehrere Quartale — wer erst kaufte und später verkaufte, wurde
+  // vorher doppelt gezählt, sodass die Ringsumme über der Kopfzahl lag.
+  // Maßgeblich ist deshalb die jüngste Meldung je Investor (Liste ist nach
+  // Datum absteigend sortiert), Bestandshalter ohne Meldung gelten als gehalten.
+  const insts = stock.trades.filter((t) => t.entityType === "institution" && !t.putCall);
+  const lastAction = new Map<string, "buy" | "sell" | "hold">();
+  for (const t of insts) {
+    const key = t.entitySlug ?? t.entityName;
+    if (lastAction.has(key)) continue;
+    if (t.txnType === "buy" || t.txnType === "sell") lastAction.set(key, t.txnType);
+  }
+  for (const h of stock.holders) if (!h.putCall && !lastAction.has(h.slug)) lastAction.set(h.slug, "hold");
+  const countBy = (v: "buy" | "sell" | "hold") =>
+    [...lastAction.values()].filter((x) => x === v).length;
   const act = [
-    { label: "Gekauft", value: boughtSet.size, color: "#16a34a" },
-    { label: "Gehalten", value: heldCount, color: "#94a3b8" },
-    { label: "Verkauft", value: soldSet.size, color: "#dc2626" },
+    { label: "Bestand erhöht", value: countBy("buy"), color: "#16a34a" },
+    { label: "Gehalten", value: countBy("hold"), color: "#94a3b8" },
+    { label: "Bestand reduziert", value: countBy("sell"), color: "#dc2626" },
   ];
   const actTotal = act.reduce((a, s) => a + s.value, 0);
 
   // Insider activity from Form 4 trades (no holdings snapshot, so no "held").
-  const insiderTrades = stock.trades.filter((t) => t.entityType === "corporate_insider");
-  const insBought = new Set(insiderTrades.filter((t) => t.txnType === "buy").map((t) => t.entityName));
-  const insSold = new Set(insiderTrades.filter((t) => t.txnType === "sell").map((t) => t.entityName));
+  const insiderTrades = stock.trades.filter(t => t.entityType === "corporate_insider" && !t.isDerivative && ["P","S"].includes(t.transactionCode ?? ""));
+  const latestInsider = new Map<string,string>();
+  for (const t of insiderTrades) if (!latestInsider.has(t.entityName)) latestInsider.set(t.entityName,t.transactionCode!);
+  const insBought = new Set([...latestInsider].filter(([,code]) => code === "P").map(([name]) => name));
+  const insSold = new Set([...latestInsider].filter(([,code]) => code === "S").map(([name]) => name));
   const insAct = [
     { label: "Gekauft", value: insBought.size, color: "#16a34a" },
     { label: "Verkauft", value: insSold.size, color: "#dc2626" },
@@ -92,16 +106,16 @@ export default function StockPage() {
     bars && bars.length > 1 ? (bars[bars.length - 1].close - bars[0].close) / bars[0].close : null;
 
   const stats = [
-    { label: "Verfolgte Investoren", value: stock.investors.toLocaleString("de-DE") },
+    { label: "Investoren mit Bestand", value: stock.investors.toLocaleString("de-DE") },
     { label: "Gehaltener Wert", value: abbrevMoney(stock.value) },
-    { label: "Käufe (verfolgt)", value: String(buys), cls: "text-bull" },
-    { label: "Verkäufe (verfolgt)", value: String(sells), cls: "text-bear" },
+    { label: "Zugänge (geladen)", value: String(buys), cls: "text-bull" },
+    { label: "Abgänge (geladen)", value: String(sells), cls: "text-bear" },
   ];
 
   return (
     <div className="space-y-6">
       <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Discover
+        ‹ Entdecken
       </Link>
 
       <div className="flex items-center gap-4">
@@ -119,15 +133,16 @@ export default function StockPage() {
                     quote.marketState === "REGULAR" ? "animate-live bg-emerald-500" : "bg-slate-300"
                   }`}
                 />
-                $
+                {quote.currency || "Kurs"} {" "}
                 {quote.price.toLocaleString("de-DE", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
+                <span className="text-[10px] font-normal text-subtle">{new Date(quote.t).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>
                 {quote.changePct != null && (
                   <span className={quote.changePct >= 0 ? "text-bull" : "text-bear"}>
                     {quote.changePct >= 0 ? "+" : ""}
-                    {(quote.changePct * 100).toFixed(2)} %
+                    {(quote.changePct * 100).toLocaleString("de-DE",{maximumFractionDigits:2})} %
                   </span>
                 )}
               </span>
@@ -159,6 +174,8 @@ export default function StockPage() {
         </div>
       )}
 
+      {priceError && <ErrorRetry onRetry={() => setTick(t => t+1)}/>}
+      {bars?.length ? <p className="text-xs text-subtle">Historische Schlusskurse · Stand {formatDate(bars[bars.length-1].date)}{isStaleDate(bars[bars.length-1].date) ? " · veraltet" : ""}</p> : !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
@@ -171,7 +188,16 @@ export default function StockPage() {
       {(actTotal > 0 || insTotal > 0) && (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">Aktivität</h2>
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Aktivität</h2>
+              {/* Hinweis, weil diese Summe größer sein darf als „Investoren mit
+                  Bestand“: wer komplett verkauft hat, taucht hier noch auf. */}
+              <p className="text-xs text-subtle">
+                {actTab === "inv"
+                  ? "Jüngste geladene Bestandsänderung je Investor. Optionspositionen sind ausgenommen."
+                  : "Jüngster bestätigter Kauf oder Verkauf je Insider in den geladenen Meldungen."}
+              </p>
+            </div>
             <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
               {(
                 [
@@ -232,14 +258,17 @@ export default function StockPage() {
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
           {stock.holders.map((h) => (
             <Link
-              key={h.slug || h.fund}
+              key={`${h.slug || h.fund}-${h.putCall ?? "stock"}`}
               href={h.slug ? `/investor/${h.slug}` : "#"}
               className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-slate-50"
             >
               <Avatar name={h.person ?? h.fund} size={40} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{h.person ?? h.fund}</div>
-                <div className="truncate text-xs text-subtle">{h.fund}</div>
+                <div className="truncate text-xs text-subtle">
+                  {h.fund}
+                  {h.putCall ? ` · ${h.putCall}-Option` : ""}
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold">{weightPct(h.weight)}</div>
@@ -256,7 +285,7 @@ export default function StockPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
         <TradeFeed rows={stock.trades} empty="Keine gemeldeten Trades für diese Aktie." />
       </section>
     </div>

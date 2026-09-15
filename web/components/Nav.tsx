@@ -30,9 +30,9 @@ const ICONS: Record<string, JSX.Element> = {
 };
 
 const TABS = [
-  { href: "/", label: "Home", icon: "home" },
-  { href: "/discover", label: "Discover", icon: "discover" },
-  { href: "/feed", label: "Feed", icon: "feed" },
+  { href: "/", label: "Start", icon: "home" },
+  { href: "/discover", label: "Entdecken", icon: "discover" },
+  { href: "/feed", label: "Meldungen", icon: "feed" },
   { href: "/me", label: "Depot", icon: "depot" },
 ];
 
@@ -58,13 +58,14 @@ export function Nav() {
   const path = usePathname() || "/";
   const active = activeTab(path);
   return (
-    <nav className="hidden items-center gap-1 rounded-full bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur md:flex">
+    <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 rounded-full bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur md:flex">
       {TABS.map((t) => {
         const on = active === t.href;
         return (
           <Link
             key={t.href}
             href={t.href}
+            aria-current={on ? "page" : undefined}
             className={`press-sm flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium ${
               on
                 ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25"
@@ -85,7 +86,7 @@ export function BottomNav() {
   const path = usePathname() || "/";
   const active = activeTab(path);
   return (
-    <nav className="fixed inset-x-0 bottom-4 z-30 flex justify-center md:hidden">
+    <nav aria-label="Mobile Hauptnavigation" style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }} className="fixed inset-x-0 bottom-4 z-30 flex justify-center md:hidden">
       <div className="flex items-center gap-1 rounded-full bg-white/85 p-1.5 shadow-cardhover ring-1 ring-black/10 backdrop-blur-xl">
         {TABS.map((t) => {
           const on = active === t.href;
@@ -93,6 +94,7 @@ export function BottomNav() {
             <Link
               key={t.href}
               href={t.href}
+            aria-current={on ? "page" : undefined}
               className={`press-sm flex flex-col items-center gap-0.5 rounded-full px-4 py-1.5 ${
                 on
                   ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"

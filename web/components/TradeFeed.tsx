@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 
-import { companyName, fixTicker, formatDate, pct, signalLabel } from "@/lib/format";
+import {
+  companyName,
+  disclosureLabel,
+  fixTicker,
+  formatDate,
+  groupSeries,
+  SERIES_MIN,
+  tradeSignal,
+  isStaleDate,
+} from "@/lib/format";
 import { FeedRow } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
@@ -21,7 +30,7 @@ export function TradeFeed({
   showActor = true,
   loading = false,
   dark = false,
-  empty = "Keine Trades für diese Auswahl.",
+  empty = "Keine Meldungen für diese Auswahl.",
 }: {
   rows: FeedRow[];
   showActor?: boolean;
@@ -30,6 +39,8 @@ export function TradeFeed({
   empty?: string;
 }) {
   const [selected, setSelected] = useState<FeedRow | null>(null);
+  const [opened, setOpened] = useState<Set<string>>(new Set());
+  const today = new Date().toISOString().slice(0, 10);
 
   if (loading) return <SkeletonList n={6} />;
 
@@ -48,14 +59,15 @@ export function TradeFeed({
 
   return (
     <>
+      {opened.size > 0 && <button className="mb-2 text-sm text-brand underline" onClick={() => setOpened(new Set())}>Serien wieder zusammenfassen</button>}
       <div className={`overflow-hidden rounded-2xl ${container}`}>
         <div
           className={`hidden ${grid} gap-3 border-b px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide md:grid ${headBorder}`}
         >
           {showActor && <div>Akteur</div>}
           <div>Unternehmen</div>
-          <div>Signal</div>
-          <div>Größe</div>
+          <div>Vorgang</div>
+          <div>Größe · Offenlegung</div>
           <div className="text-right">Seit Offenlegung</div>
         </div>
 
@@ -63,8 +75,42 @@ export function TradeFeed({
           <div className={`px-4 py-10 text-center text-sm ${emptyCls}`}>{empty}</div>
         )}
 
-        {rows.map((r) => {
-            const sig = signalLabel(r.txnType, r.putCall);
+        {groupSeries(rows).map((g) => {
+          // Serie zusammengefasst, solange sie nicht aufgeklappt ist.
+          if (g.rows.length >= SERIES_MIN && !opened.has(g.key)) {
+            const first = g.rows[0];
+            const company = companyName(first.ticker, first.securityName);
+            const sig = tradeSignal(first);
+            const verb =
+              first.txnType === "buy" ? "kauften" : first.txnType === "sell" ? "verkauften" : "meldeten";
+            const who =
+              first.entityType === "corporate_insider"
+                ? "Insider"
+                : first.entityType === "politician"
+                ? "Politiker"
+                : "Investoren";
+            return (
+              <button
+                key={g.key}
+                aria-expanded={false}
+                onClick={() => setOpened((s) => new Set(s).add(g.key))}
+                className={`flex w-full items-center gap-3 border-b px-4 py-3 text-left transition last:border-0 ${rowBorder}`}
+              >
+                <CompanyLogo ticker={first.ticker} company={company} size={34} />
+                <div className="min-w-0 flex-1">
+                  <div className={`truncate text-sm font-medium ${nameCls}`}>
+                    {g.rows.length} Meldungen zu {company}
+                  </div>
+                  <div className={`text-xs ${subCls}`}>
+                    {sig.text} · {formatDate(first.disclosedAt)}
+                  </div>
+                </div>
+                <div className={`shrink-0 text-[11px] ${subCls}`}>Einzeln zeigen ›</div>
+              </button>
+            );
+          }
+          return g.rows.map((r) => {
+            const sig = tradeSignal(r);
             const badge =
               sig.tone === "bull"
                 ? "bg-emerald-50 text-emerald-700"
@@ -73,14 +119,15 @@ export function TradeFeed({
                 : dark
                 ? "bg-white/10 text-slate-300"
                 : "bg-slate-100 text-slate-600";
-            const perf = r.pctSinceDisclosure;
-            const perfCls = perf === null ? subCls : perf >= 0 ? "text-bull" : "text-bear";
+            const perf = r.priceAsOf && isStaleDate(r.priceAsOf) ? null : r.pctSinceDisclosure;
+            const disc = disclosureLabel(perf, r.disclosedAt, today);
+            const perfCls = disc.muted ? subCls : perf! >= 0 ? "text-bull" : "text-bear";
             const company = companyName(r.ticker, r.securityName);
             return (
               <button
                 key={r.id}
                 onClick={() => setSelected(r)}
-                className={`grid w-full grid-cols-1 ${grid} items-center gap-3 border-b px-4 py-3 text-left transition last:border-0 ${rowBorder}`}
+                className={`grid w-full grid-cols-2 ${grid} items-center gap-3 border-b px-4 py-3 text-left transition last:border-0 ${rowBorder}`}
               >
                 {showActor && (
                   <div className="flex items-center gap-3">
@@ -117,12 +164,17 @@ export function TradeFeed({
                 </div>
 
                 <div className="md:text-right">
-                  <div className={`text-sm font-semibold ${perfCls}`}>{pct(perf)}</div>
+                  <div
+                    className={`${disc.muted ? "text-xs" : "text-sm font-semibold"} ${perfCls}`}
+                  >
+                    {r.priceAsOf && isStaleDate(r.priceAsOf) ? "Kurs veraltet" : disc.text}
+                  </div>
                   <div className={`text-[11px] ${subCls}`}>Details ›</div>
                 </div>
               </button>
             );
-          })}
+          });
+        })}
       </div>
 
       {selected && <TradeDetailModal row={selected} onClose={() => setSelected(null)} />}

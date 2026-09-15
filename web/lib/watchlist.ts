@@ -9,7 +9,8 @@ const KEY = (k: FollowKind) => `outsider:follow:${k}`;
 function read(k: FollowKind): string[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(window.localStorage.getItem(KEY(k)) || "[]");
+    const value: unknown = JSON.parse(window.localStorage.getItem(KEY(k)) || "[]");
+    return Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === "string" && id.length > 0 && id.length <= 160))].slice(0,500) : [];
   } catch {
     return [];
   }
@@ -17,7 +18,10 @@ function read(k: FollowKind): string[] {
 
 function write(k: FollowKind, v: string[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY(k), JSON.stringify(v));
+  try { window.localStorage.setItem(KEY(k), JSON.stringify(v)); } catch (error) {
+    window.dispatchEvent(new CustomEvent("storage-error", {detail:"Die Watchlist konnte nicht gespeichert werden. Prüfe den freien Speicher und deine Browsereinstellungen."}));
+    throw error;
+  }
   window.dispatchEvent(new CustomEvent("watchlist", { detail: { kind: k } }));
 }
 

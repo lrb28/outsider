@@ -185,31 +185,44 @@ class Repository:
             (filing_id, entity_id, security_id, as_of_date, shares, market_value, put_call or ""),
         )
 
+    def supersede_legacy_transactions(self, filing_id: int) -> None:
+        # Called only after a source was parsed successfully. It shares the same
+        # transaction as the replacement inserts, so a failed import rolls back.
+        self.conn.execute(
+            "UPDATE transactions SET superseded = true WHERE filing_id = %s AND source_line IS NULL",
+            (filing_id,),
+        )
+
     def insert_transaction(
-        self,
-        filing_id: int,
-        entity_id: int,
-        security_id: int,
-        txn_type: str,
-        txn_date: Optional[date],
-        disclosed_at: Optional[date],
-        shares: Optional[int] = None,
-        price: Optional[float] = None,
-        amount_min: Optional[float] = None,
-        amount_max: Optional[float] = None,
-        put_call: Optional[str] = None,
-        owner: Optional[str] = None,
+        self, filing_id: int, entity_id: int, security_id: int, txn_type: str,
+        txn_date: Optional[date], disclosed_at: Optional[date],
+        shares: Optional[float] = None, price: Optional[float] = None,
+        amount_min: Optional[float] = None, amount_max: Optional[float] = None,
+        put_call: Optional[str] = None, owner: Optional[str] = None,
+        transaction_code: Optional[str] = None, is_derivative: bool = False,
+        acquired_disposed: Optional[str] = None, source_line: Optional[str] = None,
     ) -> None:
+        conflict = "ON CONFLICT DO NOTHING" if source_line is None else """
+            ON CONFLICT (filing_id, entity_id, source_line) WHERE source_line IS NOT NULL
+            DO UPDATE SET txn_type = EXCLUDED.txn_type, txn_date = EXCLUDED.txn_date,
+              disclosed_at = EXCLUDED.disclosed_at, shares = EXCLUDED.shares,
+              price = EXCLUDED.price, transaction_code = EXCLUDED.transaction_code,
+              is_derivative = EXCLUDED.is_derivative, acquired_disposed = EXCLUDED.acquired_disposed,
+              amount_min = EXCLUDED.amount_min, amount_max = EXCLUDED.amount_max,
+              security_id = EXCLUDED.security_id, put_call = EXCLUDED.put_call,
+              owner = EXCLUDED.owner, superseded = false
+        """
         self.conn.execute(
             """
             INSERT INTO transactions
               (filing_id, entity_id, security_id, txn_type, txn_date, disclosed_at,
-               shares, price, amount_min, amount_max, put_call, owner)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT DO NOTHING
-            """,
+               shares, price, amount_min, amount_max, put_call, owner,
+               transaction_code, is_derivative, acquired_disposed, source_line)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """ + conflict,
             (filing_id, entity_id, security_id, txn_type, txn_date, disclosed_at,
-             shares, price, amount_min, amount_max, put_call or "", owner),
+             shares, price, amount_min, amount_max, put_call or "", owner,
+             transaction_code, is_derivative, acquired_disposed, source_line),
         )
 
     # --- prices ---------------------------------------------------------------

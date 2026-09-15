@@ -1,49 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { getTrades } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
+import { dataResponse } from "@/lib/apiResponse";
+import { dateParam, enumParam, integerParam, textParam } from "@/lib/apiValidation";
+import { getTrades, TradeFilters } from "@/lib/queries";
 import { SAMPLE_TRADES } from "@/lib/sampleData";
-import { TradesResponse } from "@/lib/types";
-
 export const dynamic = "force-dynamic";
-
 export async function GET(req: NextRequest) {
-  const sp = req.nextUrl.searchParams;
-  const type = sp.get("type") || undefined;
-  const q = sp.get("q") || undefined;
-  const txnType = sp.get("txnType") || undefined;
-  const limit = Math.min(Number(sp.get("limit") ?? 50) || 50, 200);
-  const offset = Math.max(Number(sp.get("offset") ?? 0) || 0, 0);
-
+  let f: TradeFilters;
   try {
-    const rows = await withRetry(() => getTrades({ type, q, txnType, limit, offset }));
-    const body: TradesResponse = {
-      source: "database",
-      rows,
-      nextOffset: rows.length === limit ? offset + limit : null,
+    const p = req.nextUrl.searchParams;
+    f = {
+      type: enumParam(p, "type", ["institution", "corporate_insider", "politician"]),
+      txnType: enumParam(p, "txnType", ["buy", "sell", "exchange", "option"]),
+      q: textParam(p, "q"), from: dateParam(p, "from"), to: dateParam(p, "to"),
+      limit: integerParam(p, "limit", 50, 1, 200), offset: integerParam(p, "offset", 0, 0, 100000),
     };
-    return NextResponse.json(body);
-  } catch (e) {
-    // No DB configured yet (or a query error) -> serve bundled sample data so
-    // the page is never blank. Ingestion replaces this with live rows.
-    let rows = SAMPLE_TRADES.slice();
-    if (type) rows = rows.filter((r) => r.entityType === type);
-    if (txnType) rows = rows.filter((r) => r.txnType === txnType);
-    if (q) {
-      const needle = q.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.entityName.toLowerCase().includes(needle) ||
-          (r.ticker ?? "").toLowerCase().includes(needle) ||
-          r.securityName.toLowerCase().includes(needle),
-      );
-    }
-    const body: TradesResponse = {
-      source: "sample",
-      rows: rows.slice(offset, offset + limit),
-      nextOffset: null,
-      note: e instanceof Error ? e.message : "sample data",
-    };
-    return NextResponse.json(body);
-  }
+    if (f.from && f.to && f.from > f.to) throw new Error("Der Beginn muss vor dem Ende liegen.");
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Ungültige Filter." }, { status: 400 }); }
+  const limit = f.limit!;
+  const offset = f.offset!;
+  return dataResponse(async () => {
+    const all = await getTrades({ ...f, limit: limit + 1 });
+    return { rows: all.slice(0, limit), nextOffset: all.length > limit ? offset + limit : null };
+  }, () => {
+    const needle = f.q?.toLocaleLowerCase("de");
+    const all = SAMPLE_TRADES.filter(r =>
+      (!f.type || r.entityType === f.type) && (!f.txnType || r.txnType === f.txnType) &&
+      (!f.from || !!r.disclosedAt && r.disclosedAt >= f.from) &&
+      (!f.to || !!r.disclosedAt && r.disclosedAt <= f.to) &&
+      (!needle || [r.entityName, r.ticker, r.securityName].some(v => v?.toLocaleLowerCase("de").includes(needle)))
+    ).sort((a, b) => (b.disclosedAt ?? "").localeCompare(a.disclosedAt ?? "") || String(b.id).localeCompare(String(a.id)));
+    return { rows: all.slice(offset, offset + limit), nextOffset: all.length > offset + limit ? offset + limit : null };
+  });
 }

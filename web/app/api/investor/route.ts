@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
 import { getInvestor } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
 import { sampleInvestor } from "@/lib/sampleData";
-import { InvestorResponse } from "@/lib/types";
+import { textParam, SYMBOL_RE } from "@/lib/apiValidation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const slug = req.nextUrl.searchParams.get("slug") || "";
+  let value: string;
   try {
-    const investor = await withRetry(() => getInvestor(slug));
-    const body: InvestorResponse = { source: "database", investor };
-    return NextResponse.json(body);
-  } catch {
-    const body: InvestorResponse = { source: "sample", investor: sampleInvestor(slug) };
-    return NextResponse.json(body);
-  }
+    value = textParam(req.nextUrl.searchParams, "slug", 160) ?? "";
+    if (!/^[a-z0-9-]+$/.test(value)) throw new Error();
+  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  return dataResponse(async () => ({ investor: await getInvestor(value) }), () => ({ investor: sampleInvestor(value) }));
 }

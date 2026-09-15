@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { InputError, symbolList } from "@/lib/apiValidation";
 
 // Near-realtime quotes, proxied server-side from Yahoo Finance's public chart
 // endpoint (browsers can't call it directly because of CORS). Cached in-memory
@@ -18,7 +19,14 @@ export interface Quote {
 const cache = new Map<string, { at: number; q: Quote }>();
 // 15 s: der Client fragt alle 20 s, der Cache darf also nicht länger halten,
 // sonst sieht man denselben Kurs zweimal.
-const TTL = 15_000;
+const TTL = 60_000;
+
+// Wird ein Börsenplatz eingestellt, liefert Yahoo weiter den allerletzten Kurs —
+// ohne Hinweis, dass er Monate alt ist. Als „aktuell" angezeigt ergäbe das einen
+// falschen Depotwert. Zehn Tage überbrücken Feiertage und Handelspausen; alles
+// Ältere wird verworfen, dann fällt die Anzeige auf den Schlusskurs zurück oder
+// weist die Position ehrlich als kurslos aus.
+const MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 async function fetchQuote(ticker: string): Promise<Quote | null> {
   const hit = cache.get(ticker);
@@ -31,6 +39,7 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
       {
         headers: { "User-Agent": "Mozilla/5.0 (outsider-tracker)" },
         cache: "no-store",
+        signal: AbortSignal.timeout(6000),
       },
     );
     if (!res.ok) return null;
@@ -48,7 +57,7 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
         }
       | undefined;
     const price = meta?.regularMarketPrice;
-    if (typeof price !== "number") return null;
+    if (typeof price !== "number" || !Number.isFinite(price) || price <= 0 || !meta?.regularMarketTime) return null;
     const prev =
       typeof meta?.previousClose === "number"
         ? meta.previousClose
@@ -61,8 +70,10 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
       changePct: prev ? (price - prev) / prev : null,
       currency: meta?.currency ?? null,
       marketState: meta?.marketState ?? null,
-      t: (meta?.regularMarketTime ?? Math.floor(Date.now() / 1000)) * 1000,
+      t: meta.regularMarketTime * 1000,
     };
+    if (!Number.isFinite(q.t) || q.t > Date.now() + 300_000 || Date.now() - q.t > MAX_AGE) return null;
+    if (cache.size >= 500) cache.delete(cache.keys().next().value!);
     cache.set(ticker, { at: Date.now(), q });
     return q;
   } catch {
@@ -71,15 +82,9 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
 }
 
 export async function GET(req: NextRequest) {
-  const raw = req.nextUrl.searchParams.get("tickers") || "";
-  const tickers = [
-    ...new Set(
-      raw
-        .split(",")
-        .map((t) => t.trim().toUpperCase())
-        .filter((t) => /^[A-Z][A-Z0-9.\-]{0,7}$/.test(t)),
-    ),
-  ].slice(0, 30);
+  let tickers: string[];
+  try { tickers = symbolList(req.nextUrl.searchParams.get("tickers") || "", 30); }
+  catch (error) { return NextResponse.json({ error: error instanceof InputError ? error.message : "Ungültige Anfrage" }, { status: 400 }); }
 
   const entries = await Promise.all(
     tickers.map(async (t) => [t, await fetchQuote(t)] as const),
@@ -88,7 +93,7 @@ export async function GET(req: NextRequest) {
   for (const [t, q] of entries) if (q) quotes[t] = q;
 
   return NextResponse.json(
-    { source: "yahoo", quotes },
-    { headers: { "Cache-Control": "public, max-age=30" } },
+    { source: "yahoo", quotes, missing: tickers.filter(t => !quotes[t]), fetchedAt: new Date().toISOString() },
+    { headers: { "Cache-Control": "private, no-store" } },
   );
 }

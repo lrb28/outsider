@@ -78,6 +78,7 @@ class Form4Transaction:
     price: Optional[float]
     acquired_disposed: Optional[str]     # 'A' | 'D'
     is_derivative: bool
+    source_line: Optional[str] = None
 
     @property
     def role(self) -> str:

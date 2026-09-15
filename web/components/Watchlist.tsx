@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { fetchCatalogue } from "@/lib/fetchJson";
+import { ErrorRetry } from "./ErrorRetry";
 import { getFollowed } from "@/lib/watchlist";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
+import { SwipeRow } from "./SwipeRow";
 
 export function Watchlist() {
   const [investors, setInvestors] = useState<InvestorRow[]>([]);
@@ -15,17 +18,19 @@ export function Watchlist() {
   const [followInv, setFollowInv] = useState<string[]>([]);
   const [followStk, setFollowStk] = useState<string[]>([]);
 
+  const [failed,setFailed] = useState(false); const [retry,setRetry] = useState(0);
   useEffect(() => {
+    setFailed(false);
     Promise.all([
-      fetch("/api/investors").then((r) => r.json() as Promise<InvestorsResponse>),
-      fetch("/api/stocks").then((r) => r.json() as Promise<StocksResponse>),
+      fetchCatalogue<InvestorsResponse>("/api/investors"),
+      fetchCatalogue<StocksResponse>("/api/stocks"),
     ])
       .then(([iv, st]) => {
         setInvestors(iv.rows);
         setStocks(st.rows);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => setFailed(true));
+  }, [retry]);
 
   useEffect(() => {
     const sync = () => {
@@ -34,7 +39,8 @@ export function Watchlist() {
     };
     sync();
     window.addEventListener("watchlist", sync);
-    return () => window.removeEventListener("watchlist", sync);
+    window.addEventListener("storage", sync);
+    return () => {window.removeEventListener("watchlist", sync);window.removeEventListener("storage", sync);};
   }, []);
 
   const myInv = investors.filter((i) => followInv.includes(i.slug));
@@ -44,7 +50,7 @@ export function Watchlist() {
     return (
       <section className="rounded-2xl border border-dashed border-hair bg-white/50 p-5 text-sm text-subtle">
         <span className="font-medium text-ink">Deine Beobachtungsliste ist leer.</span>{" "}
-        Tippe auf das ☆ bei einem Investor oder einer Aktie, um ihn hier zu sammeln.
+        Tippe auf das ☆ bei einem Investor oder einer Aktie, um ihn hier zu sammeln. <Link href="/discover?tab=investors" className="ml-1 text-brand underline">Investoren entdecken</Link>
       </section>
     );
   }
@@ -52,9 +58,10 @@ export function Watchlist() {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold tracking-tight">Deine Beobachtungsliste</h2>
+      {failed && <ErrorRetry onRetry={() => setRetry(r => r+1)}/>}
 
       {myInv.length > 0 && (
-        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+        <SwipeRow>
           {myInv.map((i) => (
             <Link
               key={i.slug}
@@ -65,7 +72,7 @@ export function Watchlist() {
               <div className="mt-2 w-full truncate text-xs font-semibold">{i.person ?? i.fund}</div>
             </Link>
           ))}
-        </div>
+        </SwipeRow>
       )}
 
       {myStk.length > 0 && (

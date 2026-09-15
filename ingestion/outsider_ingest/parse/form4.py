@@ -17,13 +17,14 @@ direction. Non-derivative + derivative tables are both parsed; *Holding rows
 from __future__ import annotations
 
 from typing import Optional
+import math
 
 from lxml import etree
 
 from outsider_ingest.models import Form4Transaction
 
 CODE_TO_TXN = {
-    "P": "buy", "S": "sell", "A": "buy", "F": "sell", "D": "sell",
+    "P": "buy", "S": "sell", "A": "exchange", "F": "exchange", "D": "exchange",
     "M": "exchange", "G": "exchange", "C": "exchange", "X": "exchange", "J": "exchange",
 }
 
@@ -59,7 +60,8 @@ def _num(el, name) -> Optional[float]:
     if raw is None:
         return None
     try:
-        return float(raw.replace(",", ""))
+        value = float(raw.replace(",", ""))
+        return value if math.isfinite(value) else None
     except ValueError:
         return None
 
@@ -72,7 +74,7 @@ def _bool(el, name) -> bool:
 def parse_form4(xml_bytes: bytes) -> list[Form4Transaction]:
     if isinstance(xml_bytes, str):
         xml_bytes = xml_bytes.encode("utf-8")
-    root = etree.fromstring(xml_bytes, parser=etree.XMLParser(recover=True, huge_tree=True))
+    root = etree.fromstring(xml_bytes, parser=etree.XMLParser(resolve_entities=False, no_network=True, recover=False))
     if root is None:
         return []
 
@@ -98,7 +100,7 @@ def parse_form4(xml_bytes: bytes) -> list[Form4Transaction]:
         tbl = _child(root, table)
         if tbl is None:
             continue
-        for tx in tbl:
+        for ordinal, tx in enumerate(tbl):
             if _local(tx.tag) != txn_tag:
                 continue
             coding = _child(tx, "transactionCoding")
@@ -111,6 +113,7 @@ def parse_form4(xml_bytes: bytes) -> list[Form4Transaction]:
                 pass  # keep 'exchange' (grants/exercises are not open-market buys)
             out.append(
                 Form4Transaction(
+                    source_line=f"{table}:{ordinal}",
                     issuer_cik=issuer_cik,
                     issuer_name=issuer_name,
                     ticker=ticker,

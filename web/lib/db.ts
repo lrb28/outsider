@@ -1,29 +1,26 @@
-import { Pool } from "pg";
-
-// Singleton pool (Next.js hot-reload safe). Returns null when DATABASE_URL is
-// unset so the app can fall back to bundled sample data.
-//
-// Serverless tuning: each lambda keeps at most ONE connection (many lambdas ×
-// big pools exhaust Supabase's pooler and cause random failures), with tight
-// timeouts so a dead connection fails fast and the retry wrapper can recover.
+import "server-only";
+import { Pool, types } from "pg";
+// DATE has no timezone; retain the date the disclosure actually contains.
+types.setTypeParser(1082, value => value);
 let pool: Pool | null | undefined;
-
 export function getPool(): Pool | null {
   if (pool !== undefined) return pool;
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    pool = null;
-    return pool;
-  }
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return pool = null;
+  const url = new URL(raw);
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  // URL sslmode flags must not override certificate verification.
+  for (const key of ["sslmode", "sslcert", "sslkey", "sslrootcert"]) url.searchParams.delete(key);
   pool = new Pool({
-    connectionString: url,
-    ssl: url.includes("localhost") ? undefined : { rejectUnauthorized: false },
-    max: 1,
+    connectionString: url.toString(),
+    ssl: local ? false : { rejectUnauthorized: true, ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, "\n") } : {}) },
+    max: 2,
     idleTimeoutMillis: 10_000,
-    connectionTimeoutMillis: 8_000,
+    connectionTimeoutMillis: 4_000,
+    statement_timeout: 6_000,
+    query_timeout: 7_000,
     allowExitOnIdle: true,
   });
-  // never let an idle-connection error crash the lambda
-  pool.on("error", () => {});
+  pool.on("error", () => console.error("[database] idle connection closed"));
   return pool;
 }

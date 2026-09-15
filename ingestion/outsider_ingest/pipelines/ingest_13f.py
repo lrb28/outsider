@@ -86,6 +86,8 @@ def ingest_institution(
         # A 13F splits one position into several rows (one per sub-manager);
         # sum them so a position's stored value is the FULL stake, not a slice.
         holdings = aggregate_holdings(sec.get_13f_holdings(ref))
+        if not holdings:
+            raise RuntimeError(f"Empty 13F holdings: {ref.source_url}")
         _prewarm_securities(repo, symbols, holdings)
         as_of = ref.period_of_report or ref.filed_at
         filing_id = repo.insert_filing(
@@ -100,14 +102,16 @@ def ingest_institution(
                                 h.shares_or_prn, h.value_usd, h.put_call)
 
         if prev is not None:
+            repo.supersede_legacy_transactions(filing_id)
             for ch in compute_position_changes(prev, holdings):
                 if ch.change_type == "unchanged":
                     continue
                 sid = repo.upsert_security_by_cusip(ch.cusip, ch.name)
                 repo.insert_transaction(
                     filing_id, entity_id, sid, ch.txn_type,
-                    txn_date=as_of, disclosed_at=ref.filed_at,
+                    txn_date=None, disclosed_at=ref.filed_at,
                     shares=abs(ch.delta_shares), put_call=ch.put_call,
+                    is_derivative=bool(ch.put_call), source_line=f"13f:{ch.cusip}:{ch.put_call or 'stock'}",
                 )
         prev = holdings
         repo.commit()
@@ -116,13 +120,17 @@ def ingest_institution(
 
 def ingest_from_config() -> None:
     cfg = yaml.safe_load((Path(__file__).resolve().parents[2] / "tracked_entities.yaml").read_text())
+    failures = []
     for inst in cfg.get("institutions", []):
         print(f"[13F] {inst['full_name']} (CIK {inst['cik']})")
         try:
             # latest 2 quarters = current holdings + one QoQ diff; keeps volume sane
             ingest_institution(inst["cik"], inst["full_name"], max_filings=2)
         except Exception as e:  # noqa: BLE001 — one bad fund must not stop the rest
-            print(f"  SKIP {inst['full_name']}: {e}")
+            print(f"  FAILED {inst['full_name']}: {type(e).__name__}")
+            failures.append(inst["full_name"])
+    if failures:
+        raise RuntimeError(f"13F import failed for {len(failures)} institutions")
 
 
 def main() -> None:

@@ -17,6 +17,10 @@ export interface FeedRow {
   pctSinceTrade: number | null;
   pctSinceDisclosure: number | null;
   sourceUrl: string;
+  transactionCode?: string | null;
+  isDerivative?: boolean;
+  priceAsOf?: string | null;
+  reportingDate?: string | null;
 }
 
 export interface TradesResponse {
@@ -102,6 +106,9 @@ export interface StockHolder {
   value: number | null;
   shares: number | null;
   weight: number | null;
+  // Optionsbestände werden getrennt ausgewiesen, damit sie nicht wie ein
+  // Aktienbestand aussehen.
+  putCall: "Put" | "Call" | null;
 }
 
 export interface StockDetail {
@@ -174,7 +181,9 @@ export interface PriceBar {
 }
 
 export interface PricesResponse {
-  source: "database" | "sample";
+  source: "database" | "sample" | "none";
+  asOf?: string | null;
+  stale?: boolean;
   ticker: string;
   bars: PriceBar[];
 }

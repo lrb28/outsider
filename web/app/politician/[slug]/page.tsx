@@ -22,12 +22,14 @@ export default function PoliticianPage() {
 
   useEffect(() => {
     if (!slug) return;
+    const controller = new AbortController();
     setLoading(true);
     setErr(false);
-    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`)
+    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`, {signal:controller.signal})
       .then((d) => setPol(d.politician))
-      .catch(() => setErr(true))
-      .finally(() => setLoading(false));
+      .catch(() => {if(!controller.signal.aborted) setErr(true);})
+      .finally(() => {if(!controller.signal.aborted) setLoading(false);});
+    return () => controller.abort();
   }, [slug, tick]);
 
   if (loading) return <SkeletonPage />;
@@ -81,7 +83,7 @@ export default function PoliticianPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
         <TradeFeed
           rows={pol.trades}
           showActor={false}
