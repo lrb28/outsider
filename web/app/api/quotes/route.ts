@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { InputError, symbolList } from "@/lib/apiValidation";
+import { limitUpstream } from "@/lib/rateLimit";
 
 // Near-realtime quotes, proxied server-side from Yahoo Finance's public chart
 // endpoint (browsers can't call it directly because of CORS). Cached in-memory
@@ -82,6 +83,8 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
 }
 
 export async function GET(req: NextRequest) {
+  const limited = limitUpstream("quotes", req);
+  if (limited) return limited;
   let tickers: string[];
   try { tickers = symbolList(req.nextUrl.searchParams.get("tickers") || "", 30); }
   catch (error) { return NextResponse.json({ error: error instanceof InputError ? error.message : "Ungültige Anfrage" }, { status: 400 }); }
