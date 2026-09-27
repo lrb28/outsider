@@ -8,6 +8,16 @@ const RL = (await import('./rateLimit.cjs')).default;
 const route = async name => (await import(`./route-${name}.cjs`)).default.GET;
 const request = (path, ip) => ({nextUrl:new URL(path,'http://localhost'), headers:new Headers(ip ? {'x-real-ip':ip} : {})});
 
+test('database TLS trusts the Supabase root CA only for Supabase hosts', async () => {
+  const DB = (await import('./db.cjs')).default;
+  for (const host of ['aws-0-eu-west-1.pooler.supabase.com','db.jlyjosdtljwiqmefogje.supabase.co']) {
+    assert.match(DB.trustedCa(host,''),/BEGIN CERTIFICATE/,host);
+  }
+  assert.equal(DB.trustedCa('db.example.com',''),undefined,'other hosts keep the default trust store');
+  assert.equal(DB.trustedCa('evilsupabase.com',''),undefined);
+  assert.equal(DB.trustedCa('aws-0-eu-west-1.pooler.supabase.com','A\\nB'),'A\nB','configured CA wins');
+});
+
 test('rate limiter: bounded window, separate clients, reset after window', () => {
   const check = RL.createRateLimiter();
   const rule = {limit:3, windowMs:1_000};

@@ -18,6 +18,7 @@ try {
     await build({entryPoints:[join(root,`app/api/${route}/route.ts`)],outfile:join(dir,`route-${route}.cjs`),bundle:true,platform:'node',format:'cjs',packages:'external',plugins:[{name:'test-db',setup(builder){builder.onResolve({filter:/^\.\/db$/},()=>({path:mockDb}));}}],logLevel:'silent'});
   }
   await build({entryPoints:[join(root,'lib/rateLimit.ts')],outfile:join(dir,'rateLimit.cjs'),bundle:true,platform:'node',format:'cjs',packages:'external',logLevel:'silent'});
+  await build({entryPoints:[join(root,'lib/db.ts')],outfile:join(dir,'db.cjs'),bundle:true,platform:'node',format:'cjs',packages:'external',plugins:[{name:'server-only',setup(builder){builder.onResolve({filter:/^server-only$/},()=>({path:'server-only',namespace:'stub'}));builder.onLoad({filter:/.*/,namespace:'stub'},()=>({contents:''}));}}],logLevel:'silent'});
   for (const name of ['test-portfolio.mjs','test-broker-import.mjs','test-audit.mjs','test-hardening.mjs']) {
     const source = (await readFile(join(root,'scripts',name),'utf8')).replaceAll('../.tmp-','./');
     const file = join(dir,name); await writeFile(file,source);
