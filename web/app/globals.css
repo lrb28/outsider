@@ -110,3 +110,18 @@ body {
     transform: scaleX(1);
   }
 }
+
+/* Keyboard focus remains visible on every interactive control. */
+:focus-visible { outline: 3px solid #4f46e5; outline-offset: 4px; }
+button, input, select { min-height: 44px; }
+button:disabled { cursor: not-allowed; opacity: .55; }
+.skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: #fff; color: #0f172a; }
+.skip-link:focus { top: 1rem; }
+dialog::backdrop { background: rgb(15 23 42 / .55); backdrop-filter: blur(4px); }
+dialog[open] { animation: fadeUp .15s ease-out; }
+.prose-copy p { margin-top: 1rem; line-height: 1.8; color: #334155; }
+.prose-copy h2 { margin-top: 2rem; font-size: 1.2rem; font-weight: 650; }
+.prose-copy a { color: #4338ca; text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

@@ -63,7 +63,11 @@ def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
         filing_id = repo.insert_filing(
             "house_fd", "P", entity_id, ref.filed_at, None, ref.source_url
         )
-        for r in rows:
+        if not any(r.get("ticker") for r in rows):
+            skipped += 1
+            continue
+        repo.supersede_legacy_transactions(filing_id)
+        for ordinal, r in enumerate(rows):
             if not r.get("ticker"):
                 continue
             sid = repo.upsert_security_by_ticker(r["ticker"], r.get("asset"))
@@ -71,11 +75,14 @@ def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
                 filing_id, entity_id, sid, r["txn_type"],
                 txn_date=_d(r.get("txn_date")), disclosed_at=ref.filed_at,
                 amount_min=r.get("amount_min"), amount_max=r.get("amount_max"),
+                source_line=f"house:{ordinal}",
             )
             n += 1
         repo.commit()
     print(f"House: {n} transactions from {len(refs[:max_ptrs])} recent PTRs "
           f"({skipped} skipped/scanned)")
+    if not n:
+        raise RuntimeError("House import produced no parsed transactions; check source availability and OCR coverage")
     return n
 
 

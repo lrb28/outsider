@@ -157,6 +157,7 @@ export function sampleStock(ticker: string): StockDetail | null {
       value: (base.value ?? 0) / (i + 2),
       shares: null,
       weight: 0.12 / (i + 1),
+      putCall: null,
     })),
     trades: SAMPLE_TRADES.filter((t) => t.ticker === base.ticker),
   };

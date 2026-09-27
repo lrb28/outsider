@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { ErrorRetry } from "@/components/ErrorRetry";
+import { fetchCatalogue } from "@/lib/fetchJson";
 import { Avatar } from "@/components/Avatar";
 import { SkeletonList } from "@/components/Skeleton";
 import { formatDate } from "@/lib/format";
@@ -12,12 +14,14 @@ export default function PoliticiansPage() {
   const [rows, setRows] = useState<PoliticianRow[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [error,setError] = useState(false);const [retry,setRetry] = useState(0);
   useEffect(() => {
-    fetch("/api/politicians")
-      .then((r) => r.json() as Promise<PoliticiansResponse>)
+    setLoading(true);setError(false);
+    fetchCatalogue<PoliticiansResponse>("/api/politicians")
       .then((d) => setRows(d.rows))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [retry]);
 
   return (
     <div className="space-y-5">
@@ -30,7 +34,9 @@ export default function PoliticiansPage() {
 
       {loading && <SkeletonList n={6} />}
 
-      {!loading && (
+      {error && <ErrorRetry onRetry={() => setRetry(r => r+1)}/>}
+      <p className="text-sm text-amber-800">Historische Quelle mit erheblichen Datenlücken. <Link href="/status" className="underline">Abdeckung prüfen</Link></p>
+      {!loading && !error && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
           {rows.map((p) => (
             <Link

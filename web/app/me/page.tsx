@@ -8,6 +8,9 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { CountUp } from "@/components/Donut";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
 import { DivEntry, DividendChart, DividendSplit } from "@/components/DividendChart";
+import { fetchMatches } from "@/lib/fetchMatches";
+import { conversionFactor, convertHistory, dailyChange, fxSymbol } from "@/lib/valuation";
+import { isStaleDate } from "@/lib/format";
 import { LiveValue } from "@/components/LiveValue";
 import { RiskPoint, RiskReturnMap } from "@/components/PerformancePanels";
 import {
@@ -25,7 +28,6 @@ import {
   Resolution,
   getBadSymbols,
   getManualPrices,
-  markBadSymbol,
   getResolveCache,
   getUserMap,
   priceMismatch,
@@ -58,7 +60,6 @@ import {
   buildSeries,
   cashFlows,
   clearTxns,
-  convertBars,
   correlation,
   dailyReturns,
   dayDiff,
@@ -67,7 +68,6 @@ import {
   getTxns,
   hitRate,
   indexTo,
-  lastFx,
   makeTxn,
   maxDrawdown,
   monthlyReturns,
@@ -308,14 +308,21 @@ export default function MePage() {
     if (open.length === 0) return;
     // Jede ISIN wird höchstens einmal je Sitzung nachgeschlagen, sonst dreht
     // sich die Suche im Kreis, wenn sie dasselbe untaugliche Kürzel liefert.
-    open.forEach((k) => searched.current.add(k));
     let on = true;
     setResolving(true);
-    fetchJson<{ symbols: Record<string, string> }>(
-      `/api/resolve?ids=${encodeURIComponent(open.slice(0, 60).join(","))}`,
-    )
+    (async () => {
+      const symbols: Record<string,string> = {};
+      for (let i=0;i<open.length;i+=20) {
+        const data = await fetchJson<{symbols:Record<string,string>}>(`/api/resolve?ids=${encodeURIComponent(open.slice(i,i+20).join(","))}`, {timeoutMs:25000,tries:1});
+        if (!on) return {symbols};
+        open.slice(i,i+20).forEach(k => searched.current.add(k));
+        Object.assign(symbols,data.symbols);
+      }
+      return {symbols};
+    })()
       .then((d) => {
         if (!on || !d.symbols) return;
+        open.forEach(k => searched.current.add(k));
         mergeResolveCache(d.symbols);
         setMapTick((t) => t + 1);
       })
@@ -333,14 +340,21 @@ export default function MePage() {
 
   // ── Kurshistorie: eigene Papiere + Benchmarks + Wechselkurs ───────────────
   useEffect(() => {
-    const want = [...symbols, ...BENCHMARKS.map((b) => b.key), ...(fxPair ? [fxPair] : [])];
+    const pairs = Object.values(hist).map(e => fxSymbol(e.currency,currency)).filter((s): s is string => !!s);
+    const want = [...symbols, ...BENCHMARKS.map((b) => b.key), ...pairs, ...(fxPair ? [fxPair] : [])];
     const need = [...new Set(want)].filter((t) => !(t in hist));
     if (need.length === 0) return;
     let on = true;
     setLoadingHist(true);
-    fetchJson<{ entries: Record<string, HistoryEntry> }>(
-      `/api/history?tickers=${encodeURIComponent(need.join(","))}&range=6y`,
-    )
+    (async () => {
+      const entries: Record<string,HistoryEntry> = {};
+      for (let i=0;i<need.length;i+=40) {
+        const data = await fetchJson<{entries:Record<string,HistoryEntry>}>(`/api/history?tickers=${encodeURIComponent(need.slice(i,i+40).join(","))}&range=10y`, {timeoutMs:35000,tries:1});
+        if (!on) return {entries};
+        Object.assign(entries,data.entries);
+      }
+      return {entries};
+    })()
       .then((d) => on && setHist((p) => ({ ...p, ...d.entries })))
       .catch(() => {
         if (!on) return;
@@ -355,27 +369,10 @@ export default function MePage() {
     return () => {
       on = false;
     };
-  }, [symbols, hist, fxPair]);
-
-  /**
-   * Ein zugeordnetes Kürzel liefert keine Kurse? Dann taugt es nicht — merken
-   * und beim nächsten Durchlauf über die Suche neu bestimmen. Ohne das bleibt
-   * ein falscher Tabelleneintrag für immer stecken.
-   */
-  useEffect(() => {
-    let changed = false;
-    for (const [, res] of resolutions) {
-      const sym = res.symbol;
-      if (!sym) continue;
-      const e = hist[sym];
-      if (e && e.source === "none" && markBadSymbol(sym)) changed = true;
-    }
-    if (changed) setMapTick((t) => t + 1);
-  }, [resolutions, hist]);
+  }, [symbols, hist, fxPair, currency]);
 
   /** Wechselkursreihe Depotwährung → USD. */
   const fxBars = fxPair ? hist[fxPair]?.bars ?? null : null;
-  const fxNow = lastFx(fxBars);
 
   /**
    * Alle Kursreihen einmalig in die Depotwährung umgerechnet.
@@ -389,8 +386,8 @@ export default function MePage() {
     const m = new Map<string, Bar[]>();
     for (const [sym, e] of Object.entries(hist)) {
       if (!e || !e.bars || e.bars.length === 0) continue;
-      const q = (e.currency ?? "USD").toUpperCase();
-      m.set(sym, q !== currency && q === "USD" && fxBars ? convertBars(e.bars, fxBars) : e.bars);
+      const pair = fxSymbol(e.currency,currency);
+      m.set(sym, convertHistory(e.bars,e.currency,currency,pair ? hist[pair]?.bars : null));
     }
     return m;
   }, [hist, currency, fxBars]);
@@ -406,8 +403,8 @@ export default function MePage() {
       return;
     }
     let on = true;
-    fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(symbols.join(","))}`)
-      .then((d) => on && setMatches(d.rows))
+    fetchMatches(symbols)
+      .then((rows) => on && setMatches(rows))
       .catch(() => on && setMatches([]));
     return () => {
       on = false;
@@ -468,10 +465,11 @@ export default function MePage() {
       const manualPrice = manual[p.ticker] ?? null;
       const q = symbol ? quotes[symbol.toUpperCase()] : undefined;
       const bars = barsByTicker[p.ticker];
-      const eod = bars && bars.length ? bars[bars.length - 1].close : null;
+      const eod = bars?.length && !isStaleDate(bars[bars.length - 1].date) ? bars[bars.length - 1].close : null;
       // Live-Kurs notiert in der Kurswährung — in die Depotwährung umrechnen.
-      const qCur = (q?.currency ?? "USD").toUpperCase();
-      const live = q ? (qCur === currency ? q.price : qCur === "USD" ? q.price / fxNow : q.price) : null;
+      const pair = fxSymbol(q?.currency,currency);
+      const factor = conversionFactor(q?.currency,currency,pair ? hist[pair]?.bars : null,today);
+      const live = q && factor !== null ? q.price * factor : null;
       const last = manualPrice ?? live ?? eod;
       const value = last != null ? p.shares * last : null;
       // Passt der Kurs überhaupt zum Einstand? Eine falsch aufgelöste ISIN
@@ -480,11 +478,8 @@ export default function MePage() {
       const mismatch = manualPrice ? null : priceMismatch(p.avgPrice, last, heldYears);
       const unreal = value != null ? value - p.costBasis : null;
       const unrealPct = value != null && p.costBasis > 0 ? value / p.costBasis - 1 : null;
-      const dayPct = q?.changePct ?? null;
-      const dayAbs =
-        q && q.prevClose != null && last != null
-          ? ((q.price - q.prevClose) / (q.prevClose || 1)) * (value ?? 0)
-          : null;
+      const dayPct = !manualPrice && live !== null ? q?.changePct ?? null : null;
+      const dayAbs = !manualPrice && q && live !== null ? dailyChange(p.shares,q.price,q.prevClose,factor) : null;
       const totalGain = (unreal ?? 0) + p.realized + p.dividends;
       const m = meta.get(p.ticker);
       const company =
@@ -506,10 +501,10 @@ export default function MePage() {
         totalGain,
         company,
         assetClass: m?.assetClass ?? "",
-        live: !!q,
+        live: live !== null && !manualPrice,
       };
     });
-  }, [openPositions, quotes, barsByTicker, hist, resolutions, meta, currency, fxNow]);
+  }, [openPositions, quotes, barsByTicker, hist, resolutions, meta, currency]);
 
   /** Bewertbar = Kurs vorhanden. Der Rest darf die Kennzahlen nicht verfälschen. */
   // Restbestände unter einem halben Euro sind Rundungsreste aus Teilverkäufen
@@ -558,12 +553,14 @@ export default function MePage() {
       const sym = resolutions.get(t)?.symbol;
       const evs = sym ? hist[sym]?.dividends ?? [] : [];
       if (evs.length === 0) continue;
-      const divCur = ((sym && hist[sym]?.currency) ?? "USD").toUpperCase();
-      const conv = divCur === currency ? 1 : divCur === "USD" ? 1 / fxNow : 1;
+      const divCur = sym ? hist[sym]?.currency : null;
+      const divPair = fxSymbol(divCur,currency);
       const tl = sharesTimeline(normTxns, t);
       let sum = 0;
       let psYear = 0;
       for (const raw of evs) {
+        const conv = conversionFactor(divCur,currency,divPair ? hist[divPair]?.bars : null,raw.date);
+        if (conv === null) continue;
         const e = { date: raw.date, amount: raw.amount * conv };
         if (e.date > today) {
           upcoming.push({ ticker: t, date: e.date, amount: e.amount });
@@ -615,7 +612,7 @@ export default function MePage() {
       yieldNow: total > 0 ? forecast / total : null,
       yieldOnCost: costBase > 0 ? forecast / costBase : null,
     };
-  }, [keys, resolutions, hist, normTxns, rows, total, currency, fxNow]);
+  }, [keys, resolutions, hist, normTxns, rows, total, currency]);
 
   // Aus dem Broker importierte Dividenden sind die Wahrheit; die Rekonstruktion
   // aus der Ausschüttungshistorie ist nur der Ersatz, wenn nichts importiert wurde.
@@ -675,11 +672,13 @@ export default function MePage() {
       const sym = resolutions.get(k)?.symbol;
       const evs = sym ? hist[sym]?.dividends ?? [] : [];
       if (evs.length === 0) continue;
-      const divCur = ((sym && hist[sym]?.currency) ?? "USD").toUpperCase();
-      const conv = divCur === currency ? 1 : divCur === "USD" ? 1 / fxNow : 1;
+      const divCur = sym ? hist[sym]?.currency : null;
+      const divPair = fxSymbol(divCur,currency);
       const tl = sharesTimeline(normTxns, k);
       for (const e of evs) {
         if (e.date > today) continue;
+        const conv = conversionFactor(divCur,currency,divPair ? hist[divPair]?.bars : null,e.date);
+        if (conv === null) continue;
         const sh = sharesAt(tl, e.date);
         if (sh <= 0) continue;
         out.push({
@@ -691,7 +690,7 @@ export default function MePage() {
       }
     }
     return out;
-  }, [normTxns, keys, resolutions, hist, meta, currency, fxNow]);
+  }, [normTxns, keys, resolutions, hist, meta, currency]);
 
   /**
    * Dividenden je Papier — auch für längst verkaufte Positionen. Die
@@ -953,6 +952,7 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
+      {!empty && <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm leading-6 text-indigo-950">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
       {/* Kopf */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -961,7 +961,7 @@ export default function MePage() {
             {liveCount > 0 && (
               <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
                 <span className="animate-live h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Live
+                Kurse automatisch aktualisiert
               </span>
             )}
           </div>
@@ -1476,7 +1476,7 @@ function EmptyState({ onPick }: { onPick: () => void }) {
         </p>
       </div>
       <p className="mt-4 text-[11px] text-subtle">
-        Alles bleibt in deinem Browser. Keine Anmeldung, kein Server, keine Weitergabe.
+        Dein Depot wird in diesem Browser gespeichert. Für Kursabfragen werden Ticker oder ISINs an unsere API und gegebenenfalls Yahoo Finance gesendet. Exportiere regelmäßig eine Sicherung.
       </p>
     </div>
   );

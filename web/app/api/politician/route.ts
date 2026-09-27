@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
 import { getPolitician } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
 import { samplePolitician } from "@/lib/sampleData";
-import { PoliticianResponse } from "@/lib/types";
+import { textParam, SYMBOL_RE } from "@/lib/apiValidation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const slug = req.nextUrl.searchParams.get("slug") || "";
+  let value: string;
   try {
-    const politician = await withRetry(() => getPolitician(slug));
-    return NextResponse.json({ source: "database", politician } as PoliticianResponse);
-  } catch {
-    return NextResponse.json({ source: "sample", politician: samplePolitician(slug) } as PoliticianResponse);
-  }
+    value = textParam(req.nextUrl.searchParams, "slug", 160) ?? "";
+    if (!/^[a-z0-9-]+$/.test(value)) throw new Error();
+  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  return dataResponse(async () => ({ politician: await getPolitician(value) }), () => ({ politician: samplePolitician(value) }));
 }

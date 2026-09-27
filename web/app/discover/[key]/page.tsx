@@ -7,18 +7,20 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { SkeletonList } from "@/components/Skeleton";
+import { ErrorRetry } from "@/components/ErrorRetry";
+import { fetchCatalogue } from "@/lib/fetchJson";
 import { fixTicker } from "@/lib/format";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
 
 const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: DiscoverData) => CollectionItem[] }> = {
   boughtq: {
-    title: "Meistgekauft (Quartal)",
-    blurb: "Aktien, die die verfolgten Investoren zuletzt am häufigsten gekauft haben.",
+    title: "Häufige Aufstockungen",
+    blurb: "Bestandserhöhungen im jüngsten verfügbaren Quartalsbericht jedes Investors. Keine exakten Kaufzeitpunkte.",
     pick: (d) => d.mostBoughtQ,
   },
   insiderbuys: {
     title: "Insider kaufen",
-    blurb: "Aktien, deren eigene Führungskräfte (Form 4) zuletzt am häufigsten zugekauft haben.",
+    blurb: "Form-4-Käufe mit Code P ohne Derivate, offengelegt in den letzten 90 Tagen. Ältere Daten ohne Originalcode werden nicht mitgezählt.",
     pick: (d) => d.insiderBuys,
   },
   mostheld: {
@@ -27,13 +29,13 @@ const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: Disco
     pick: (d) => d.mostHeld,
   },
   conviction: {
-    title: "Höchste Überzeugung",
-    blurb: "Aktien, in die ein einzelner Investor den größten Anteil seines Portfolios steckt.",
+    title: "Höchste Gewichtung",
+    blurb: "Aktien, in die ein einzelner Investor den größten Anteil seiner gemeldeten Bestände ohne Optionen steckt.",
     pick: (d) => d.highestConviction,
   },
   biggest: {
     title: "Größte Einzelpositionen",
-    blurb: "Die wertmäßig größten Einzelwetten unter den verfolgten Investoren.",
+    blurb: "Die wertmäßig größten Aktienpositionen unter den verfolgten Investoren.",
     pick: (d) => d.biggest,
   },
 };
@@ -69,12 +71,8 @@ export default function CollectionPage() {
   const invMeta = INV_META[key];
   const [data, setData] = useState<DiscoverData | null>(null);
 
-  useEffect(() => {
-    fetch("/api/discover")
-      .then((r) => r.json() as Promise<DiscoverData>)
-      .then(setData)
-      .catch(() => setData(null));
-  }, []);
+  const [error,setError] = useState(false); const [retry,setRetry] = useState(0);
+  useEffect(() => {let on = true;setError(false);fetchCatalogue<DiscoverData>("/api/discover").then(d => {if(on) setData(d);}).catch(() => {if(on) setError(true);});return () => {on=false;};},[retry]);
 
   const meta = stockMeta ?? invMeta;
   if (!meta)
@@ -82,7 +80,7 @@ export default function CollectionPage() {
       <div className="py-16 text-center text-sm text-subtle">
         Sammlung nicht gefunden.{" "}
         <Link href="/discover" className="text-brand underline">
-          Zu Discover
+          Zu Entdecken
         </Link>
       </div>
     );
@@ -93,7 +91,7 @@ export default function CollectionPage() {
   return (
     <div className="space-y-6">
       <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Discover
+        ‹ Entdecken
       </Link>
 
       <div>
@@ -101,7 +99,7 @@ export default function CollectionPage() {
         <p className="mt-1 max-w-2xl text-sm text-subtle">{meta.blurb}</p>
       </div>
 
-      {!data && <SkeletonList n={6} />}
+      {error ? <ErrorRetry onRetry={() => setRetry(r => r+1)}/> : !data && <SkeletonList n={6} />}
 
       {stockItems && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">

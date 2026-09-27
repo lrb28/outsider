@@ -1,182 +1,36 @@
 "use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-import { companyName, fixTicker, formatDate, pct, signalLabel } from "@/lib/format";
-import { FeedRow, PriceBar, PricesResponse } from "@/lib/types";
-
-import { Avatar } from "./Avatar";
+import { useEffect, useId, useRef, useState } from "react";
+import { companyName, formatDate, isStaleDate, pct, sourceLink, tradeSignal } from "@/lib/format";
+import { fetchJson } from "@/lib/fetchJson";
+import type { FeedRow, PricesResponse } from "@/lib/types";
 import { CompanyLogo } from "./CompanyLogo";
 import { Sparkline } from "./Sparkline";
-
-function price(v: number | null): string {
-  if (v === null || Number.isNaN(v)) return "—";
-  return `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () => void }) {
-  const [bars, setBars] = useState<PriceBar[] | null>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!row.ticker) {
-      setBars([]);
-      return;
-    }
-    let on = true;
-    fetch(`/api/prices?ticker=${encodeURIComponent(row.ticker)}`)
-      .then((r) => r.json() as Promise<PricesResponse>)
-      .then((d) => on && setBars(d.bars))
-      .catch(() => on && setBars([]));
-    return () => {
-      on = false;
-    };
-  }, [row.ticker]);
-
-  const sig = signalLabel(row.txnType, row.putCall);
-  const badge =
-    sig.tone === "bull"
-      ? "bg-emerald-50 text-emerald-700"
-      : sig.tone === "bear"
-      ? "bg-rose-50 text-rose-700"
-      : "bg-slate-100 text-slate-600";
-  const company = companyName(row.ticker, row.securityName);
-  const perf = row.pctSinceDisclosure;
-  const up = perf === null ? true : perf >= 0;
-
-  // entry = first close on/after disclosure; current = last close
-  let entry: number | null = null;
-  let current: number | null = null;
-  if (bars && bars.length) {
-    current = bars[bars.length - 1].close;
-    const mark = bars.find((b) => (row.disclosedAt ? b.date >= row.disclosedAt : false));
-    entry = mark ? mark.close : bars[0].close;
-  }
-
-  const canInvestor = row.entitySlug && row.entityType === "institution";
-  const canPolitician = row.entitySlug && row.entityType === "politician";
-  const canInsider = row.entitySlug && row.entityType === "corporate_insider";
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md overflow-hidden rounded-t-3xl bg-white shadow-xl sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-3 p-5 pb-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <CompanyLogo ticker={row.ticker} company={company} size={44} />
-              <div className="absolute -bottom-1.5 -right-1.5 rounded-full ring-2 ring-white">
-                <Avatar name={row.entityName} size={24} />
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold leading-tight">{company}</div>
-              <div className="truncate text-xs text-subtle">{row.entityName}</div>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="press-sm shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm text-subtle hover:bg-slate-200"
-            aria-label="Schließen"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 px-5 pb-2">
-          <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${badge}`}>
-            {sig.text}
-          </span>
-          <span className="font-mono text-xs text-subtle">{fixTicker(row.ticker, company) ?? "—"}</span>
-          <span className="ml-auto text-sm font-semibold" style={{ color: up ? "#16a34a" : "#dc2626" }}>
-            {pct(perf)}
-          </span>
-        </div>
-
-        <div className="px-2">
-          <Sparkline bars={bars ?? []} markDate={row.disclosedAt} up={up} />
-        </div>
-
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-sm">
-          <Stat label="Größe" value={row.sizeDisplay} />
-          <Stat label="Handelsdatum" value={formatDate(row.txnDate)} />
-          <Stat label="Kurs bei Offenlegung" value={price(entry)} />
-          <Stat label="Offengelegt am" value={formatDate(row.disclosedAt)} />
-          <Stat label="Aktueller Kurs" value={price(current)} />
-          <Stat label="Seit Offenlegung" value={pct(perf)} valueClass={up ? "text-bull" : "text-bear"} />
-        </dl>
-
-        <div className="flex gap-2 border-t border-hair p-4">
-          {canInvestor && (
-            <Link
-              href={`/investor/${row.entitySlug}`}
-              className="press-sm flex-1 rounded-full bg-slate-100 px-3 py-2 text-center text-sm font-medium hover:bg-slate-200"
-            >
-              Investor ansehen
-            </Link>
-          )}
-          {canPolitician && (
-            <Link
-              href={`/politician/${row.entitySlug}`}
-              className="press-sm flex-1 rounded-full bg-slate-100 px-3 py-2 text-center text-sm font-medium hover:bg-slate-200"
-            >
-              Politiker ansehen
-            </Link>
-          )}
-          {canInsider && (
-            <Link
-              href={`/insider/${row.entitySlug}`}
-              className="press-sm flex-1 rounded-full bg-slate-100 px-3 py-2 text-center text-sm font-medium hover:bg-slate-200"
-            >
-              Insider ansehen
-            </Link>
-          )}
-          {row.ticker && (
-            <Link
-              href={`/stock/${row.ticker}`}
-              className="press-sm flex-1 rounded-full bg-slate-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-slate-800"
-            >
-              Aktie ansehen
-            </Link>
-          )}
-          <a
-            href={row.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full px-3 py-2 text-center text-sm font-medium text-subtle underline hover:text-brand"
-          >
-            Beleg
-          </a>
-        </div>
-      </div>
+const price = (v: number | null) => v !== null && Number.isFinite(v) ? v.toLocaleString("de-DE",{style:"currency",currency:"USD"}) : "—";
+export function TradeDetailModal({row,onClose}: {row: FeedRow;onClose: () => void}) {
+  const dialog = useRef<HTMLDialogElement>(null); const titleId = useId();
+  const [data,setData] = useState<PricesResponse | null>(null); const [error,setError] = useState(false); const [retry,setRetry] = useState(0);
+  const closeRef = useRef(onClose); closeRef.current = onClose;
+  useEffect(() => { const element = dialog.current; const focused = document.activeElement as HTMLElement | null; const overflow = document.body.style.overflow; element?.showModal(); document.body.style.overflow = "hidden"; return () => {element?.close(); document.body.style.overflow = overflow; focused?.focus();}; },[]);
+  useEffect(() => { const controller = new AbortController();setData(null);setError(false);if (row.ticker) fetchJson<PricesResponse>(`/api/prices?ticker=${encodeURIComponent(row.ticker)}`,{signal:controller.signal}).then(setData).catch(() => {if (!controller.signal.aborted) setError(true);});return () => controller.abort(); },[row.ticker,retry]);
+  const sig = tradeSignal(row); const company = companyName(row.ticker,row.securityName); const bars = data?.bars ?? [];
+  const last = bars[bars.length - 1]; const stale = isStaleDate(last?.date ?? null);
+  const cutoff = row.disclosedAt ? new Date(Date.parse(row.disclosedAt) + 7 * 86400000).toISOString().slice(0,10) : null;
+  const entry = row.disclosedAt ? bars.find(bar => bar.date >= row.disclosedAt! && bar.date <= cutoff!)?.close ?? null : null;
+  const perf = !last || entry === null || entry <= 0 || stale ? null : (last.close - entry) / entry;
+  const profile = row.entitySlug ? `/${row.entityType === "institution" ? "investor" : row.entityType === "politician" ? "politician" : "insider"}/${row.entitySlug}` : null;
+  const source = sourceLink(row.sourceUrl);
+  return <dialog ref={dialog} aria-labelledby={titleId} onCancel={event => {event.preventDefault();closeRef.current();}} onClick={event => {if (event.target === dialog.current) {const rect = dialog.current.getBoundingClientRect();if(event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeRef.current();}}} className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border-0 bg-white p-0 text-ink shadow-xl">
+    <div className="flex items-start gap-3 p-5"><CompanyLogo ticker={row.ticker} company={company} size={44}/><div className="min-w-0 flex-1"><h2 id={titleId} className="text-lg font-semibold leading-tight">{company}</h2><p className="mt-1 text-sm text-subtle">{row.entityName}</p></div><button autoFocus onClick={onClose} aria-label="Meldungsdetails schließen" className="h-11 w-11 shrink-0 rounded-full bg-slate-100">✕</button></div>
+    <div className="flex flex-wrap items-center gap-2 px-5"><span className={`rounded-full px-3 py-1 text-xs font-medium ${sig.tone === "bull" ? "bg-emerald-50 text-emerald-800" : sig.tone === "bear" ? "bg-rose-50 text-rose-800" : "bg-slate-100 text-slate-700"}`}>{sig.text}</span>{row.transactionCode && <span className="text-xs text-subtle">Form-4-Code {row.transactionCode}</span>}</div>
+    <div className="px-5 py-4">
+      {error ? <div role="alert" className="rounded-xl bg-slate-50 p-4 text-sm">Kursdaten sind gerade nicht verfügbar. <button onClick={() => setRetry(r => r+1)} className="text-brand underline">Erneut versuchen</button></div> : !data && row.ticker ? <p role="status" className="py-8 text-sm text-subtle">Kursverlauf wird geladen …</p> : bars.length ? <><Sparkline bars={bars} markDate={row.disclosedAt} up={perf === null || perf >= 0}/><p className="text-xs text-subtle">Schlusskurse in USD · Kursstand {formatDate(last.date)}{stale ? " · veraltet" : ""}{data?.source === "sample" ? " · Beispieldaten" : ""}</p></> : <p className="rounded-xl bg-slate-50 p-4 text-sm text-subtle">Für diese Meldung ist kein Kursverlauf verfügbar.</p>}
     </div>
-  );
+    {row.entityType === "institution" && <p className="mx-5 rounded-xl bg-indigo-50 p-3 text-xs leading-5 text-indigo-900">Vergleich von Quartalsbeständen. Handelstag und Ausführungskurs sind aus dem Bericht nicht ableitbar.</p>}
+    {row.entityType === "corporate_insider" && !row.transactionCode && <p className="mx-5 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">Der Originalcode fehlt in diesem älteren Datensatz. Eine Einordnung als echter Kauf oder Verkauf ist deshalb nicht gesichert.</p>}
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-5 text-sm"><Stat label="Gemeldete Größe" value={row.sizeDisplay}/><Stat label={row.entityType === "institution" ? "Berichtsstichtag" : "Gemeldeter Handelstag"} value={formatDate(row.entityType === "institution" ? row.reportingDate ?? row.txnDate : row.txnDate)}/><Stat label="Offengelegt am" value={formatDate(row.disclosedAt)}/><Stat label="Kursstand" value={formatDate(last?.date ?? null)}/><Stat label="Schlusskurs nach Offenlegung" value={price(entry)}/><Stat label="Letzter verfügbarer Schlusskurs" value={price(last?.close ?? null)}/><Stat label="Kursänderung seit Offenlegung" value={pct(perf)}/></dl>
+    <p className="px-5 pb-4 text-xs leading-5 text-subtle">Die Kursänderung ist keine Rendite des Akteurs. Fehlende oder veraltete Kursdaten werden nicht durch Schätzwerte ersetzt. <Link href="/methodik" onClick={onClose} className="underline">Methodik</Link></p>
+    <div className="flex flex-wrap gap-2 border-t border-hair p-4">{profile && <Link onClick={onClose} href={profile} className="inline-flex min-h-11 items-center rounded-full bg-slate-100 px-4 text-sm font-medium">Akteur ansehen</Link>}{row.ticker && <Link onClick={onClose} href={`/stock/${encodeURIComponent(row.ticker)}`} className="inline-flex min-h-11 items-center rounded-full bg-slate-900 px-4 text-sm font-medium text-white">Aktie ansehen</Link>}{source ? <a href={source} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center px-3 text-sm font-medium text-brand underline">Originalmeldung ↗</a> : <span className="p-3 text-xs text-subtle">Quellenlink fehlt</span>}</div>
+  </dialog>;
 }
-
-function Stat({
-  label,
-  value,
-  valueClass = "",
-}: {
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
-  return (
-    <div>
-      <dt className="text-xs text-subtle">{label}</dt>
-      <dd className={`font-medium ${valueClass}`}>{value}</dd>
-    </div>
-  );
-}
+function Stat({label,value}: {label:string;value:string}) { return <div><dt className="text-xs text-subtle">{label}</dt><dd className="mt-1 font-medium">{value}</dd></div>; }

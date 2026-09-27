@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ErrorRetry } from "@/components/ErrorRetry";
+import { fetchCatalogue } from "@/lib/fetchJson";
+import { Suspense, ReactNode, useEffect, useMemo, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -91,31 +94,25 @@ function Hero({
   );
 }
 
-export default function DiscoverPage() {
-  const [tab, setTab] = useState<Tab>("highlights");
+export default function DiscoverPage() { return <Suspense fallback={<SkeletonList n={4}/>}><Discover /></Suspense>; }
+function Discover() {
+  const query = useSearchParams(); const router = useRouter();
+  const tab = (TABS.some(([key]) => key === query.get("tab")) ? query.get("tab") : "highlights") as Tab;
+  const setTab = (key: Tab) => router.push(`/discover?tab=${key}`, {scroll:false});
+  const [error,setError] = useState(false); const [retry,setRetry] = useState(0);
   const [data, setData] = useState<DiscoverData | null>(null);
   const [investors, setInvestors] = useState<InvestorRow[] | null>(null);
   const [stocks, setStocks] = useState<StockRow[] | null>(null);
   const [politicians, setPoliticians] = useState<PoliticianRow[] | null>(null);
 
   useEffect(() => {
-    fetch("/api/discover")
-      .then((r) => r.json() as Promise<DiscoverData>)
-      .then(setData)
-      .catch(() => {});
-    fetch("/api/investors")
-      .then((r) => r.json() as Promise<InvestorsResponse>)
-      .then((d) => setInvestors(d.rows))
-      .catch(() => setInvestors([]));
-    fetch("/api/stocks")
-      .then((r) => r.json() as Promise<StocksResponse>)
-      .then((d) => setStocks(d.rows))
-      .catch(() => setStocks([]));
-    fetch("/api/politicians")
-      .then((r) => r.json() as Promise<PoliticiansResponse>)
-      .then((d) => setPoliticians(d.rows))
-      .catch(() => setPoliticians([]));
-  }, []);
+    let on = true; setError(false);
+    const request = tab === "highlights" ? fetchCatalogue<DiscoverData>("/api/discover").then(d => {if(on) setData(d);})
+      : tab === "investors" ? fetchCatalogue<InvestorsResponse>("/api/investors").then(d => {if(on) setInvestors(d.rows);})
+      : tab === "stocks" ? fetchCatalogue<StocksResponse>("/api/stocks").then(d => {if(on) setStocks(d.rows);})
+      : fetchCatalogue<PoliticiansResponse>("/api/politicians").then(d => {if(on) setPoliticians(d.rows);});
+    request.catch(() => {if(on) setError(true);}); return () => {on = false;};
+  }, [tab,retry]);
 
   const sortedStocks = useMemo(
     () => (stocks ? [...stocks].sort((a, b) => b.investors - a.investors) : null),
@@ -125,15 +122,16 @@ export default function DiscoverPage() {
   return (
     <div className="space-y-6">
       <div className="fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight">Discover</h1>
-        <p className="text-sm text-subtle">Worauf das smarte Geld gerade setzt.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Entdecken</h1>
+        <p className="text-sm text-subtle">Öffentliche Meldungen und gemeldete Bestände einordnen.</p>
       </div>
 
       {/* Segments */}
-      <div className="fade-up inline-flex rounded-full bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur">
+      <div className="fade-up flex flex-wrap rounded-2xl bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur">
         {TABS.map(([key, label]) => (
           <button
             key={key}
+            aria-pressed={tab === key}
             onClick={() => setTab(key)}
             className={`press-sm rounded-full px-4 py-1.5 text-sm font-medium ${
               tab === key
@@ -146,10 +144,12 @@ export default function DiscoverPage() {
         ))}
       </div>
 
+      {error && <ErrorRetry onRetry={() => setRetry(r => r+1)} />}
+      {tab === "politicians" && <p className="text-sm text-amber-800">Historische Quelle mit Datenlücken. <Link href="/status" className="underline">Datenstand prüfen</Link></p>}
       {/* ── Highlights ─────────────────────────────────────────────────────── */}
       {tab === "highlights" &&
         (!data ? (
-          <SkeletonList n={5} />
+          error ? null : <SkeletonList n={5} />
         ) : (
           <div className="fade-up space-y-8">
             <section className="space-y-3">
@@ -157,8 +157,8 @@ export default function DiscoverPage() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <Hero
                   href="/discover/boughtq"
-                  title="Meistgekauft (Quartal)"
-                  blurb="Die Aktien, die die verfolgten Investoren zuletzt am häufigsten neu gekauft haben."
+                  title="Häufige Aufstockungen"
+                  blurb="Bestandserhöhungen im jüngsten verfügbaren Quartalsbericht jedes Investors."
                   gradient="bg-gradient-to-b from-amber-100 via-orange-50 to-white"
                   visual={<LogoTrio items={data.mostBoughtQ} />}
                 />
@@ -171,22 +171,22 @@ export default function DiscoverPage() {
                 />
                 <Hero
                   href="/discover/conviction"
-                  title="Höchste Überzeugung"
-                  blurb="Wenn ein Milliardär 15–20 % seines Fonds in eine Aktie steckt — ein Statement."
+                  title="Höchste Gewichtung"
+                  blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände ohne Optionen."
                   gradient="bg-gradient-to-b from-indigo-100 via-violet-50 to-white"
                   visual={<LogoTrio items={data.highestConviction} />}
                 />
                 <Hero
                   href="/discover/biggest"
                   title="Größte Positionen"
-                  blurb="Die wertmäßig größten Einzelwetten unter den Investoren."
+                  blurb="Die größten gemeldeten Aktienpositionen in US-Dollar."
                   gradient="bg-gradient-to-b from-emerald-100 via-teal-50 to-white"
                   visual={<LogoTrio items={data.biggest} />}
                 />
                 <Hero
                   href="/discover/insiderbuys"
                   title="Insider kaufen"
-                  blurb="Aktien, deren eigene Führungskräfte zuletzt am häufigsten zugekauft haben."
+                  blurb="Form-4-Käufe mit Code P, ohne Derivate, in den letzten 90 Tagen."
                   gradient="bg-gradient-to-b from-lime-100 via-green-50 to-white"
                   visual={<LogoTrio items={data.insiderBuys} />}
                 />
@@ -227,15 +227,11 @@ export default function DiscoverPage() {
       {/* ── Investoren ─────────────────────────────────────────────────────── */}
       {tab === "investors" &&
         (investors === null ? (
-          <SkeletonList n={8} />
+          error ? null : <SkeletonList n={8} />
         ) : (
           <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
             {investors.map((iv) => (
-              <Link
-                key={iv.slug}
-                href={`/investor/${iv.slug}`}
-                className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-white"
-              >
+              <div key={iv.slug} className="flex items-center border-b border-hair pr-3 last:border-0"><Link href={`/investor/${iv.slug}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-white">
                 <Avatar name={iv.person ?? iv.fund} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{iv.person ?? iv.fund}</div>
@@ -245,9 +241,7 @@ export default function DiscoverPage() {
                   <div className="text-sm font-medium">{iv.positions} Positionen</div>
                   <div className="text-xs text-subtle">{abbrevMoney(iv.value)}</div>
                 </div>
-                <FollowButton kind="investor" id={iv.slug} variant="star" />
-                <span className="text-slate-300">›</span>
-              </Link>
+              </Link><FollowButton kind="investor" id={iv.slug} variant="star" /></div>
             ))}
             {investors.length === 0 && (
               <div className="px-4 py-10 text-center text-sm text-subtle">Noch keine Daten.</div>
@@ -258,15 +252,11 @@ export default function DiscoverPage() {
       {/* ── Aktien ─────────────────────────────────────────────────────────── */}
       {tab === "stocks" &&
         (sortedStocks === null ? (
-          <SkeletonList n={8} />
+          error ? null : <SkeletonList n={8} />
         ) : (
           <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
             {sortedStocks.map((s) => (
-              <Link
-                key={s.ticker}
-                href={`/stock/${s.ticker}`}
-                className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-white"
-              >
+              <div key={s.ticker} className="flex items-center border-b border-hair pr-3 last:border-0"><Link href={`/stock/${s.ticker}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-white">
                 <CompanyLogo ticker={s.ticker} company={s.company} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{s.company}</div>
@@ -276,9 +266,7 @@ export default function DiscoverPage() {
                   </div>
                 </div>
                 <FaceStack names={s.holderNames} />
-                {s.ticker && <FollowButton kind="stock" id={s.ticker} variant="star" />}
-                <span className="text-slate-300">›</span>
-              </Link>
+              </Link>{s.ticker && <FollowButton kind="stock" id={s.ticker} variant="star" />}</div>
             ))}
             {sortedStocks.length === 0 && (
               <div className="px-4 py-10 text-center text-sm text-subtle">Noch keine Daten.</div>
@@ -289,7 +277,7 @@ export default function DiscoverPage() {
       {/* ── Politiker ──────────────────────────────────────────────────────── */}
       {tab === "politicians" &&
         (politicians === null ? (
-          <SkeletonList n={6} />
+          error ? null : <SkeletonList n={6} />
         ) : (
           <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
             {politicians.map((p) => (

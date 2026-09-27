@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
 import { getInsider } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
 import { sampleInsider } from "@/lib/sampleData";
-import { InsiderResponse } from "@/lib/types";
+import { textParam, SYMBOL_RE } from "@/lib/apiValidation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const slug = req.nextUrl.searchParams.get("slug") || "";
+  let value: string;
   try {
-    const insider = await withRetry(() => getInsider(slug));
-    return NextResponse.json({ source: "database", insider } as InsiderResponse);
-  } catch {
-    return NextResponse.json({ source: "sample", insider: sampleInsider(slug) } as InsiderResponse);
-  }
+    value = textParam(req.nextUrl.searchParams, "slug", 160) ?? "";
+    if (!/^[a-z0-9-]+$/.test(value)) throw new Error();
+  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  return dataResponse(async () => ({ insider: await getInsider(value) }), () => ({ insider: sampleInsider(value) }));
 }

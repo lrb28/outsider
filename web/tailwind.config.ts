@@ -8,10 +8,10 @@ const config: Config = {
         canvas: "#f5f6f8",
         card: "#ffffff",
         ink: "#0f172a",
-        subtle: "#64748b",
+        subtle: "#526176",
         hair: "#e6e8ec",
         brand: "#4f46e5",
-        bull: "#16a34a",
+        bull: "#15803d",
         bear: "#dc2626",
       },
       boxShadow: {

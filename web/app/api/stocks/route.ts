@@ -1,19 +1,9 @@
-import { NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
 import { getStocks } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
 import { SAMPLE_STOCKS } from "@/lib/sampleData";
-import { StocksResponse } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    const rows = await withRetry(() => getStocks());
-    const body: StocksResponse = { source: "database", rows };
-    return NextResponse.json(body);
-  } catch {
-    const body: StocksResponse = { source: "sample", rows: SAMPLE_STOCKS };
-    return NextResponse.json(body);
-  }
+  return dataResponse(async () => ({ rows: await getStocks() }), () => ({ rows: SAMPLE_STOCKS }));
 }

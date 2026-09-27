@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Depot-Engine: Transaktionen, Positionen und Rendite-Mathematik.
 //
-// Alles läuft lokal im Browser (localStorage) — kein Konto, keine Server.
+// Depottransaktionen bleiben lokal; Kurse und Kennungen werden über APIs geladen.
 // Das Modell ist transaktionsbasiert (wie getquin/parqet), damit wir echte
 // Kennzahlen rechnen können: zeitgewichtete Rendite, IZF, Drawdown, realisierte
 // Gewinne, Dividenden.
@@ -85,7 +85,11 @@ function readRaw(): Txn[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = JSON.parse(window.localStorage.getItem(KEY) || "null");
-    if (Array.isArray(raw)) return raw.filter(isTxn);
+    if (Array.isArray(raw)) {
+      const valid = raw.filter(isTxn);
+      if (valid.length !== raw.length) window.dispatchEvent(new CustomEvent("storage-error", {detail:"Einige gespeicherte Depotzeilen haben ein ungültiges Format. Sichere deine Browserdaten, bevor du das Depot bearbeitest."}));
+      return valid;
+    }
   } catch {
     /* fällt unten auf die Migration zurück */
   }
@@ -95,7 +99,9 @@ function readRaw(): Txn[] {
 function isTxn(t: unknown): t is Txn {
   if (!t || typeof t !== "object") return false;
   const x = t as Partial<Txn>;
-  return typeof x.id === "string" && typeof x.kind === "string";
+  return typeof x.id === "string" && ["buy","sell","dividend","interest","deposit","withdrawal","split"].includes(x.kind || "")
+    && typeof x.ticker === "string" && typeof x.date === "string"
+    && [x.shares,x.price,x.amount,x.fee].every(v => typeof v === "number" && Number.isFinite(v));
 }
 
 /** Alte Struktur ({ticker, shares, buyPrice}[]) → Kauf-Transaktionen ohne Datum. */
@@ -128,7 +134,10 @@ export function getTxns(): Txn[] {
 
 function write(t: Txn[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(t));
+  try { window.localStorage.setItem(KEY, JSON.stringify(t)); } catch (error) {
+    window.dispatchEvent(new CustomEvent("storage-error", {detail:"Dein Depot konnte nicht gespeichert werden. Bitte exportiere eine Sicherung und prüfe den Browserspeicher."}));
+    throw error;
+  }
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
@@ -407,13 +416,12 @@ export function toCsv(txns: Txn[]): string {
  * ist das die einzig sinnvolle Annahme.
  */
 export function convertBars(bars: Bar[], fx: Bar[] | null): Bar[] {
-  if (!fx || fx.length === 0) return bars;
-  const m = new Map(fx.map((b) => [b.date, b.close]));
-  let last = fx[0].close;
-  return bars.map((b) => {
-    const r = m.get(b.date);
-    if (r !== undefined && r > 0) last = r;
-    return { date: b.date, close: last > 0 ? b.close / last : b.close };
+  if (!fx || fx.length === 0) return [];
+  let index = 0; let rate: Bar | null = null;
+  return bars.flatMap(bar => {
+    while (index < fx.length && fx[index].date <= bar.date) rate = fx[index++];
+    return rate && rate.close > 0 && Date.parse(bar.date) - Date.parse(rate.date) <= 7 * 86400000
+      ? [{date:bar.date,close:bar.close/rate.close}] : [];
   });
 }
 

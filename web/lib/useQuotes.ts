@@ -1,47 +1,22 @@
 "use client";
-
-// Poll near-realtime quotes from our /api/quotes proxy (Yahoo-backed).
-// Refreshes every 60s while the tab is visible. Missing tickers simply have
-// no entry — callers fall back to EOD closes.
 import { useEffect, useState } from "react";
-
-export interface Quote {
-  price: number;
-  prevClose: number | null;
-  changePct: number | null;
-  currency: string | null;
-  marketState: string | null;
-  t: number;
-}
-
-// 20 Sekunden: nah genug an "live", ohne Yahoo zu überrennen. Der Abruf pausiert
-// automatisch, sobald der Tab im Hintergrund liegt.
-export function useQuotes(tickers: string[], intervalMs = 20_000) {
-  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
-  const key = [...new Set(tickers.filter(Boolean).map((t) => t.toUpperCase()))]
-    .sort()
-    .join(",");
-
+import { fetchJson } from "./fetchJson";
+export interface Quote { price:number;prevClose:number|null;changePct:number|null;currency:string|null;marketState:string|null;t:number; }
+export function useQuotes(tickers: string[], intervalMs = 60_000) {
+  const [quotes,setQuotes] = useState<Record<string,Quote>>({});
+  const key = [...new Set(tickers.filter(Boolean).map(t => t.toUpperCase()))].sort().join(",");
   useEffect(() => {
-    if (!key) {
-      setQuotes({});
-      return;
+    setQuotes({}); if (!key) return;
+    const controller = new AbortController(); let busy = false;
+    async function load() {
+      if (busy || controller.signal.aborted || document.visibilityState === "hidden") return;
+      busy = true; const next: Record<string,Quote> = {}; const names = key.split(",");
+      try { for (let i=0;i<names.length;i+=30) { const result = await fetchJson<{quotes:Record<string,Quote>}>(`/api/quotes?tickers=${encodeURIComponent(names.slice(i,i+30).join(","))}`,{signal:controller.signal,tries:1});Object.assign(next,result.quotes); } }
+      catch { /* The new snapshot omits unavailable quotes; callers show EOD with its date. */ }
+      finally { if(!controller.signal.aborted) setQuotes(next); busy = false; }
     }
-    let on = true;
-    const load = () =>
-      fetch(`/api/quotes?tickers=${encodeURIComponent(key)}`)
-        .then((r) => r.json() as Promise<{ quotes: Record<string, Quote> }>)
-        .then((d) => on && setQuotes(d.quotes || {}))
-        .catch(() => {});
-    load();
-    const id = setInterval(() => {
-      if (document.visibilityState === "visible") load();
-    }, intervalMs);
-    return () => {
-      on = false;
-      clearInterval(id);
-    };
-  }, [key, intervalMs]);
-
+    void load();const timer = setInterval(load,intervalMs);document.addEventListener("visibilitychange",load);
+    return () => {controller.abort();clearInterval(timer);document.removeEventListener("visibilitychange",load);};
+  },[key,intervalMs]);
   return quotes;
 }

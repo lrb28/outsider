@@ -85,20 +85,15 @@ async function lookup(id: string): Promise<string | null> {
   }
 
   // Fehlversuche nur kurz merken, damit ein Aussetzer nicht 24 h klebt.
+  if (cache.size >= 1000) cache.delete(cache.keys().next().value!);
   cache.set(id, { at: symbol ? Date.now() : Date.now() - TTL + 5 * 60_000, symbol });
   return symbol;
 }
 
 export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("ids") || "";
-  const ids = [
-    ...new Set(
-      raw
-        .split(",")
-        .map((s) => s.trim().toUpperCase())
-        .filter((s) => ISIN_RE.test(s)),
-    ),
-  ].slice(0, 60);
+  const ids = [...new Set(raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean))];
+  if (ids.length > 60 || ids.some(id => !ISIN_RE.test(id))) return NextResponse.json({error:"Maximal 60 gültige ISINs pro Anfrage."},{status:400});
 
   if (ids.length === 0) return NextResponse.json({ symbols: {} });
 
@@ -112,7 +107,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { symbols },
-    { headers: { "Cache-Control": "public, max-age=3600" } },
+    { symbols, missing: ids.filter(id => !symbols[id]) },
+    { headers: { "Cache-Control": "private, max-age=60" } },
   );
 }

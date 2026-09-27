@@ -56,7 +56,9 @@ def normalize_senate_record(rec: dict) -> PoliticianTxn:
     txn_type = TYPE_MAP.get((raw_type or "").strip().lower(), "exchange")
     amin, amax = parse_amount_range(rec.get("amount"))
     ticker = rec.get("ticker")
-    ticker = None if ticker in (None, "--", "") else str(ticker).strip().upper()
+    ticker = str(ticker or "").strip().upper()
+    if ticker in ("", "--", "N/A", "NA", "NONE", "NULL") or not re.fullmatch(r"[A-Z0-9][A-Z0-9.\-=]{0,11}", ticker):
+        ticker = None
     return PoliticianTxn(
         politician_name=(rec.get("senator") or "").strip(),
         chamber="Senate",

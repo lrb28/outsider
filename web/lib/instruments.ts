@@ -43,8 +43,15 @@ export function isinValid(s: string): boolean {
 /**
  * Gepflegte ISIN → Yahoo-Symbol-Tabelle. Bewusst nur Papiere, die eindeutig
  * zuzuordnen sind. Alles andere geht an die Yahoo-Suche oder bleibt offen.
+ *
+ * Ein Eintrag darf mehrere Börsenplätze in absteigender Vorliebe nennen. Grund:
+ * Yahoo stellt einzelne Plätze immer wieder still — bei SPXS.DE und ANX.DE ist
+ * genau das passiert, obwohl dieselben Papiere in Mailand und Paris munter
+ * weiternotieren. Wird der erste Platz als kursfrei gemeldet, rückt der nächste
+ * nach, statt dass die Position ohne Kurs dasteht. Alle genannten Plätze müssen
+ * dasselbe Papier in derselben Stückelung notieren — sonst lieber nur einer.
  */
-export const ISIN_TICKER: Record<string, string> = {
+export const ISIN_TICKER: Record<string, string | string[]> = {
   // ── US-Aktien ─────────────────────────────────────────────────────────────
   US0378331005: "AAPL", US5949181045: "MSFT", US67066G1040: "NVDA",
   US0231351067: "AMZN", US02079K3059: "GOOGL", US02079K1079: "GOOG",
@@ -97,7 +104,6 @@ export const ISIN_TICKER: Record<string, string> = {
   NL0010273215: "ASML", NL0011585146: "RACE", NL0000235190: "AIR.PA",
   CH0038863350: "NESN.SW", CH0012032048: "ROG.SW", CH0012005267: "NOVN.SW",
   GB0009252882: "GSK", DK0060534915: "NVO", SE0000108656: "ERIC",
-  USY384721251: "HYMTF", // Hyundai Motor GDR — außerbörslich in den USA
   LU1778762911: "SPOT", IE00B4BNMY34: "ACN",
 
   // ── ETFs ──────────────────────────────────────────────────────────────────
@@ -107,17 +113,46 @@ export const ISIN_TICKER: Record<string, string> = {
   IE00B5BMR087: "SXR8.DE", // iShares Core S&P 500 UCITS Acc
   IE00B53SZB19: "SXRV.DE", // iShares Nasdaq 100 UCITS Acc
   IE00B4L5Y983: "EUNL.DE", // iShares Core MSCI World UCITS Acc
-  IE00B3YCGJ38: "SPXS.DE", // Invesco S&P 500 UCITS Acc — notiert bei ~13 €
+  // Xetra (SPXS.DE) liefert seit Längerem keine Kurse mehr. Mailand notiert
+  // dasselbe Papier in Euro (~13 €) und deckt sich mit den USD-Notierungen in
+  // London und Zürich — deshalb zweifelsfrei.
+  IE00B3YCGJ38: ["SPXS.MI", "SPXS.L"], // Invesco S&P 500 UCITS Acc — notiert bei ~13 €
   IE000SB4G4I4: "BCFP.DE", // Amundi Nasdaq-100 II UCITS Acc
-  IE000XZSV718: "500U.DE", // Amundi S&P 500 II UCITS Acc
-  LU1781541179: "LCUW.DE", // Amundi Core MSCI World UCITS Acc
-  LU1829221024: "ANX.DE", // Amundi Nasdaq-100 UCITS EUR Acc
+  // Paris und Mailand notieren auf den Cent gleich; Xetra (ANX.DE) ist still.
+  LU1829221024: ["ANX.PA", "ANX.MI"], // Amundi Nasdaq-100 UCITS EUR Acc
+  // Früher fälschlich als „Amundi S&P 500 II" geführt und auf 500U.DE gelegt —
+  // das ist ein anderer Fonds. IE000XZSV718 ist der SPDR S&P 500 UCITS Acc,
+  // Kürzel SPYL, mit 0,03 % der günstigste S&P-500-ETF in Europa.
+  IE000XZSV718: ["SPYL.DE", "SPYL.AS", "SPYL.L"], // SPDR S&P 500 UCITS Acc
   IE00BLRPRL42: "QQQ3.L", // WisdomTree Nasdaq 100 3x — notiert in Pence
 
   // ── Krypto ────────────────────────────────────────────────────────────────
   BTC: "BTC-USD", ETH: "ETH-USD", SOL: "SOL-USD", XRP: "XRP-USD",
   ADA: "ADA-USD", DOGE: "DOGE-USD", AVAX: "AVAX-USD", DOT: "DOT-USD",
   LTC: "LTC-USD", LINK: "LINK-USD", BNB: "BNB-USD", MATIC: "MATIC-USD",
+};
+
+/**
+ * Papiere, die es unter dieser ISIN nicht mehr gibt.
+ *
+ * Ein verschmolzener oder eingestellter Fonds ist gefährlicher als ein
+ * unbekannter: Yahoo und die Wertpapiersuche liefern für solche Kennungen
+ * gern noch irgendetwas — den letzten Kurs von vor anderthalb Jahren oder,
+ * schlimmer, den Kurs eines gleichnamigen Nachfolgers mit ganz anderer
+ * Stückelung. Beides sähe aus wie ein echter Depotwert. Deshalb werden diese
+ * Kennungen hier hart abgefangen, bevor irgendeine Suche greift.
+ */
+const RETIRED: Record<string, string> = {
+  // Am 21.02.2025 auf den irischen Nachfolger verschmolzen. Der letzte Kurs
+  // unter LCUW.DE stammt vom Verschmelzungstag und ist seither eingefroren.
+  LU1781541179:
+    "Fonds am 21.02.2025 verschmolzen — Nachfolger: Amundi Core MSCI World UCITS ETF Acc (IE000BI8OT95)",
+  // Hyundai hat seine Global Depositary Receipts zum 19.12.2024 von den Börsen
+  // London und Luxemburg genommen; der außerbörsliche US-Handel unter HYMTF
+  // ist damit ebenfalls versiegt. Die Stammaktie in Seoul (005380.KS) ist ein
+  // anderes Papier mit anderer Stückelung — sie hier einzusetzen ergäbe einen
+  // Depotwert, der um ein Vielfaches danebenläge.
+  USY384721251: "Hinterlegungsschein zum 19.12.2024 eingestellt — kein Kurs mehr",
 };
 
 /**
@@ -132,6 +167,8 @@ export function unpriceableReason(
 ): string | null {
   const ac = (assetClass ?? "").toUpperCase();
   const n = (name ?? "").toLowerCase();
+  const retired = RETIRED[isin.trim().toUpperCase()];
+  if (retired) return retired;
   if (ac === "DERIVATIVE") return "Optionsschein / Zertifikat — kein öffentlicher Kurs";
   if (ac === "PRIVATE_FUND" || ac === "PRIVATE_EQUITY") return "Privatmarkt-Fonds — nicht börsennotiert";
   if (/^US84615Q/.test(isin) || n.includes("spacex")) return "Nicht börsennotiert";
@@ -298,10 +335,12 @@ export function resolveInstrument(
   const why = unpriceableReason(key, assetClass, name);
   if (why) return { symbol: null, source: "offen", unpriceable: why };
 
-  // Erst die Suche, falls das Tabellen-Kürzel sich als kursfrei erwiesen hat.
-  const fromTable = ISIN_TICKER[key];
-  if (fromTable && !bad.has(fromTable)) {
-    return { symbol: fromTable, source: "tabelle", unpriceable: null };
+  // Erst die Suche, falls alle Tabellen-Kürzel sich als kursfrei erwiesen haben.
+  const entry = ISIN_TICKER[key];
+  const listed = entry === undefined ? [] : Array.isArray(entry) ? entry : [entry];
+  const usable = listed.find((s) => !bad.has(s.toUpperCase()));
+  if (usable) {
+    return { symbol: usable, source: "tabelle", unpriceable: null };
   }
   const cached = resolveCache[key];
   if (cached && !bad.has(cached)) {

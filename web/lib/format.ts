@@ -1,6 +1,7 @@
+import type { FeedRow } from "./types";
 export function pct(v: number | null): string {
-  if (v === null || Number.isNaN(v)) return "—";
-  return `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} %`;
+  if (v === null || !Number.isFinite(v)) return "—";
+  return `${v >= 0 ? "+" : ""}${(v * 100).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 }
 
 export function money(v: number | null | undefined): string {
@@ -10,7 +11,7 @@ export function money(v: number | null | undefined): string {
 
 // Compact money like Eaves: $263.1B, $12.4M, $980K.
 export function abbrevMoney(v: number | null | undefined): string {
-  if (v === null || v === undefined || Number.isNaN(v)) return "—";
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
   if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(1)} Bio.`;
@@ -28,9 +29,61 @@ export function formatDate(iso: string | null | undefined): string {
   return `${d}.${m}.${y}`;
 }
 
+/**
+ * Beschriftung für die Spalte „Seit Offenlegung".
+ *
+ * Ein nackter Strich sieht aus, als wäre etwas kaputt. Dabei gibt es zwei ganz
+ * verschiedene Gründe für die Leere: die Meldung ist von heute (dann gibt es
+ * noch keinen Zeitraum), oder wir führen für dieses Papier gar keine Kursreihe
+ * (dann kann die Zahl nicht berechnet werden). Beides wird ausgeschrieben,
+ * statt eine Rendite zu erfinden.
+ */
+export function disclosureLabel(
+  pctSince: number | null,
+  disclosedAt: string | null | undefined,
+  today: string,
+): { text: string; muted: boolean } {
+  if (pctSince !== null && Number.isFinite(pctSince)) return { text: pct(pctSince), muted: false };
+  const d = disclosedAt ? disclosedAt.slice(0, 10) : null;
+  if (d && d >= today) return { text: "heute gemeldet", muted: true };
+  return { text: "kein Kurs hinterlegt", muted: true };
+}
+
+/**
+ * Fasst Meldeserien im Feed zusammen.
+ *
+ * Bei einer Vesting-Runde meldet ein Unternehmen am selben Tag ein Dutzend
+ * Insider-Buchungen für dieselbe Aktie. Untereinander gelistet verdrängen sie
+ * alles andere und der Feed wirkt wie ein einziges Ereignis. Direkt
+ * aufeinanderfolgende Zeilen mit gleichem Tag, gleicher Aktie, gleicher Art und
+ * gleichem Signal werden deshalb ab drei Stück zu einer Zeile gebündelt — die
+ * Einzelmeldungen bleiben erhalten und lassen sich aufklappen.
+ */
+export const SERIES_MIN = 3;
+
+export function groupSeries<
+  T extends {
+    disclosedAt: string | null;
+    ticker: string | null;
+    entityType: string;
+    txnType: string;
+    putCall?: string | null;
+    transactionCode?: string | null;
+  },
+>(rows: T[]): ({ key: string; rows: T[] })[] {
+  const out: { key: string; rows: T[] }[] = [];
+  for (const r of rows) {
+    const key = [r.disclosedAt ?? "", r.ticker ?? "", r.entityType, r.txnType, r.putCall ?? "", r.transactionCode ?? ""].join("|");
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.rows.push(r);
+    else out.push({ key, rows: [r] });
+  }
+  return out;
+}
+
 export function weightPct(v: number | null): string {
-  if (v === null || Number.isNaN(v)) return "—";
-  return `${(v * 100).toFixed(1)} %`;
+  if (v === null || !Number.isFinite(v)) return "—";
+  return `${(v * 100).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
 }
 
 export function sizeDisplay(row: {
@@ -46,7 +99,8 @@ export function sizeDisplay(row: {
     }
     return row.amount_min !== null ? `≥ ${money(row.amount_min)}` : `≤ ${money(row.amount_max)}`;
   }
-  if (row.shares !== null) return `${Math.round(row.shares).toLocaleString("de-DE")} St.`;
+  if (row.shares !== null && row.shares > 0 && row.shares < 0.000001) return "< 0,000001 St.";
+  if (row.shares !== null) return `${row.shares.toLocaleString("de-DE", { maximumFractionDigits: 6 })} St.`;
   return "—";
 }
 
@@ -359,4 +413,27 @@ export function companyName(ticker: string | null, rawName: string | null): stri
   if (T) return T; // clean ticker symbol beats an unresolved CUSIP
   if (rawName && !isCusipLike(rawName)) return rawName;
   return rawT || rawName || "—";
+}
+
+/** Interpretation depends on disclosure type, not just the stored direction. */
+export function tradeSignal(row: Pick<FeedRow, "entityType" | "txnType" | "putCall" | "transactionCode" | "isDerivative">): { text: string; tone: "bull" | "bear" | "neutral" } {
+  if (row.entityType === "institution") {
+    const suffix = row.putCall ? ` · ${row.putCall}` : "";
+    return { text: (row.txnType === "buy" ? "Bestand erhöht" : row.txnType === "sell" ? "Bestand reduziert" : "Bestand verändert") + suffix, tone: "neutral" };
+  }
+  if (row.entityType === "corporate_insider") {
+    const code = row.transactionCode;
+    if (!code) return { text: row.txnType === "buy" ? "Zugang gemeldet" : row.txnType === "sell" ? "Abgang gemeldet" : "Änderung gemeldet", tone: "neutral" };
+    const codes: Record<string, string> = { A: "Zuteilung", F: "Steuereinbehalt / Ausübung", D: "Abgabe an Emittenten", G: "Schenkung", M: "Ausübung / Umwandlung", C: "Umwandlung", X: "Optionsausübung", J: "Sonstiger Vorgang" };
+    if (code !== "P" && code !== "S") return { text: codes[code] ?? `SEC-Code ${code}`, tone: "neutral" };
+    if (row.isDerivative) return { text: `${code === "P" ? "Derivat erworben" : "Derivat veräußert"}`, tone: "neutral" };
+  }
+  return signalLabel(row.txnType, row.putCall);
+}
+export function isStaleDate(value: string | null | undefined, days = 7): boolean {
+  return !value || !Number.isFinite(Date.parse(value)) || Date.parse(value) > Date.now() + 86400000 || Date.now() - Date.parse(value) > days * 86400000;
+}
+export function sourceLink(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try { const u = new URL(value); return u.protocol === "https:" ? u.toString() : null; } catch { return null; }
 }

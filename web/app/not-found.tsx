@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound() { return <div className="lcard p-10 text-center"><p className="text-sm text-brand">404</p><h1 className="mt-3 text-2xl font-semibold">Diese Seite gibt es hier nicht.</h1><p className="my-5 text-subtle">Über die Suche findest du Wertpapiere und Akteure.</p><Link href="/" className="btn-primary inline-flex min-h-11 items-center">Zur Startseite</Link></div>; }

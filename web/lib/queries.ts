@@ -32,6 +32,8 @@ export interface TradeFilters {
   ticker?: string;
   limit?: number;
   offset?: number;
+  from?: string;
+  to?: string;
 }
 
 // entry = close of nearest trading day ON OR AFTER the reference date (lateral
@@ -42,27 +44,29 @@ const SQL = (whereSql: string, limIdx: number, offIdx: number) => `
          s.ticker, s.name as security_name,
          t.txn_type, nullif(t.put_call, '') as put_call,
          t.txn_date, t.disclosed_at, t.shares, t.amount_min, t.amount_max,
-         f.source_url,
+         f.source_url, f.period_of_report,
+         to_jsonb(t)->>'transaction_code' as transaction_code,
+         to_jsonb(t)->>'is_derivative' as is_derivative,
          et.close as entry_trade_close,
          ed.close as entry_disc_close,
-         cur.close as current_close
+         cur.close as current_close, cur.date as price_as_of
   from transactions t
   join entities e on e.id = t.entity_id
   join securities s on s.id = t.security_id
   join filings f on f.id = t.filing_id
   left join lateral (
     select close from prices p
-    where p.security_id = t.security_id and t.txn_date is not null and p.date >= t.txn_date
+    where p.security_id = t.security_id and t.txn_date is not null and p.date >= t.txn_date and p.date <= t.txn_date + 7
     order by p.date asc limit 1
   ) et on true
   left join lateral (
     select close from prices p
-    where p.security_id = t.security_id and t.disclosed_at is not null and p.date >= t.disclosed_at
+    where p.security_id = t.security_id and t.disclosed_at is not null and p.date >= t.disclosed_at and p.date <= t.disclosed_at + 7
     order by p.date asc limit 1
   ) ed on true
   left join lateral (
-    select close from prices p
-    where p.security_id = t.security_id
+    select close, date from prices p
+    where p.security_id = t.security_id and p.date <= current_date and p.close > 0
     order by p.date desc limit 1
   ) cur on true
   ${whereSql}
@@ -77,6 +81,8 @@ function pctChange(entry: number | null, current: number | null): number | null 
 
 function toFeedRow(r: Record<string, unknown>): FeedRow {
   const num = (v: unknown) => (v !== null && v !== undefined ? Number(v) : null);
+  const priceAsOf = r.price_as_of ? new Date(r.price_as_of as string).toISOString().slice(0, 10) : null;
+  const fresh = priceAsOf && Date.now() - Date.parse(priceAsOf) <= 7 * 86400000;
   return {
     id: r.id as number,
     // Form 4 meldet den Meldenden als "NACHNAME VORNAME MITTELNAME" in
@@ -102,8 +108,12 @@ function toFeedRow(r: Record<string, unknown>): FeedRow {
       amount_min: num(r.amount_min),
       amount_max: num(r.amount_max),
     }),
-    pctSinceTrade: pctChange(num(r.entry_trade_close), num(r.current_close)),
-    pctSinceDisclosure: pctChange(num(r.entry_disc_close), num(r.current_close)),
+    pctSinceTrade: r.entity_type === "institution" || !fresh ? null : pctChange(num(r.entry_trade_close), num(r.current_close)),
+    pctSinceDisclosure: fresh ? pctChange(num(r.entry_disc_close), num(r.current_close)) : null,
+    transactionCode: r.transaction_code as string | null,
+    isDerivative: r.is_derivative === "true",
+    priceAsOf,
+    reportingDate: r.period_of_report ? new Date(r.period_of_report as string).toISOString().slice(0, 10) : null,
     sourceUrl: r.source_url as string,
   };
 }
@@ -112,7 +122,7 @@ export async function getTrades(f: TradeFilters): Promise<FeedRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
-  const where: string[] = [];
+  const where: string[] = ["coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'"];
   const params: unknown[] = [];
   if (f.type) {
     params.push(f.type);
@@ -130,14 +140,16 @@ export async function getTrades(f: TradeFilters): Promise<FeedRow[]> {
     params.push(f.ticker.toUpperCase());
     where.push(`upper(s.ticker) = $${params.length}`);
   }
+  if (f.from) { params.push(f.from); where.push(`t.disclosed_at >= $${params.length}::date`); }
+  if (f.to) { params.push(f.to); where.push(`t.disclosed_at <= $${params.length}::date`); }
   if (f.q) {
-    params.push(`%${f.q}%`);
+    params.push(`%${f.q.replace(/[\\%_]/g, "\\$&")}%`);
     const i = params.length;
     where.push(`(e.full_name ilike $${i} or s.ticker ilike $${i} or s.name ilike $${i})`);
   }
   const whereSql = where.length ? `where ${where.join(" and ")}` : "";
 
-  const limit = Math.min(f.limit ?? 50, 200);
+  const limit = Math.min(f.limit ?? 50, 201);
   const offset = f.offset ?? 0;
   params.push(limit);
   const limIdx = params.length;
@@ -171,7 +183,7 @@ export async function getInvestors(): Promise<InvestorRow[]> {
            count(c.security_id) as positions,
            sum(c.market_value) as value
     from entities e
-    left join cur c on c.entity_id = e.id
+    left join cur c on c.entity_id = e.id and c.put_call is null
     where e.type = 'institution'
     group by e.id, e.slug, e.full_name
     order by value desc nulls last, e.full_name
@@ -195,7 +207,7 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
   if (!pool) throw new Error("DATABASE_URL not configured");
 
   const ent = await pool.query(
-    `select id, slug, full_name as fund, type from entities where slug = $1 limit 1`,
+    `select id, slug, full_name as fund, type from entities where slug = $1 and type = 'institution' limit 1`,
     [slug],
   );
   if (ent.rows.length === 0) return null;
@@ -214,7 +226,7 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     [e.id],
   );
 
-  const total = hold.rows.reduce(
+  const total = hold.rows.filter(r => !r.put_call).reduce(
     (a, r) => a + (r.value !== null ? Number(r.value) : 0),
     0,
   );
@@ -226,7 +238,7 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
       company: companyName((r.ticker as string) ?? null, (r.security_name as string) ?? null),
       value,
       shares: r.shares !== null ? Number(r.shares) : null,
-      weight: value !== null && total > 0 ? value / total : null,
+      weight: !r.put_call && value !== null && total > 0 ? value / total : null,
       putCall: (r.put_call as HoldingRow["putCall"]) ?? null,
     };
   });
@@ -263,8 +275,8 @@ export async function getPoliticians(): Promise<PoliticianRow[]> {
     select e.slug, e.full_name as name, e.party, e.chamber,
            count(t.id) as trades, max(t.disclosed_at) as last
     from entities e
-    left join transactions t on t.entity_id = e.id
-    where e.type = 'politician'
+    left join transactions t on t.entity_id = e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    where e.type = 'politician' and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
     group by e.id, e.slug, e.full_name, e.party, e.chamber
     order by trades desc, e.full_name
   `);
@@ -332,11 +344,11 @@ export async function getStocks(): Promise<StockRow[]> {
            sum(c.market_value) as value,
            (array_agg(distinct e.full_name))[1:3] as holder_names,
            (select count(*) from transactions t
-            where t.security_id = s.id and t.txn_type = 'buy') as buys
+            where t.security_id = s.id and t.txn_type = 'buy' and coalesce(to_jsonb(t)->>'superseded','false') = 'false') as buys
     from cur c
     join securities s on s.id = c.security_id
     join entities e on e.id = c.entity_id
-    where s.ticker is not null
+    where s.ticker is not null and c.put_call is null
     group by s.id, s.ticker, s.name
     order by investors desc, value desc nulls last
     limit 300
@@ -375,8 +387,8 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   const holders = await pool.query(
     `
     ${CUR_CTE},
-    tot as (select entity_id, sum(market_value) as v from cur group by entity_id)
-    select e.slug, e.full_name as fund, c.market_value as value, c.shares,
+    tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id)
+    select e.slug, e.full_name as fund, c.market_value as value, c.shares, c.put_call,
            c.market_value / nullif(t.v, 0) as weight
     from cur c
     join entities e on e.id = c.entity_id
@@ -387,23 +399,49 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     [T],
   );
 
-  const holderRows: StockHolder[] = holders.rows.map((r) => ({
-    slug: r.slug as string,
-    fund: r.fund as string,
-    person: investorPerson(r.fund as string),
-    value: r.value !== null ? Number(r.value) : null,
-    shares: r.shares !== null ? Number(r.shares) : null,
-    weight: r.weight !== null ? Number(r.weight) : null,
-  }));
+  // Ein Kürzel kann auf mehrere Wertpapier-Zeilen zeigen (13F nach CUSIP, Form 4
+  // nach Kürzel). Ohne Zusammenfassung stünde derselbe Investor mehrfach in der
+  // Liste und die Kopfzahl zählte Zeilen statt Investoren. Aktien und Optionen
+  // bleiben dabei getrennt — eine Option ist kein Aktienbestand und darf nicht
+  // stillschweigend dazuaddiert werden.
+  const merged = new Map<string, StockHolder>();
+  for (const r of holders.rows) {
+    const putCall = (r.put_call as StockHolder["putCall"]) ?? null;
+    const key = `${r.slug as string}|${putCall ?? ""}`;
+    const prev = merged.get(key);
+    const value = r.value !== null ? Number(r.value) : null;
+    const shares = r.shares !== null ? Number(r.shares) : null;
+    const weight = !putCall && r.weight !== null ? Number(r.weight) : null;
+    if (!prev) {
+      merged.set(key, {
+        slug: r.slug as string,
+        fund: r.fund as string,
+        person: investorPerson(r.fund as string),
+        value,
+        shares,
+        weight,
+        putCall,
+      });
+      continue;
+    }
+    prev.value = prev.value === null && value === null ? null : (prev.value ?? 0) + (value ?? 0);
+    prev.shares = prev.shares === null && shares === null ? null : (prev.shares ?? 0) + (shares ?? 0);
+    prev.weight = prev.weight === null && weight === null ? null : (prev.weight ?? 0) + (weight ?? 0);
+  }
+  const holderRows: StockHolder[] = [...merged.values()].sort(
+    (a, b) => (b.value ?? 0) - (a.value ?? 0),
+  );
 
   const value = holderRows.reduce((a, r) => a + (r.value ?? 0), 0);
+  // Kopfzahl: Investoren, nicht Zeilen. Wer Aktie und Option hält, zählt einmal.
+  const investorCount = new Set(holderRows.map((r) => r.slug)).size;
   const trades = await getTrades({ ticker: ticker, limit: 25 });
 
   return {
     ticker: (s.ticker as string) ?? null,
     securityName: (s.security_name as string) ?? "",
     company: companyName((s.ticker as string) ?? null, (s.security_name as string) ?? null),
-    investors: holderRows.length,
+    investors: investorCount,
     value: value > 0 ? value : null,
     holders: holderRows,
     trades,
@@ -419,7 +457,7 @@ export async function getMatch(tickers: string[]): Promise<MatchRow[]> {
   const { rows } = await pool.query(
     `
     ${CUR_CTE},
-    tot as (select entity_id, sum(market_value) as v from cur group by entity_id)
+    tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id)
     select e.slug, e.full_name as fund,
            count(distinct upper(s.ticker)) as n,
            sum(c.market_value / nullif(t.v, 0)) as w,
@@ -460,7 +498,7 @@ export async function getPrices(
       select security_id from prices
       where security_id in (select id from securities where upper(ticker) = $1)
       group by security_id
-      order by count(*) desc
+      order by max(date) desc, count(*) desc
       limit 1
     )
     order by p.date desc
@@ -483,11 +521,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
 
   const wCte = `
     ${CUR_CTE},
-    tot as (select entity_id, sum(market_value) as v from cur group by entity_id),
+    tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id),
     w as (
       select c.security_id, c.entity_id, c.market_value,
              c.market_value / nullif(t.v, 0) as weight
-      from cur c join tot t on t.entity_id = c.entity_id
+      from cur c join tot t on t.entity_id = c.entity_id where c.put_call is null
     )
   `;
 
@@ -521,25 +559,26 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
 
   // Meistgekaufte Aktien im aktuellen Quartal (institutionelle Käufe).
   const boughtQ = pool.query(`
-    select s.ticker, s.name as security_name, count(*) as n
+    select s.ticker, s.name as security_name, count(distinct t.entity_id) as n
     from transactions t
     join entities e on e.id = t.entity_id and e.type = 'institution'
     join securities s on s.id = t.security_id
-    where t.txn_type = 'buy' and s.ticker is not null
-    group by s.id, s.ticker, s.name
-    order by n desc, s.ticker
-    limit 12
+    join filings f on f.id = t.filing_id
+    where t.txn_type = 'buy' and s.ticker is not null and nullif(t.put_call,'') is null
+      and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+      and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
+    group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
   `);
-  // Aktien mit den meisten Insider-Käufen (Form 4).
   const insiderBuysQ = pool.query(`
     select s.ticker, s.name as security_name, count(*) as n
     from transactions t
     join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
     join securities s on s.id = t.security_id
-    where t.txn_type = 'buy' and s.ticker is not null
-    group by s.id, s.ticker, s.name
-    order by n desc, s.ticker
-    limit 12
+    where t.txn_type = 'buy' and s.ticker is not null and to_jsonb(t)->>'transaction_code' = 'P'
+      and coalesce(to_jsonb(t)->>'is_derivative', 'false') = 'false'
+      and coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'
+      and t.disclosed_at >= current_date - 90
+    group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
   `);
   // Größte Fonds (nach Portfolio-Wert).
   const fundsQ = pool.query(`
@@ -554,12 +593,12 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   // Am konzentriertesten (höchstes Einzelpositions-Gewicht).
   const concQ = pool.query(`
     ${CUR_CTE},
-    tot as (select entity_id, sum(market_value) as v from cur group by entity_id)
+    tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id)
     select e.slug, e.full_name as fund, max(c.market_value / nullif(t.v, 0)) as mw
     from entities e
     join cur c on c.entity_id = e.id
     join tot t on t.entity_id = e.id
-    where e.type = 'institution'
+    where e.type = 'institution' and c.put_call is null
     group by e.id, e.slug, e.full_name
     order by mw desc nulls last
     limit 12
@@ -569,7 +608,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   const polQ = pool.query(`
     select e.slug, e.full_name as name, e.party, e.chamber, count(t.id) as n
     from entities e join transactions t on t.entity_id = e.id
-    where e.type = 'politician'
+    where e.type = 'politician' and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
     group by e.id, e.slug, e.full_name, e.party, e.chamber
     order by n desc
     limit 12
@@ -610,7 +649,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
         mv >= 1e9 ? `$${(mv / 1e9).toFixed(1)} Mrd.` : `$${(mv / 1e6).toFixed(0)} Mio.`;
       return item(r, s);
     }),
-    mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Käufe`)),
+    mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Aufstockungen`)),
     insiderBuys: insiderBuys.rows.map((r) => item(r, `${Number(r.n)} Insider-Käufe`)),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>

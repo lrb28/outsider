@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
+import { symbolList } from "@/lib/apiValidation";
 import { getMatch } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
-import { MatchResponse } from "@/lib/types";
-
 export const dynamic = "force-dynamic";
-
 export async function GET(req: NextRequest) {
-  const raw = req.nextUrl.searchParams.get("tickers") || "";
-  const tickers = raw
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean);
-  try {
-    const rows = await withRetry(() => getMatch(tickers));
-    return NextResponse.json({ source: "database", rows } as MatchResponse);
-  } catch {
-    return NextResponse.json({ source: "sample", rows: [] } as MatchResponse);
-  }
+  let tickers: string[];
+  try { tickers = symbolList(req.nextUrl.searchParams.get("tickers") || "", 200); }
+  catch { return NextResponse.json({ error: "Ungültige Wertpapierauswahl." }, { status: 400 }); }
+  return dataResponse(async () => ({ rows: await getMatch(tickers) }), () => ({ rows: [] }));
 }

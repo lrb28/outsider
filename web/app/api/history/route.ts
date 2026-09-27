@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrices } from "@/lib/queries";
+import { InputError, symbolList } from "@/lib/apiValidation";
 import { withRetry } from "@/lib/retry";
 
 // Tages-Kurshistorie + Dividenden für beliebige Ticker.
@@ -127,6 +128,7 @@ async function load(ticker: string, range: string): Promise<HistoryEntry> {
     ({ ticker, source: "none", bars: [], dividends: [], currency: null, name: null } as HistoryEntry);
 
   // Fehlschläge nur kurz merken, damit ein Aussetzer nicht 15 Minuten klebt.
+  if (cache.size >= 200) cache.delete(cache.keys().next().value!);
   cache.set(key, { at: e.source === "none" ? Date.now() - TTL + 60_000 : Date.now(), e });
   return e;
 }
@@ -134,16 +136,10 @@ async function load(ticker: string, range: string): Promise<HistoryEntry> {
 export async function GET(req: NextRequest) {
   const p = req.nextUrl.searchParams;
   const raw = p.get("tickers") || p.get("ticker") || "";
-  const range = RANGES.has(p.get("range") || "") ? (p.get("range") as string) : "5y";
-
-  const tickers = [
-    ...new Set(
-      raw
-        .split(",")
-        .map((t) => t.trim().toUpperCase())
-        .filter((t) => TICKER_RE.test(t)),
-    ),
-  ].slice(0, 40);
+  const range = p.get("range") || "5y";
+  let tickers: string[];
+  try { if (!RANGES.has(range)) throw new InputError("Ungültiger Zeitraum"); tickers = symbolList(raw,40); }
+  catch (error) { return NextResponse.json({error: error instanceof InputError ? error.message : "Ungültige Anfrage"}, {status:400}); }
 
   if (tickers.length === 0) {
     return NextResponse.json({ range, entries: {} as Record<string, HistoryEntry> });
@@ -158,7 +154,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { range, entries },
-    { headers: { "Cache-Control": "public, max-age=300" } },
+    { range, entries, missing: tickers.filter(t => entries[t].source === "none") },
+    { headers: { "Cache-Control": "private, max-age=60" } },
   );
 }

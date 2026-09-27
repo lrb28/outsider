@@ -194,6 +194,127 @@ console.log("\nNamen aus Form-4-Meldungen");
   }
 }
 
+// ── Feed: „Seit Offenlegung“ ───────────────────────────────────────────────
+// Ein nackter Strich sieht nach Fehler aus. Er muss sagen, warum die Zahl fehlt.
+console.log("\nSpalte „Seit Offenlegung“");
+{
+  const F = await import("../.tmp-format.mjs");
+  const heute = "2026-08-07";
+  let r = F.disclosureLabel(0.045, "2026-06-17", heute);
+  ok("Rendite wird gezeigt", r.text === "+4,5 %" && !r.muted, r.text, "+4,5 %");
+  r = F.disclosureLabel(-0.009, "2026-05-29", heute);
+  ok("negative Rendite", r.text === "-0,9 %" && !r.muted, r.text, "-0,9 %");
+  r = F.disclosureLabel(null, "2026-08-07", heute);
+  ok("heute gemeldet", r.text === "heute gemeldet" && r.muted, r.text, "heute gemeldet");
+  r = F.disclosureLabel(null, "2026-05-01", heute);
+  ok("ohne Kursreihe", r.text === "kein Kurs hinterlegt" && r.muted, r.text, "kein Kurs hinterlegt");
+  r = F.disclosureLabel(null, null, heute);
+  ok("ohne Datum", r.muted === true, r.text, "grauer Hinweis");
+  r = F.disclosureLabel(0, "2026-05-01", heute);
+  ok("null Prozent ist eine Zahl", r.text === "+0,0 %" && !r.muted, r.text, "+0,0 %");
+}
+
+// ── Feed: Meldeserien bündeln ──────────────────────────────────────────────
+// Eine Vesting-Runde meldet ein Dutzend Insider am selben Tag. Ungebündelt
+// verdrängt das den ganzen übrigen Feed.
+console.log("\nMeldeserien im Feed");
+{
+  const F = await import("../.tmp-format.mjs");
+  const row = (n, t, d, typ = "corporate_insider", tx = "buy") => ({
+    id: n,
+    entityName: `Person ${n}`,
+    ticker: t,
+    disclosedAt: d,
+    entityType: typ,
+    txnType: tx,
+  });
+  const feed = [
+    row(1, "COIN", "2026-08-05", "corporate_insider", "sell"),
+    row(2, "NFLX", "2026-08-04"),
+    row(3, "NFLX", "2026-08-04"),
+    row(4, "NFLX", "2026-08-04"),
+    row(5, "NFLX", "2026-08-04"),
+    row(6, "AMZN", "2026-08-03"),
+  ];
+  const g = F.groupSeries(feed);
+  ok("drei Blöcke", g.length === 3, g.length, 3);
+  ok("Netflix-Serie hat 4 Zeilen", g[1].rows.length === 4, g[1].rows.length, 4);
+  ok("Einzelmeldung bleibt einzeln", g[0].rows.length === 1, g[0].rows.length, 1);
+  ok("Schwelle ist 3", F.SERIES_MIN === 3, F.SERIES_MIN, 3);
+  ok(
+    "unter der Schwelle wird nicht gebündelt",
+    F.groupSeries([row(1, "AAPL", "2026-08-04"), row(2, "AAPL", "2026-08-04")])[0].rows.length <
+      F.SERIES_MIN,
+    2,
+    "< 3",
+  );
+  // Gegenprobe: gleiche Aktie, gleicher Tag, aber Kauf und Verkauf gemischt —
+  // das darf nicht zu „4 Insider kauften“ verschmelzen.
+  const mixed = F.groupSeries([
+    row(1, "NFLX", "2026-08-04", "corporate_insider", "buy"),
+    row(2, "NFLX", "2026-08-04", "corporate_insider", "sell"),
+    row(3, "NFLX", "2026-08-04", "corporate_insider", "buy"),
+  ]);
+  ok("Kauf und Verkauf bleiben getrennt", mixed.length === 3, mixed.length, 3);
+  // Gegenprobe: gleicher Tag, gleiche Aktie, aber Insider und Institution
+  const kinds = F.groupSeries([
+    row(1, "NFLX", "2026-08-04", "corporate_insider", "buy"),
+    row(2, "NFLX", "2026-08-04", "institution", "buy"),
+  ]);
+  ok("Insider und Institution getrennt", kinds.length === 2, kinds.length, 2);
+  ok("Reihenfolge bleibt erhalten", g[0].rows[0].id === 1 && g[2].rows[0].id === 6, "1/6", "1/6");
+}
+
+// ── Ausweichbörsen und stillgelegte Papiere ───────────────────────────────
+// Beides betrifft die Frage, ob eine Position einen echten Kurs bekommt oder
+// eine ehrliche Lücke. Ein falscher Treffer wäre hier teurer als gar keiner.
+console.log("\nAusweichbörsen und stillgelegte Papiere");
+{
+  const r = (id, bad = []) =>
+    I.resolveInstrument(id, null, null, {}, {}, new Set(bad));
+
+  // SPDR S&P 500 (SPYL): Xetra zuerst, dann Amsterdam, dann London.
+  ok("erster Börsenplatz zuerst", r("IE000XZSV718").symbol === "SPYL.DE", r("IE000XZSV718").symbol, "SPYL.DE");
+  ok(
+    "kursfreier Platz wird übersprungen",
+    r("IE000XZSV718", ["SPYL.DE"]).symbol === "SPYL.AS",
+    r("IE000XZSV718", ["SPYL.DE"]).symbol,
+    "SPYL.AS",
+  );
+  ok(
+    "zwei tote Plätze — dritter rückt nach",
+    r("IE000XZSV718", ["SPYL.DE", "SPYL.AS"]).symbol === "SPYL.L",
+    r("IE000XZSV718", ["SPYL.DE", "SPYL.AS"]).symbol,
+    "SPYL.L",
+  );
+  const alleTot = r("IE000XZSV718", ["SPYL.DE", "SPYL.AS", "SPYL.L"]);
+  ok("alle Plätze tot ⇒ kein geratenes Kürzel", alleTot.symbol === null, alleTot.symbol, "null");
+
+  // Einzelnes Kürzel muss sich weiterhin genauso verhalten wie bisher.
+  ok("einzelnes Kürzel unverändert", r("US0378331005").symbol === "AAPL", r("US0378331005").symbol, "AAPL");
+  ok(
+    "einzelnes Kürzel als kursfrei gemeldet",
+    r("US0378331005", ["AAPL"]).symbol === null,
+    r("US0378331005", ["AAPL"]).symbol,
+    "null",
+  );
+
+  // Verschmolzener Fonds und eingestellter Hinterlegungsschein: niemals ein
+  // Kürzel, immer eine Begründung — sonst greift die Suche und rät.
+  const world = r("LU1781541179");
+  ok("verschmolzener Fonds bekommt kein Kürzel", world.symbol === null, world.symbol, "null");
+  ok("Verschmelzung wird begründet", /verschmolzen/i.test(world.unpriceable ?? ""), world.unpriceable, "Text");
+  ok("Nachfolger wird genannt", (world.unpriceable ?? "").includes("IE000BI8OT95"), world.unpriceable, "IE000BI8OT95");
+
+  const gdr = r("USY384721251");
+  ok("eingestellter GDR bekommt kein Kürzel", gdr.symbol === null, gdr.symbol, "null");
+  ok("Einstellung wird begründet", /eingestellt/i.test(gdr.unpriceable ?? ""), gdr.unpriceable, "Text");
+
+  // Eigene Zuordnung schlägt weiterhin alles — auch ein stillgelegtes Papier.
+  const eigen = I.resolveInstrument("LU1781541179", null, null, { LU1781541179: "MWRD.DE" }, {});
+  ok("eigene Zuordnung sticht", eigen.symbol === "MWRD.DE", eigen.symbol, "MWRD.DE");
+}
+
 // ── Währungsumrechnung ─────────────────────────────────────────────────────
 console.log("\nWährungsumrechnung");
 {
@@ -208,7 +329,7 @@ console.log("\nWährungsumrechnung");
   const eur = P.convertBars(usd, fx);
   ok("110 USD bei 1,10 ⇒ 100 EUR", near(eur[0].close, 100), eur[0].close, 100);
   ok("120 USD bei 1,20 ⇒ 100 EUR", near(eur[1].close, 100), eur[1].close, 100);
-  ok("ohne Kurs unverändert", P.convertBars(usd, null)[0].close === 110, "—", 110);
+  ok("ohne Wechselkurs keine erfundene Umrechnung", P.convertBars(usd, null).length === 0, P.convertBars(usd, null).length, 0);
 }
 
 // ── Echte Datei, falls vorhanden ───────────────────────────────────────────

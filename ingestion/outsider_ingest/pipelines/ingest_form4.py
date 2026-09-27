@@ -58,6 +58,7 @@ def ingest_issuer_form4(issuer_cik: str, since: date | None = None, max_filings:
         filing_id = repo.insert_filing(
             ref.source, "4", entity_id, ref.filed_at, ref.period_of_report, ref.source_url
         )
+        repo.supersede_legacy_transactions(filing_id)
         for t in txns:
             key = t.ticker or t.issuer_name
             sid = repo.upsert_security_by_ticker(key, t.issuer_name)
@@ -65,9 +66,12 @@ def ingest_issuer_form4(issuer_cik: str, since: date | None = None, max_filings:
                 filing_id, entity_id, sid, t.txn_type,
                 txn_date=_d(t.txn_date), disclosed_at=ref.filed_at,
                 shares=t.shares, price=t.price,
+                transaction_code=t.code, is_derivative=t.is_derivative,
+                acquired_disposed=t.acquired_disposed, source_line=t.source_line,
             )
             n += 1
     repo.commit()
+    conn.close()
     print(f"  {issuer_cik}: {n} insider transactions")
     return n
 

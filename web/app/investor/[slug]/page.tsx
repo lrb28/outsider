@@ -27,12 +27,14 @@ export default function InvestorPage() {
 
   useEffect(() => {
     if (!slug) return;
+    const controller = new AbortController();
     setLoading(true);
     setErr(false);
-    fetchJson<InvestorResponse>(`/api/investor?slug=${encodeURIComponent(slug)}`)
+    fetchJson<InvestorResponse>(`/api/investor?slug=${encodeURIComponent(slug)}`, {signal:controller.signal})
       .then((d) => setInv(d.investor))
-      .catch(() => setErr(true))
-      .finally(() => setLoading(false));
+      .catch(() => {if(!controller.signal.aborted) setErr(true);})
+      .finally(() => {if(!controller.signal.aborted) setLoading(false);});
+    return () => controller.abort();
   }, [slug, tick]);
 
   const holdings = useMemo(() => {
@@ -53,7 +55,7 @@ export default function InvestorPage() {
       <div className="py-16 text-center text-sm text-subtle">
         Investor nicht gefunden.{" "}
         <Link href="/discover" className="text-brand underline">
-          Zurück zu Discover
+          Zurück zu Entdecken
         </Link>
       </div>
     );
@@ -67,15 +69,16 @@ export default function InvestorPage() {
   const buys = inv.trades.filter((t) => t.txnType === "buy").length;
   const sells = inv.trades.filter((t) => t.txnType === "sell").length;
   const moves = [
-    { label: "Käufe", value: buys, color: "#16a34a" },
-    { label: "Verkäufe", value: sells, color: "#dc2626" },
+    { label: "Aufstockungen", value: buys, color: "#16a34a" },
+    { label: "Bestandsabbau", value: sells, color: "#dc2626" },
   ];
   const moveTotal = buys + sells;
 
   return (
     <div className="space-y-6">
+      <p className="rounded-xl bg-indigo-50 p-3 text-sm leading-6 text-indigo-900">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
       <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Discover
+        ‹ Entdecken
       </Link>
 
       <div className="flex items-start gap-4">
@@ -170,7 +173,7 @@ export default function InvestorPage() {
             <Donut
               segments={moves}
               centerTop={`${Math.round((buys / moveTotal) * 100)} %`}
-              centerBottom="Käufe"
+              centerBottom="Aufstockungen"
             />
             <div className="w-full flex-1 space-y-2.5">
               {moves.map((s) => (
@@ -189,7 +192,7 @@ export default function InvestorPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Trades</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
         <TradeFeed
           rows={inv.trades}
           showActor={false}

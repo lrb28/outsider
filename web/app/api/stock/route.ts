@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-
+import { dataResponse } from "@/lib/apiResponse";
 import { getStock } from "@/lib/queries";
-import { withRetry } from "@/lib/retry";
 import { sampleStock } from "@/lib/sampleData";
-import { StockResponse } from "@/lib/types";
+import { textParam, SYMBOL_RE } from "@/lib/apiValidation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const ticker = req.nextUrl.searchParams.get("ticker") || "";
+  let value: string;
   try {
-    const stock = await withRetry(() => getStock(ticker));
-    const body: StockResponse = { source: "database", stock };
-    return NextResponse.json(body);
-  } catch {
-    const body: StockResponse = { source: "sample", stock: sampleStock(ticker) };
-    return NextResponse.json(body);
-  }
+    value = textParam(req.nextUrl.searchParams, "ticker", 160) ?? "";
+    value = value.toUpperCase();
+    if (!SYMBOL_RE.test(value)) throw new Error();
+  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  return dataResponse(async () => ({ stock: await getStock(value) }), () => ({ stock: sampleStock(value) }));
 }
