@@ -11,6 +11,7 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { fetchCatalogue } from "@/lib/fetchJson";
 import { fixTicker } from "@/lib/format";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: DiscoverData) => CollectionItem[] }> = {
   boughtq: {
@@ -90,8 +91,9 @@ export default function CollectionPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Entdecken
+      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
+        <Icon name="chevronLeft" className="h-4 w-4" />
+        Entdecken
       </Link>
 
       <div>

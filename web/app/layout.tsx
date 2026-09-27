@@ -8,6 +8,7 @@ import { isDemoMode } from "@/lib/dataMode";
 import { StorageNotice } from "@/components/StorageNotice";
 
 import { Disclaimer } from "@/components/Disclaimer";
+import { LiquidLogo } from "@/components/LiquidLogo";
 import { BottomNav, Nav } from "@/components/Nav";
 import { SampleBanner } from "@/components/SampleBanner";
 import { SearchBox } from "@/components/SearchBox";
@@ -42,12 +43,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="de">
       <body className="min-h-screen text-ink">
         <a href="#main" className="skip-link">Zum Inhalt springen</a>
-        <header className="sticky top-0 z-20 border-b border-white/40 bg-white/60 backdrop-blur-xl">
+        <header className="glass sticky top-0 z-20 !rounded-none !border-x-0 !border-t-0">
           <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-            <Link href="/" className="press-sm flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-b from-indigo-500 to-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-500/30">
-                O
-              </div>
+            <Link href="/" aria-label="Outsider – Startseite" className="press-sm flex items-center gap-2">
+              <LiquidLogo size={34} />
               <span className="text-lg font-semibold tracking-tight">Outsider</span>
             </Link>
             <div className="ml-auto flex items-center gap-3">
@@ -64,7 +63,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
         <BottomNav />
 
-        <footer className="mt-12 border-t border-white/50 bg-white/60 backdrop-blur">
+        <footer className="mt-12 border-t border-white/70 bg-white/55">
           <div className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
             <nav aria-label="Informationen" className="mb-5 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium"><Link href="/methodik">Quellen & Methodik</Link><Link href="/status">Datenstand</Link><Link href="/datenschutz">Datenschutz</Link></nav>
             <Disclaimer />

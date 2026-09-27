@@ -8,16 +8,18 @@
 
 html,
 body {
-  color: #0f172a;
-  background-color: #f6f7fb;
+  color: #1c1c1e;
+  background-color: #f2f2f7;
 }
 
-/* Liquid canvas: soft aurora gradients that give the whole app depth. */
+/* Ambient light behind the glass: soft sky, mint and peach, no purple. Glass
+   only reads as glass when something colourful sits behind it. */
 body {
   background-image:
-    radial-gradient(60rem 40rem at 85% -10%, rgba(99, 102, 241, 0.14), transparent 60%),
-    radial-gradient(50rem 34rem at -10% 20%, rgba(56, 189, 248, 0.12), transparent 60%),
-    radial-gradient(44rem 30rem at 50% 120%, rgba(168, 85, 247, 0.1), transparent 60%);
+    radial-gradient(56rem 38rem at 88% -8%, rgba(125, 195, 255, 0.28), transparent 62%),
+    radial-gradient(46rem 32rem at -12% 18%, rgba(120, 225, 180, 0.22), transparent 60%),
+    radial-gradient(44rem 30rem at 55% 112%, rgba(255, 196, 150, 0.24), transparent 60%),
+    linear-gradient(180deg, #f7f7fa 0%, #eeeef3 100%);
   background-attachment: fixed;
 }
 
@@ -26,27 +28,99 @@ body {
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.2);
+  background: rgba(28, 28, 30, 0.14);
 }
 
 @layer components {
-  /* Springy press feedback (Trade-Republic feel) — put on anything tappable. */
+  /* Springy press feedback — put on anything tappable. */
   .press {
     @apply transition-all duration-200 ease-out active:scale-[0.97];
   }
   .press-sm {
     @apply transition-all duration-150 ease-out active:scale-95;
   }
-  /* Liquid card: frosted white, soft ring, lifts on hover. */
+
+  /* Liquid glass (after dashersw/liquid-glass-js, in CSS): frosted, saturated
+     backdrop, a bright rim along the top edge and a specular sheen. Used for
+     chrome that floats above content — header, navigation, dialogs, heroes. */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(150deg, rgb(255 255 255 / 0.8) 0%, rgb(255 255 255 / 0.5) 100%);
+    -webkit-backdrop-filter: blur(22px) saturate(185%);
+    backdrop-filter: blur(22px) saturate(185%);
+    border: 1px solid rgb(255 255 255 / 0.72);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.95),
+      inset 0 -1px 0 rgb(255 255 255 / 0.3),
+      inset 0 0 0 0.5px rgb(28 28 30 / 0.05),
+      0 1px 2px rgb(28 28 30 / 0.05),
+      0 12px 32px rgb(28 28 30 / 0.08);
+  }
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 70% at 12% -12%, rgb(255 255 255 / 0.85), transparent 55%),
+      radial-gradient(80% 50% at 100% 120%, rgb(255 255 255 / 0.35), transparent 60%);
+  }
+
+  /* Content cards: the same rim light and translucency without a backdrop
+     blur, so long lists stay smooth on phones. */
   .lcard {
-    @apply rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur transition-all duration-200 ease-out;
+    @apply rounded-3xl transition-all duration-200 ease-out;
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.9) 0%, rgb(255 255 255 / 0.72) 100%);
+    border: 1px solid rgb(255 255 255 / 0.8);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 1),
+      inset 0 0 0 0.5px rgb(28 28 30 / 0.05),
+      0 1px 2px rgb(28 28 30 / 0.04),
+      0 8px 24px rgb(28 28 30 / 0.06);
   }
   .lcard-hover {
     @apply hover:-translate-y-0.5 hover:shadow-cardhover;
   }
-  /* Primary gradient button. */
+
+  /* Graphite, lit from above — primary actions and the active state. */
   .btn-primary {
-    @apply rounded-full bg-gradient-to-b from-indigo-500 to-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 ease-out hover:shadow-indigo-500/40 active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all duration-200 ease-out active:scale-[0.97];
+    background: linear-gradient(180deg, #48484a 0%, #1c1c1e 55%, #111113 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.28),
+      inset 0 -1px 0 rgb(0 0 0 / 0.4),
+      0 6px 18px rgb(28 28 30 / 0.22);
+  }
+  .btn-primary:hover {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.32),
+      inset 0 -1px 0 rgb(0 0 0 / 0.4),
+      0 10px 26px rgb(28 28 30 / 0.3);
+  }
+  .btn-glass {
+    @apply glass inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 ease-out hover:bg-white/90 active:scale-[0.97];
+  }
+
+  /* Filter chips. */
+  .chip {
+    @apply inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium text-subtle transition-all duration-150 ease-out hover:text-ink active:scale-95;
+    background: rgb(255 255 255 / 0.7);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 0.5px rgb(28 28 30 / 0.08);
+  }
+  .chip-on {
+    @apply text-white hover:text-white;
+    background: linear-gradient(180deg, #48484a 0%, #1c1c1e 60%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px rgb(28 28 30 / 0.2);
+  }
+
+  /* Liquid-glass input field. */
+  .field {
+    @apply w-full rounded-full px-4 text-sm text-ink outline-none transition placeholder:text-subtle focus:bg-white;
+    background: rgb(255 255 255 / 0.72);
+    box-shadow: inset 0 1px 2px rgb(28 28 30 / 0.06), inset 0 0 0 0.5px rgb(28 28 30 / 0.1);
   }
 }
 
@@ -112,16 +186,25 @@ body {
 }
 
 /* Keyboard focus remains visible on every interactive control. */
-:focus-visible { outline: 3px solid #4f46e5; outline-offset: 4px; }
+:focus-visible { outline: 3px solid #1c1c1e; outline-offset: 4px; }
 button, input, select { min-height: 44px; }
 button:disabled { cursor: not-allowed; opacity: .55; }
-.skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: #fff; color: #0f172a; }
+.skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: #fff; color: #1c1c1e; }
 .skip-link:focus { top: 1rem; }
-dialog::backdrop { background: rgb(15 23 42 / .55); backdrop-filter: blur(4px); }
+dialog::backdrop { background: rgb(28 28 30 / .32); -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%); }
 dialog[open] { animation: fadeUp .15s ease-out; }
-.prose-copy p { margin-top: 1rem; line-height: 1.8; color: #334155; }
+.prose-copy p { margin-top: 1rem; line-height: 1.8; color: #3a3a3c; }
 .prose-copy h2 { margin-top: 2rem; font-size: 1.2rem; font-weight: 650; }
-.prose-copy a { color: #4338ca; text-decoration: underline; text-underline-offset: 3px; }
+.prose-copy a { color: #1c1c1e; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Browsers without backdrop-filter get an opaque surface instead of
+   unreadable transparency. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass { background: rgb(255 255 255 / 0.96); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .lcard { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

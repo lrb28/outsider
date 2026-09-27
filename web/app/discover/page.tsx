@@ -23,6 +23,7 @@ import {
   StockRow,
   StocksResponse,
 } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 type Tab = "highlights" | "investors" | "stocks" | "politicians";
 
@@ -86,7 +87,7 @@ function Hero({
       {visual}
       <div className="mt-6">
         <div className="flex items-center gap-1 text-lg font-semibold tracking-tight text-slate-900">
-          {title} <span className="text-slate-400">›</span>
+          {title} <Icon name="chevronRight" className="inline h-4 w-4 align-[-2px] text-subtle" />
         </div>
         <p className="mt-1 text-sm leading-snug text-slate-600">{blurb}</p>
       </div>
@@ -127,15 +128,15 @@ function Discover() {
       </div>
 
       {/* Segments */}
-      <div className="fade-up flex flex-wrap rounded-2xl bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur">
+      <div className="glass fade-up no-scrollbar flex overflow-x-auto rounded-full p-1">
         {TABS.map(([key, label]) => (
           <button
             key={key}
             aria-pressed={tab === key}
             onClick={() => setTab(key)}
-            className={`press-sm rounded-full px-4 py-1.5 text-sm font-medium ${
+            className={`press-sm shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ${
               tab === key
-                ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25"
+                ? "btn-primary !px-4 !py-1.5"
                 : "text-subtle hover:text-ink"
             }`}
           >
@@ -173,7 +174,7 @@ function Discover() {
                   href="/discover/conviction"
                   title="Höchste Gewichtung"
                   blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände ohne Optionen."
-                  gradient="bg-gradient-to-b from-indigo-100 via-violet-50 to-white"
+                  gradient="bg-gradient-to-b from-zinc-200 via-zinc-50 to-white"
                   visual={<LogoTrio items={data.highestConviction} />}
                 />
                 <Hero
@@ -297,7 +298,7 @@ function Discover() {
                   <div className="text-sm font-medium">{p.trades} Trades</div>
                   <div className="text-xs text-subtle">{formatDate(p.lastTrade)}</div>
                 </div>
-                <span className="text-slate-300">›</span>
+                <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
               </Link>
             ))}
             {politicians.length === 0 && (

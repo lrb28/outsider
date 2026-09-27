@@ -180,7 +180,7 @@ export function assetMeta(ticker: string | null | undefined): AssetMeta {
 }
 
 export const SECTOR_COLOR: Record<Sector, string> = {
-  Technologie: "#4f46e5",
+  Technologie: "#1c1c1e",
   Kommunikation: "#0ea5e9",
   "Zyklischer Konsum": "#f59e0b",
   Basiskonsum: "#16a34a",
@@ -197,7 +197,7 @@ export const SECTOR_COLOR: Record<Sector, string> = {
 };
 
 export const REGION_COLOR: Record<Region, string> = {
-  USA: "#4f46e5",
+  USA: "#1c1c1e",
   Europa: "#0ea5e9",
   Asien: "#f59e0b",
   Schwellenländer: "#16a34a",
@@ -206,7 +206,7 @@ export const REGION_COLOR: Record<Region, string> = {
 };
 
 export const ASSET_COLOR: Record<AssetClass, string> = {
-  Aktie: "#4f46e5",
+  Aktie: "#1c1c1e",
   ETF: "#0ea5e9",
   Krypto: "#f97316",
   Anleihe: "#16a34a",

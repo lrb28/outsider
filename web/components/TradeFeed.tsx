@@ -16,6 +16,7 @@ import { FeedRow } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
+import { Icon } from "./Icon";
 import { SkeletonList } from "./Skeleton";
 import { TradeDetailModal } from "./TradeDetailModal";
 
@@ -50,17 +51,17 @@ export function TradeFeed({
 
   const container = dark
     ? "bg-slate-900/60 ring-1 ring-white/10"
-    : "bg-card shadow-card";
+    : "lcard";
   const headBorder = dark ? "border-white/10 text-slate-400" : "border-hair text-subtle";
-  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-hair hover:bg-slate-50";
+  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-black/5 hover:bg-white/70";
   const nameCls = dark ? "text-slate-100" : "";
   const subCls = dark ? "text-slate-400" : "text-subtle";
   const emptyCls = dark ? "text-slate-400" : "text-subtle";
 
   return (
     <>
-      {opened.size > 0 && <button className="mb-2 text-sm text-brand underline" onClick={() => setOpened(new Set())}>Serien wieder zusammenfassen</button>}
-      <div className={`overflow-hidden rounded-2xl ${container}`}>
+      {opened.size > 0 && <button className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-ink underline underline-offset-2" onClick={() => setOpened(new Set())}>Serien wieder zusammenfassen</button>}
+      <div className={`overflow-hidden rounded-3xl ${container}`}>
         <div
           className={`hidden ${grid} gap-3 border-b px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide md:grid ${headBorder}`}
         >
@@ -105,7 +106,7 @@ export function TradeFeed({
                     {sig.text} · {formatDate(first.disclosedAt)}
                   </div>
                 </div>
-                <div className={`shrink-0 text-[11px] ${subCls}`}>Einzeln zeigen ›</div>
+                <div className={`flex shrink-0 items-center gap-0.5 text-[11px] ${subCls}`}>Einzeln zeigen<Icon name="chevronDown" className="h-3.5 w-3.5" /></div>
               </button>
             );
           }
@@ -113,12 +114,12 @@ export function TradeFeed({
             const sig = tradeSignal(r);
             const badge =
               sig.tone === "bull"
-                ? "bg-emerald-50 text-emerald-700"
+                ? "bg-emerald-50 text-bull"
                 : sig.tone === "bear"
-                ? "bg-rose-50 text-rose-700"
+                ? "bg-rose-50 text-bear"
                 : dark
                 ? "bg-white/10 text-slate-300"
-                : "bg-slate-100 text-slate-600";
+                : "bg-zinc-100 text-zinc-700";
             const perf = r.priceAsOf && isStaleDate(r.priceAsOf) ? null : r.pctSinceDisclosure;
             const disc = disclosureLabel(perf, r.disclosedAt, today);
             const perfCls = disc.muted ? subCls : perf! >= 0 ? "text-bull" : "text-bear";
@@ -135,7 +136,7 @@ export function TradeFeed({
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
                         <span className="truncate">{r.entityName}</span>
-                        {r.highlight && <span className="text-amber-500">★</span>}
+                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-amber-500 [&_path]:fill-current" aria-label="Hervorgehoben" />}
                       </div>
                       <div className={`text-xs ${subCls}`}>{TYP[r.entityType]}</div>
                     </div>
@@ -169,7 +170,7 @@ export function TradeFeed({
                   >
                     {r.priceAsOf && isStaleDate(r.priceAsOf) ? "Kurs veraltet" : disc.text}
                   </div>
-                  <div className={`text-[11px] ${subCls}`}>Details ›</div>
+                  <div className={`inline-flex items-center gap-0.5 text-[11px] ${subCls}`}>Details<Icon name="chevronRight" className="h-3 w-3" /></div>
                 </div>
               </button>
             );

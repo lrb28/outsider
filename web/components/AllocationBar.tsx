@@ -2,7 +2,7 @@ import { weightPct } from "@/lib/format";
 import { HoldingRow } from "@/lib/types";
 
 const COLORS = [
-  "#4f46e5",
+  "#1c1c1e",
   "#0ea5e9",
   "#16a34a",
   "#f59e0b",

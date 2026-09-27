@@ -16,6 +16,7 @@ import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
+import { Icon } from "@/components/Icon";
 
 export default function StockPage() {
   const params = useParams<{ ticker: string }>();
@@ -114,8 +115,9 @@ export default function StockPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Entdecken
+      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
+        <Icon name="chevronLeft" className="h-4 w-4" />
+        Entdecken
       </Link>
 
       <div className="flex items-center gap-4">

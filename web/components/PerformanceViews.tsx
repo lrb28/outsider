@@ -102,7 +102,7 @@ export function MonthHeatmap({
                         style={{
                           backgroundColor: heatColor(c.r / scale),
                           color: Math.abs(c.r) > scale * 0.6 ? "#0f172a" : "#64748b",
-                          outline: hover?.key === c.key ? "2px solid #4f46e5" : undefined,
+                          outline: hover?.key === c.key ? "2px solid #1c1c1e" : undefined,
                         }}
                         onMouseEnter={() => setHover({ key: c.key, r: c.r as number })}
                       >

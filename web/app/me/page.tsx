@@ -94,6 +94,7 @@ import {
 } from "@/lib/sectors";
 import { MatchResponse, MatchRow } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
+import { Icon } from "@/components/Icon";
 
 // ── Konfiguration ───────────────────────────────────────────────────────────
 
@@ -156,7 +157,7 @@ const PERF_VIEWS: readonly (readonly [PerfView, string])[] = [
 ];
 
 const POS_COLORS = [
-  "#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
+  "#1c1c1e", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
   "#8b5cf6", "#14b8a6", "#ef4444", "#65a30d", "#0891b2",
 ];
 
@@ -833,7 +834,7 @@ export default function MePage() {
         {
           key: "twr",
           label: "Dein Depot",
-          color: "#4f46e5",
+          color: "#1c1c1e",
           fill: true,
           points: twrCurve(seriesR),
         },
@@ -853,7 +854,7 @@ export default function MePage() {
       {
         key: "value",
         label: "Depotwert",
-        color: "#4f46e5",
+        color: "#1c1c1e",
         fill: true,
         points: seriesR.map((p) => ({ date: p.date, value: p.value })),
       },
@@ -952,7 +953,7 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
-      {!empty && <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm leading-6 text-indigo-950">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
+      {!empty && <div className="rounded-2xl bg-zinc-100/80 p-4 text-sm leading-6 text-zinc-800 ring-1 ring-black/5">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
       {/* Kopf */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -1010,7 +1011,7 @@ export default function MePage() {
       />
 
       {msg && (
-        <div className="rounded-xl bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 ring-1 ring-indigo-100">
+        <div className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-ink ring-1 ring-black/5">
           {msg}
         </div>
       )}
@@ -1108,7 +1109,7 @@ export default function MePage() {
                   <span className="font-semibold text-ink">
                     {noPrice} {noPrice === 1 ? "Position ohne Kurs" : "Positionen ohne Kurs"}
                   </span>{" "}
-                  — Optionsscheine und Privatmarkt-Anteile. Kurs eintragen und mitzählen lassen ›
+                  — Optionsscheine und Privatmarkt-Anteile. Kurs eintragen und mitzählen lassen <Icon name="chevronRight" className="inline h-4 w-4 align-[-3px]" />
                 </button>
               )}
             </>
@@ -1798,7 +1799,7 @@ function PositionsTable({
                         aria-label="Position entfernen"
                         className="press-sm rounded-full px-1.5 text-slate-300 hover:text-bear"
                       >
-                        ✕
+                        <Icon name="close" className="h-5 w-5" />
                       </button>
                     </td>
                   </tr>
@@ -2141,11 +2142,11 @@ function ActivityTab({
     deposit: "bg-slate-100 text-slate-600",
     withdrawal: "bg-slate-100 text-slate-600",
     interest: "bg-amber-50 text-amber-700",
-    split: "bg-violet-50 text-violet-700",
+    split: "bg-sky-50 text-sky-800",
   };
 
   const inputCls =
-    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-indigo-100";
+    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-zinc-200";
 
   return (
     <div className="space-y-4">
@@ -2217,7 +2218,7 @@ function ActivityTab({
             placeholder="Gebühr"
             className={`w-24 ${inputCls}`}
           />
-          <button className="press-sm rounded-full bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800">
+          <button className="btn-primary press-sm !py-1.5">
             Hinzufügen
           </button>
         </form>
@@ -2265,7 +2266,7 @@ function ActivityTab({
                 aria-label="Buchung löschen"
                 className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
               >
-                ✕
+                <Icon name="close" className="h-5 w-5" />
               </button>
             </div>
           ))}
@@ -2338,7 +2339,7 @@ function InvestorsTab({
                 </div>
                 <div className="text-[11px] text-subtle">deines Depots</div>
               </div>
-              <span className="text-slate-300">›</span>
+              <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
             </Link>
           );
         })}
@@ -2402,9 +2403,9 @@ function ImportSummary({ report, onClose }: { report: ImportReport; onClose: () 
         <button
           onClick={onClose}
           aria-label="Schließen"
-          className="press-sm shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-sm text-subtle hover:bg-slate-200"
+          className="glass press-sm flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-subtle hover:text-ink"
         >
-          ✕
+          <Icon name="close" className="h-5 w-5" />
         </button>
       </div>
     </div>
@@ -2478,7 +2479,7 @@ function UnpricedPanel({
                 />
                 <button
                   onClick={() => saveManual(r)}
-                  className="press-sm rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white hover:bg-slate-800"
+                  className="btn-primary press-sm !px-3 !py-1"
                 >
                   Wert setzen
                 </button>
@@ -2496,7 +2497,7 @@ function UnpricedPanel({
                     const v = (draft[r.ticker] ?? "").trim().toUpperCase();
                     if (v && SYMBOL_RE.test(v)) setUserSymbol(r.ticker, v);
                   }}
-                  className="press-sm rounded-full bg-slate-900 px-3 py-1 text-sm font-medium text-white hover:bg-slate-800"
+                  className="btn-primary press-sm !px-3 !py-1"
                 >
                   Zuordnen
                 </button>
@@ -2507,7 +2508,7 @@ function UnpricedPanel({
               aria-label="Entfernen"
               className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
             >
-              ✕
+              <Icon name="close" className="h-5 w-5" />
             </button>
           </div>
         );

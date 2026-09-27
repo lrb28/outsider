@@ -12,6 +12,7 @@ import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { fixTicker } from "@/lib/format";
 import { InsiderDetail, InsiderResponse } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 export default function InsiderPage() {
   const params = useParams<{ slug: string }>();
@@ -50,8 +51,9 @@ export default function InsiderPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/feed" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Feed
+      <Link href="/feed" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
+        <Icon name="chevronLeft" className="h-4 w-4" />
+        Feed
       </Link>
 
       <div className="flex items-center gap-4">

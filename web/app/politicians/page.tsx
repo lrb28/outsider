@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { SkeletonList } from "@/components/Skeleton";
 import { formatDate } from "@/lib/format";
 import { PoliticianRow, PoliticiansResponse } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 export default function PoliticiansPage() {
   const [rows, setRows] = useState<PoliticianRow[]>([]);
@@ -55,7 +56,7 @@ export default function PoliticiansPage() {
                 <div className="text-sm font-medium">{p.trades} Trades</div>
                 <div className="text-xs text-subtle">{formatDate(p.lastTrade)}</div>
               </div>
-              <span className="text-slate-300">›</span>
+              <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
             </Link>
           ))}
           {rows.length === 0 && (

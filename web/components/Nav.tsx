@@ -3,37 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const ICONS: Record<string, JSX.Element> = {
-  home: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-      <path d="M3 10.5 12 3l9 7.5" />
-      <path d="M5 9.5V21h14V9.5" />
-    </svg>
-  ),
-  discover: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-      <circle cx="12" cy="12" r="9" />
-      <path d="m15.5 8.5-2 5-5 2 2-5z" />
-    </svg>
-  ),
-  feed: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-      <path d="M3 12h4l3-8 4 16 3-8h4" />
-    </svg>
-  ),
-  depot: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
-      <path d="M21 12A9 9 0 1 1 12 3" />
-      <path d="M12 3a9 9 0 0 1 9 9h-9z" />
-    </svg>
-  ),
-};
+import { Icon, type IconName } from "@/components/Icon";
 
-const TABS = [
+const TABS: { href: string; label: string; icon: IconName }[] = [
   { href: "/", label: "Start", icon: "home" },
-  { href: "/discover", label: "Entdecken", icon: "discover" },
-  { href: "/feed", label: "Meldungen", icon: "feed" },
-  { href: "/me", label: "Depot", icon: "depot" },
+  { href: "/discover", label: "Entdecken", icon: "discovery" },
+  { href: "/feed", label: "Meldungen", icon: "notification" },
+  { href: "/me", label: "Depot", icon: "graph" },
 ];
 
 // Sections that fold into a main tab for highlighting purposes.
@@ -58,7 +34,7 @@ export function Nav() {
   const path = usePathname() || "/";
   const active = activeTab(path);
   return (
-    <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 rounded-full bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur md:flex">
+    <nav aria-label="Hauptnavigation" className="glass hidden items-center gap-1 rounded-full p-1 md:flex">
       {TABS.map((t) => {
         const on = active === t.href;
         return (
@@ -67,12 +43,10 @@ export function Nav() {
             href={t.href}
             aria-current={on ? "page" : undefined}
             className={`press-sm flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium ${
-              on
-                ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25"
-                : "text-subtle hover:bg-white hover:text-ink"
+              on ? "btn-primary !px-3.5 !py-1.5" : "text-subtle hover:bg-white/70 hover:text-ink"
             }`}
           >
-            {ICONS[t.icon]}
+            <Icon name={t.icon} className="h-[18px] w-[18px]" />
             {t.label}
           </Link>
         );
@@ -81,28 +55,29 @@ export function Nav() {
   );
 }
 
-// Floating app-style bottom bar (mobile only).
+// Floating liquid-glass tab bar (mobile only). The active tab sits in a
+// brighter glass capsule, like the iOS tab bar.
 export function BottomNav() {
   const path = usePathname() || "/";
   const active = activeTab(path);
   return (
     <nav aria-label="Mobile Hauptnavigation" style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }} className="fixed inset-x-0 bottom-4 z-30 flex justify-center md:hidden">
-      <div className="flex items-center gap-1 rounded-full bg-white/85 p-1.5 shadow-cardhover ring-1 ring-black/10 backdrop-blur-xl">
+      <div className="glass flex items-center gap-0.5 rounded-full p-1.5">
         {TABS.map((t) => {
           const on = active === t.href;
           return (
             <Link
               key={t.href}
               href={t.href}
-            aria-current={on ? "page" : undefined}
-              className={`press-sm flex flex-col items-center gap-0.5 rounded-full px-4 py-1.5 ${
+              aria-current={on ? "page" : undefined}
+              className={`press-sm flex min-w-[4.25rem] flex-col items-center gap-0.5 rounded-full px-3 py-1.5 ${
                 on
-                  ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30"
+                  ? "bg-white/90 text-ink shadow-[inset_0_1px_0_rgb(255_255_255),0_2px_10px_rgb(28_28_30/0.12)]"
                   : "text-subtle"
               }`}
             >
-              {ICONS[t.icon]}
-              <span className="text-[10px] font-medium leading-none">{t.label}</span>
+              <Icon name={t.icon} className="h-[22px] w-[22px]" />
+              <span className={`text-[10px] leading-none ${on ? "font-semibold" : "font-medium"}`}>{t.label}</span>
             </Link>
           );
         })}
