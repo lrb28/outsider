@@ -15,6 +15,6 @@ Anlass: ein Kurzvideo über fünf typische Lücken in schnell gebauten Apps (Ban
 1. Erledigt am 27.09.2026: `supabase/migrations/20260927143009_lock_default_privileges.sql` angewandt, Security Advisor ohne Befund.
 2. Supabase API-Einstellungen: Die App nutzt die Data API nicht. Wer sie deaktiviert bzw. `public` nicht mehr freigibt, schließt diese Angriffsfläche vollständig.
 3. Vercel: Plan bestätigen (Hobby = keine nutzungsabhängige Abrechnung). Bei einem späteren Wechsel auf Pro ein Ausgabenlimit mit Pausierung setzen. Optional eine Firewall-Regel für die drei Proxy-Routen als plattformweites Limit.
-4. Weiterhin offen aus dem Audit: eigene Leser-Zugangsdaten für die Vercel-Verbindung (`outsider_reader`).
+4. Leser-Zugang für Vercel: Login `outsider_web` (nur Lesen, erbt `outsider_reader`) am 27.09.2026 angelegt, noch ohne Passwort. Offen: Passwort im Supabase SQL-Editor setzen und `DATABASE_URL` in Vercel auf `outsider_web.<project-ref>` umstellen.
 
 Keine Rechtsberatung: Die im Video genannten Beträge beruhen auf US-Recht (ADA, TCPA). In Österreich/Deutschland greifen andere Regeln (u. a. Barrierefreiheitsgesetz/BFSG, § 174 TKG 2021/§ 7 UWG, DSGVO).

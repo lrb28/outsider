@@ -69,6 +69,12 @@ test('PostgreSQL: new tables are never exposed to the Supabase Data API roles', 
   const noRls = await db.query(`select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace
     where n.nspname='public' and c.relkind in ('r','p') and not c.relrowsecurity`);
   assert.deepEqual(noRls.rows,[],'every public table has row level security');
+  const web = await db.query(`select has_table_privilege('outsider_web','public.transactions','SELECT') as can_read,
+    has_table_privilege('outsider_web','public.transactions','INSERT,UPDATE,DELETE') as can_write,
+    (select rolconfig from pg_roles where rolname='outsider_web') as config`);
+  assert.equal(web.rows[0].can_read,true,'web login reads through outsider_reader');
+  assert.equal(web.rows[0].can_write,false,'web login cannot change data');
+  assert.ok(web.rows[0].config.includes('default_transaction_read_only=on'));
   await db.exec('CREATE TABLE public.future_feature (id serial primary key, email text)');
   await db.exec(`CREATE FUNCTION public.future_rpc() RETURNS int LANGUAGE sql AS 'select 1'`);
   for (const role of ['anon','authenticated']) {
