@@ -22,6 +22,10 @@ from outsider_ingest.providers.base import SecurityIdentity, SymbolProvider
 MAPPING_URL = "https://api.openfigi.com/v3/mapping"
 
 
+class SymbolProviderUnavailable(RuntimeError):
+    """OpenFIGI keeps answering 429. Callers fall back to CUSIP-only rows."""
+
+
 class OpenFigiProvider(SymbolProvider):
     name = "openfigi"
 
@@ -38,6 +42,13 @@ class OpenFigiProvider(SymbolProvider):
         self.min_interval_s = 0.3 if api_key else 2.5
         self.batch_size = 100 if api_key else 10
         self._last = 0.0
+        # Hard stop instead of an endless retry loop: a few backed-off retries,
+        # then the provider pauses for the rest of the run (circuit breaker).
+        self.max_retries = 3
+        self.retry_base_s = 6.0
+        self.retry_cap_s = 30.0
+        self.cooldown_s = 15 * 60
+        self._paused_until = 0.0
         self.session = requests.Session()
         headers = {"Content-Type": "application/json"}
         if api_key:
@@ -48,6 +59,26 @@ class OpenFigiProvider(SymbolProvider):
         gap = time.monotonic() - self._last
         if gap < self.min_interval_s:
             time.sleep(self.min_interval_s - gap)
+
+    def _post(self, jobs: list[dict], timeout: int) -> requests.Response:
+        """POST with a bounded number of 429 retries. After the last retry the
+        provider is paused, so later lookups in the same run fail fast instead
+        of sleeping through the whole job timeout."""
+        if time.monotonic() < self._paused_until:
+            raise SymbolProviderUnavailable("OpenFIGI rate limit: lookups paused")
+        for attempt in range(self.max_retries + 1):
+            self._throttle()
+            resp = self.session.post(MAPPING_URL, json=jobs, timeout=timeout)
+            self._last = time.monotonic()
+            if resp.status_code != 429:
+                resp.raise_for_status()
+                return resp
+            if attempt < self.max_retries:
+                time.sleep(min(self.retry_cap_s, self.retry_base_s * 2**attempt))
+        self._paused_until = time.monotonic() + self.cooldown_s
+        raise SymbolProviderUnavailable(
+            f"OpenFIGI rate limit persisted after {self.max_retries} retries"
+        )
 
     @staticmethod
     def _pick(data: list[dict]) -> dict:
@@ -76,16 +107,7 @@ class OpenFigiProvider(SymbolProvider):
             if cached is not None:
                 return cached
 
-        self._throttle()
-        resp = self.session.post(
-            MAPPING_URL, json=[{"idType": id_type, "idValue": identifier}], timeout=30
-        )
-        self._last = time.monotonic()
-        if resp.status_code == 429:
-            time.sleep(6)
-            return self.resolve(identifier, id_type)
-        resp.raise_for_status()
-
+        resp = self._post([{"idType": id_type, "idValue": identifier}], timeout=30)
         payload = resp.json()
         if not payload or "data" not in payload[0] or not payload[0]["data"]:
             return None
@@ -104,15 +126,7 @@ class OpenFigiProvider(SymbolProvider):
         for start in range(0, len(ids), self.batch_size):
             chunk = ids[start : start + self.batch_size]
             jobs = [{"idType": id_type, "idValue": c} for c in chunk]
-            self._throttle()
-            resp = self.session.post(MAPPING_URL, json=jobs, timeout=45)
-            self._last = time.monotonic()
-            if resp.status_code == 429:
-                time.sleep(6)
-                self._throttle()
-                resp = self.session.post(MAPPING_URL, json=jobs, timeout=45)
-                self._last = time.monotonic()
-            resp.raise_for_status()
+            resp = self._post(jobs, timeout=45)
             for cusip, item in zip(chunk, resp.json()):
                 data = item.get("data") if isinstance(item, dict) else None
                 if data:

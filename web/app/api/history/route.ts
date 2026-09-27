@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrices } from "@/lib/queries";
 import { InputError, symbolList } from "@/lib/apiValidation";
 import { withRetry } from "@/lib/retry";
+import { limitUpstream } from "@/lib/rateLimit";
 
 // Tages-Kurshistorie + Dividenden für beliebige Ticker.
 //
@@ -134,6 +135,8 @@ async function load(ticker: string, range: string): Promise<HistoryEntry> {
 }
 
 export async function GET(req: NextRequest) {
+  const limited = limitUpstream("history", req);
+  if (limited) return limited;
   const p = req.nextUrl.searchParams;
   const raw = p.get("tickers") || p.get("ticker") || "";
   const range = p.get("range") || "5y";

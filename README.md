@@ -45,5 +45,6 @@ Die tägliche Ingestion führt Quellen unabhängig aus und meldet Ausfälle. Der
 - [Gründlicher Audit](docs/AUDIT-2026-09-13.md)
 - [Vollständiger Umsetzungsprompt](docs/MASTER-PROMPT-2026-09-13.md)
 - [Umsetzung, Prüfungen und offene Schritte](docs/IMPLEMENTATION-2026-09-14.md)
+- [Sicherheits- und Kostencheck 27.09.2026](docs/SECURITY-CHECK-2026-09-27.md)
 
 Kurse und Offenlegungen sind zeitversetzt, teils lückenhaft und keine Anlageberatung. Die Anwendung erläutert Quellen und Berechnung unter `/methodik` sowie den Datenfluss unter `/datenschutz`.

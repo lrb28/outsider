@@ -2145,7 +2145,7 @@ function ActivityTab({
   };
 
   const inputCls =
-    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-indigo-100";
+    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-indigo-100";
 
   return (
     <div className="space-y-4">
@@ -2474,7 +2474,7 @@ function UnpricedPanel({
                   onChange={(e) => setPriceDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && saveManual(r)}
                   placeholder={`Kurs je Stück (${currencySymbol().trim()})`}
-                  className="w-40 rounded-full border border-hair bg-white px-3 py-1 text-sm outline-none focus:border-brand"
+                  className="w-40 rounded-full border border-hair bg-white px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
                   onClick={() => saveManual(r)}
@@ -2489,7 +2489,7 @@ function UnpricedPanel({
                   value={draft[r.ticker] ?? ""}
                   onChange={(e) => setDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
                   placeholder="Kürzel, z. B. AAPL"
-                  className="w-36 rounded-full border border-hair bg-white px-3 py-1 text-sm outline-none focus:border-brand"
+                  className="w-36 rounded-full border border-hair bg-white px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
                   onClick={() => {
