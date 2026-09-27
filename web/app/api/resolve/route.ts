@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { limitUpstream } from "@/lib/rateLimit";
 
 // ISIN → Börsenkürzel. Broker-Exporte kennen nur die ISIN; für Kurse brauchen
 // wir ein Symbol. Yahoos Suchendpunkt kann beides verbinden.
@@ -91,6 +92,8 @@ async function lookup(id: string): Promise<string | null> {
 }
 
 export async function GET(req: NextRequest) {
+  const limited = limitUpstream("resolve", req);
+  if (limited) return limited;
   const raw = req.nextUrl.searchParams.get("ids") || "";
   const ids = [...new Set(raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean))];
   if (ids.length > 60 || ids.some(id => !ISIN_RE.test(id))) return NextResponse.json({error:"Maximal 60 gültige ISINs pro Anfrage."},{status:400});
