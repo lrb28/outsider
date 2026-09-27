@@ -18,6 +18,19 @@ test('database TLS trusts the Supabase root CA only for Supabase hosts', async (
   assert.equal(DB.trustedCa('aws-0-eu-west-1.pooler.supabase.com','A\\nB'),'A\nB','configured CA wins');
 });
 
+test('database pool never hoards pooler slots on serverless', async () => {
+  const DB = (await import('./db.cjs')).default;
+  const session = DB.poolConfig('postgres://u.ref:pw@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=disable','');
+  assert.equal(session.max,1,'one connection per instance');
+  assert.ok(session.idleTimeoutMillis <= 5_000,'idle connections are released quickly');
+  assert.equal(session.statement_timeout,6_000);
+  assert.equal(session.ssl.rejectUnauthorized,true,'sslmode in the URL cannot disable verification');
+  assert.doesNotMatch(session.connectionString,/sslmode/);
+  const transaction = DB.poolConfig('postgres://u.ref:pw@aws-0-eu-west-1.pooler.supabase.com:6543/postgres','');
+  assert.equal('statement_timeout' in transaction,false,'no session startup parameter on the transaction pooler');
+  assert.equal(DB.poolConfig('postgres://u:pw@localhost:5432/outsider','').ssl,false);
+});
+
 test('rate limiter: bounded window, separate clients, reset after window', () => {
   const check = RL.createRateLimiter();
   const rule = {limit:3, windowMs:1_000};
