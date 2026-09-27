@@ -47,9 +47,11 @@ test('PostgreSQL: new tables are never exposed to the Supabase Data API roles', 
   // Reproduce Supabase defaults: anon/authenticated receive rights on new objects.
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;`);
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated;`);
   await db.exec(await readFile(join(process.env.OUTSIDER_REPO,'db/migrations/0001_init.sql'),'utf8'));
   await db.exec('CREATE TABLE public.unlisted_manual_table (id int)');
+  await db.exec(`CREATE FUNCTION public.unlisted_manual_rpc() RETURNS int LANGUAGE sql AS 'select 1'`);
   const folder = join(process.env.OUTSIDER_REPO,'supabase/migrations');
   for (const file of (await readdir(folder)).filter(f=>f.endsWith('.sql')).sort()) {
     const sql = await readFile(join(folder,file),'utf8'); await db.exec(sql); await db.exec(sql);
@@ -58,7 +60,12 @@ test('PostgreSQL: new tables are never exposed to the Supabase Data API roles', 
     where n.nspname='public' and c.relkind in ('r','p') and not c.relrowsecurity`);
   assert.deepEqual(noRls.rows,[],'every public table has row level security');
   await db.exec('CREATE TABLE public.future_feature (id serial primary key, email text)');
+  await db.exec(`CREATE FUNCTION public.future_rpc() RETURNS int LANGUAGE sql AS 'select 1'`);
   for (const role of ['anon','authenticated']) {
+    for (const fn of ['public.future_rpc()','public.unlisted_manual_rpc()']) {
+      const {rows} = await db.query(`select has_function_privilege($1,$2,'EXECUTE') as ok`,[role,fn]);
+      assert.equal(rows[0].ok,false,`${role} EXECUTE ${fn}`);
+    }
     for (const table of ['public.future_feature','public.unlisted_manual_table']) {
       for (const privilege of ['SELECT','INSERT','UPDATE','DELETE']) {
         const {rows} = await db.query('select has_table_privilege($1,$2,$3) as ok',[role,table,privilege]);
