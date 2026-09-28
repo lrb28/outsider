@@ -9,6 +9,7 @@ empty during July-2026 verification) — hence keeping both, plus the paid stubs
 
 from __future__ import annotations
 
+import time
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -33,11 +34,18 @@ class YahooPriceProvider(PriceProvider):
     def get_daily_prices(
         self, ticker: str, start: Optional[date] = None, end: Optional[date] = None
     ) -> list[PricePoint]:
-        url = (
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
-            f"?range={self.default_range}&interval=1d"
-        )
-        resp = self.session.get(url, timeout=self.timeout_s)
+        # Yahoo throttles in bursts (429). Back off briefly and alternate
+        # between its two API hosts instead of failing the symbol at once.
+        resp = None
+        for attempt, host in enumerate(("query1", "query2", "query1")):
+            url = (
+                f"https://{host}.finance.yahoo.com/v8/finance/chart/{ticker}"
+                f"?range={self.default_range}&interval=1d"
+            )
+            resp = self.session.get(url, timeout=self.timeout_s)
+            if resp.status_code != 429:
+                break
+            time.sleep(1.5 * (attempt + 1))
         resp.raise_for_status()
         try:
             result = resp.json()["chart"]["result"][0]
