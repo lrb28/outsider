@@ -38,7 +38,7 @@ async function fetchQuote(ticker: string): Promise<Quote | null> {
         ticker,
       )}?range=1d&interval=5m`,
       {
-        headers: { "User-Agent": "Mozilla/5.0 (outsider-tracker)" },
+        headers: { "User-Agent": "Mozilla/5.0 (aura-tracker)" },
         cache: "no-store",
         signal: AbortSignal.timeout(6000),
       },

@@ -203,7 +203,7 @@ export function DepotChart({
               x2={w - PAD_R + 4}
               y1={y(t)}
               y2={y(t)}
-              stroke="#e2e8f0"
+              stroke="rgb(var(--hair))"
               strokeWidth={1}
               strokeDasharray={i === 0 || i === ticks.length - 1 ? undefined : "3 4"}
             />
@@ -211,7 +211,7 @@ export function DepotChart({
               x={w - PAD_R + 8}
               y={y(t) + 3.5}
               fontSize={10}
-              fill="#94a3b8"
+              fill="rgb(var(--n-400))"
               className="tabular-nums"
             >
               {fmtAxis(t)}
@@ -225,7 +225,7 @@ export function DepotChart({
             x2={w - PAD_R + 4}
             y1={y(0)}
             y2={y(0)}
-            stroke="#94a3b8"
+            stroke="rgb(var(--n-400))"
             strokeWidth={1}
           />
         )}
@@ -271,7 +271,7 @@ export function DepotChart({
             x2={xs[idx]}
             y1={PAD_T}
             y2={PAD_T + innerH}
-            stroke="#94a3b8"
+            stroke="rgb(var(--n-400))"
             strokeWidth={1}
             strokeDasharray="3 3"
           />
@@ -285,7 +285,7 @@ export function DepotChart({
               cx={xs[idx]}
               cy={yv}
               r={si === 0 ? 4 : 3}
-              fill="#fff"
+              fill="rgb(var(--surface))"
               stroke={s.color}
               strokeWidth={2}
             />
@@ -299,7 +299,7 @@ export function DepotChart({
             x={xs[i]}
             y={height - 5}
             fontSize={10}
-            fill="#94a3b8"
+            fill="rgb(var(--n-400))"
             textAnchor={i === 0 ? "start" : "middle"}
           >
             {d.slice(8, 10)}.{d.slice(5, 7)}.{d.slice(2, 4)}
@@ -346,7 +346,7 @@ export function ReturnBars({
                 </div>
                 <div
                   className={`absolute inset-x-1 rounded-md transition-all ${
-                    up ? "bg-emerald-500" : "bg-rose-500"
+                    up ? "bg-bull-fill" : "bg-bear-fill"
                   } ${hover === i ? "opacity-100" : "opacity-85"}`}
                   style={
                     up
@@ -358,8 +358,8 @@ export function ReturnBars({
                   className="absolute inset-x-0 text-center text-[10px] font-semibold tabular-nums"
                   style={
                     up
-                      ? { bottom: `calc(${zeroPct}% + ${h}%)`, color: "#15803d" }
-                      : { top: `calc(${zeroPct}% + ${h}%)`, color: "#be123c" }
+                      ? { bottom: `calc(${zeroPct}% + ${h}%)`, color: "rgb(var(--bull))" }
+                      : { top: `calc(${zeroPct}% + ${h}%)`, color: "rgb(var(--bear))" }
                   }
                 >
                   {formatValue(d.r)}

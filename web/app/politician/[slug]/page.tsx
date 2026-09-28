@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { ActivityBars } from "@/components/ActivityBars";
 import { Avatar } from "@/components/Avatar";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
+import { FollowButton } from "@/components/FollowButton";
+import { Icon } from "@/components/Icon";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
+import { politicianLine, StatRow, DetailTopBar } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
-import { formatDate } from "@/lib/format";
-import { PoliticianDetail, PoliticianResponse } from "@/lib/types";
-import { Icon } from "@/components/Icon";
+import { companyName, formatDate } from "@/lib/format";
+import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
 export default function PoliticianPage() {
   const params = useParams<{ slug: string }>();
@@ -26,76 +30,102 @@ export default function PoliticianPage() {
     const controller = new AbortController();
     setLoading(true);
     setErr(false);
-    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`, {signal:controller.signal})
+    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`, { signal: controller.signal })
       .then((d) => setPol(d.politician))
-      .catch(() => {if(!controller.signal.aborted) setErr(true);})
-      .finally(() => {if(!controller.signal.aborted) setLoading(false);});
+      .catch(() => { if (!controller.signal.aborted) setErr(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [slug, tick]);
 
+  const summary = useMemo(() => {
+    if (!pol) return null;
+    const buys = pol.trades.filter((t) => t.txnType === "buy");
+    const sells = pol.trades.filter((t) => t.txnType === "sell");
+    const byTicker = new Map<string, { ticker: string; name: string; n: number; buys: number }>();
+    for (const t of pol.trades) {
+      if (!t.ticker) continue;
+      const cur = byTicker.get(t.ticker) ?? { ticker: t.ticker, name: companyName(t.ticker, t.securityName), n: 0, buys: 0 };
+      cur.n++;
+      if (t.txnType === "buy") cur.buys++;
+      byTicker.set(t.ticker, cur);
+    }
+    const top = [...byTicker.values()].sort((a, b) => b.n - a.n).slice(0, 6);
+    return { buys: buys.length, sells: sells.length, top };
+  }, [pol]);
+
   if (loading) return <SkeletonPage />;
   if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
-  if (!pol)
+  if (!pol || !summary)
     return (
-      <div className="py-16 text-center text-sm text-subtle">
+      <div className="py-16 text-center text-[15px] text-subtle">
         Politiker nicht gefunden.{" "}
-        <Link href="/politicians" className="text-brand underline">
-          Zurück
-        </Link>
+        <Link href="/discover?tab=politicians" className="text-ink underline">Zurück</Link>
       </div>
     );
 
-  const lastTrade = formatDate(pol.trades[0]?.disclosedAt);
+  const stats = [
+    { label: "Gemeldete Trades", value: pol.trades.length.toLocaleString("de-DE") },
+    { label: "Käufe / Verkäufe", value: `${summary.buys} / ${summary.sells}` },
+    { label: "Letzte Meldung", value: formatDate(pol.trades[0]?.disclosedAt) },
+  ];
 
   return (
-    <div className="space-y-6">
-      <Link href="/politicians" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
-        <Icon name="chevronLeft" className="h-4 w-4" />
-        Politiker
-      </Link>
+    <div className="space-y-8">
+      <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
+        <DetailTopBar back="/discover?tab=politicians" label="Politiker" action={<FollowButton kind="politician" id={pol.slug} />} />
 
-      <div className="flex items-center gap-4">
-        <Avatar name={pol.name} size={72} />
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{pol.name}</h1>
-          <div className="mt-1 flex flex-wrap gap-1.5">
-            {pol.party && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                {pol.party}
-              </span>
-            )}
-            {pol.chamber && (
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                {pol.chamber === "House" ? "Repräsentantenhaus" : pol.chamber === "Senate" ? "Senat" : pol.chamber}
-              </span>
-            )}
+        <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
+          <div className="min-w-0 flex-1">
+            <h1 className="large-title">{pol.name}</h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[15px] text-subtle">
+              <span className="rounded-full bg-politician/10 px-2.5 py-1 text-[13px] font-semibold text-politician">{politicianLine(pol.party, pol.seat)}</span>
+              <span>US-Repräsentantenhaus</span>
+            </div>
           </div>
         </div>
+
+        <div className="fade-up"><StatRow items={stats} /></div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-card p-4 shadow-card">
-          <div className="text-lg font-semibold tracking-tight">{pol.trades.length}</div>
-          <div className="mt-0.5 text-xs text-subtle">Gemeldete Trades</div>
-        </div>
-        <div className="rounded-2xl bg-card p-4 shadow-card">
-          <div className="text-lg font-semibold tracking-tight">{lastTrade}</div>
-          <div className="mt-0.5 text-xs text-subtle">Letzte Meldung</div>
-        </div>
-      </div>
+      {pol.trades.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Handelsaktivität</h2>
+          <div className="card p-4 sm:p-5">
+            <ActivityBars rows={pol.trades} />
+          </div>
+        </section>
+      )}
+
+      {summary.top.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Meistgehandelt</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {summary.top.map((t) => (
+              <Link key={t.ticker} href={`/stock/${encodeURIComponent(t.ticker)}`} className="card lcard-hover press flex items-center gap-3 p-3">
+                <CompanyLogo ticker={t.ticker} company={t.name} size={40} />
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-semibold">{t.name}</div>
+                  <div className="text-[13px] text-subtle">{t.n} Trades · {t.buys} Käufe</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Meldungen</h2>
         <TradeFeed
           rows={pol.trades}
           showActor={false}
-          empty={
-            pol.chamber === "House"
-              ? "Noch keine maschinenlesbaren Meldungen. Viele Repräsentantenhaus-Meldungen sind eingescannte PDFs, die sich (noch) nicht automatisch auslesen lassen — Senats-Meldungen funktionieren zuverlässig."
-              : "Noch keine gemeldeten Trades."
-          }
+          empty="Noch keine maschinenlesbaren Meldungen. Eingescannte PDFs lassen sich (noch) nicht automatisch auslesen."
         />
       </section>
+
+      <p className="text-[13px] leading-relaxed text-subtle">
+        Quelle: Periodic Transaction Reports (STOCK Act) des US-Repräsentantenhauses. Beträge sind Spannen, gemeldet bis zu 45 Tage nach dem Trade. Offizielles Porträt des US-Kongresses (gemeinfrei).
+      </p>
     </div>
   );
 }

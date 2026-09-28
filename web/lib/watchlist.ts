@@ -2,7 +2,7 @@
 // (this is a real Next.js site, not a sandboxed artifact). Emits a "watchlist"
 // window event on change so components can re-render.
 
-export type FollowKind = "investor" | "stock";
+export type FollowKind = "investor" | "stock" | "politician";
 
 const KEY = (k: FollowKind) => `outsider:follow:${k}`;
 

@@ -8,15 +8,10 @@ const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", 
 
 /** Rot → weiß → grün. `t` läuft von −1 (schlecht) über 0 bis +1 (gut). */
 function heatColor(t: number): string {
+  // Diverging: loss red <- neutral surface -> gain green, in both modes.
   const x = Math.max(-1, Math.min(1, t));
-  if (x >= 0) {
-    // weiß → smaragd
-    const a = x;
-    return `rgb(${Math.round(255 - 219 * a)}, ${Math.round(255 - 58 * a)}, ${Math.round(255 - 161 * a)})`;
-  }
-  // weiß → rose
-  const a = -x;
-  return `rgb(${Math.round(255 - 30 * a)}, ${Math.round(255 - 192 * a)}, ${Math.round(255 - 174 * a)})`;
+  const hue = x >= 0 ? "--bull-fill" : "--bear-fill";
+  return `color-mix(in oklab, rgb(var(${hue})) ${Math.round(Math.abs(x) * 80)}%, rgb(var(--surface-2)))`;
 }
 
 const pctStr = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} %`;
@@ -101,8 +96,8 @@ export function MonthHeatmap({
                         className="flex h-7 cursor-default items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-transform hover:scale-110"
                         style={{
                           backgroundColor: heatColor(c.r / scale),
-                          color: Math.abs(c.r) > scale * 0.6 ? "#0f172a" : "#64748b",
-                          outline: hover?.key === c.key ? "2px solid #1c1c1e" : undefined,
+                          color: Math.abs(c.r) > scale * 0.6 ? "rgb(var(--ink))" : "rgb(var(--subtle))",
+                          outline: hover?.key === c.key ? "2px solid rgb(var(--ink))" : undefined,
                         }}
                         onMouseEnter={() => setHover({ key: c.key, r: c.r as number })}
                       >
@@ -115,8 +110,8 @@ export function MonthHeatmap({
                   <div
                     className={`flex h-7 items-center justify-center rounded-md text-[11px] font-bold tabular-nums ${
                       (row.total ?? 0) >= 0
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-rose-50 text-rose-700"
+                        ? "bg-bull/10 text-bull"
+                        : "bg-bear/10 text-bear"
                     }`}
                   >
                     {row.total === null ? "—" : `${(row.total * 100).toFixed(0)}`}
@@ -326,7 +321,7 @@ export function ContributionBars({
               <div className="relative flex h-5 flex-1 items-center">
                 <div className="absolute inset-y-0 left-1/2 w-px bg-slate-200" />
                 <div
-                  className={`absolute h-3 rounded ${up ? "bg-emerald-400" : "bg-rose-400"}`}
+                  className={`absolute h-3 rounded ${up ? "bg-bull-fill" : "bg-bear-fill"}`}
                   style={{
                     left: up ? "50%" : `${50 - w / 2}%`,
                     width: `${w / 2}%`,
@@ -406,20 +401,22 @@ export function CapitalFlow({
           >
             <div className="flex h-1/2 flex-col justify-end">
               <div
-                className="w-full rounded-t bg-emerald-400"
+                className="w-full rounded-t bg-bull-fill"
                 style={{
                   height: `${(f.in / max) * 100}%`,
-                  transition: `height 600ms cubic-bezier(0.22,1,0.36,1) ${i * 10}ms`,
+                  transformOrigin: "bottom",
+                  animation: `riseY 600ms cubic-bezier(0.32,0.72,0,1) ${i * 10}ms both`,
                 }}
               />
             </div>
             <div className="h-px bg-slate-200" />
             <div className="h-1/2">
               <div
-                className="w-full rounded-b bg-rose-400"
+                className="w-full rounded-b bg-bear-fill"
                 style={{
                   height: `${(f.out / max) * 100}%`,
-                  transition: `height 600ms cubic-bezier(0.22,1,0.36,1) ${i * 10}ms`,
+                  transformOrigin: "top",
+                  animation: `riseY 600ms cubic-bezier(0.32,0.72,0,1) ${i * 10}ms both`,
                 }}
               />
             </div>

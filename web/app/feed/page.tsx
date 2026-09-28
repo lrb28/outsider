@@ -3,13 +3,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { ErrorRetry } from "@/components/ErrorRetry";
+import { SkeletonList } from "@/components/Skeleton";
 import { Icon } from "@/components/Icon";
 import { TradeFeed } from "@/components/TradeFeed";
+import { PageTitle, SegmentedControl } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
 import type { FeedRow, TradesResponse } from "@/lib/types";
 const TYPES = [{key:"",label:"Alle"},{key:"institution",label:"Investoren"},{key:"corporate_insider",label:"Insider"},{key:"politician",label:"Politiker"}];
-const TXNS = [{key:"",label:"Alle"},{key:"buy",label:"Käufe / Zugänge"},{key:"sell",label:"Verkäufe / Abgänge"}];
-export default function FeedPage() { return <Suspense fallback={<p role="status">Meldungen werden geladen …</p>}><Feed /></Suspense>; }
+const TXNS = [{key:"",label:"Alle"},{key:"buy",label:"Käufe"},{key:"sell",label:"Verkäufe"}];
+export default function FeedPage() { return <Suspense fallback={<SkeletonList n={8} />}><Feed /></Suspense>; }
 function Feed() {
   const params = useSearchParams();
   const router = useRouter();
@@ -51,19 +53,16 @@ function Feed() {
   const submit = (event: FormEvent) => { event.preventDefault(); update("q", q.trim()); };
   const extra = ["from", "to", "size"].filter(key => params.get(key)).length;
   return <div className="space-y-5">
-    <div>
-      <h1 className="text-3xl font-semibold tracking-tight">Meldungen</h1>
-      <p className="mt-1 max-w-2xl text-sm leading-6 text-subtle">Alle Offenlegungen von Politikern, Insidern und Investoren – tippe eine Zeile für Details. Sortiert nach Offenlegung. <Link href="/methodik" className="font-medium text-ink underline underline-offset-2">So liest du die Daten</Link></p>
-    </div>
+    <PageTitle title="Meldungen" subtitle={<>Alle Offenlegungen von Abgeordneten, Insidern und Investoren, neueste zuerst. Tippe eine Zeile für Details. <Link href="/methodik" className="font-medium text-ink underline underline-offset-2">So liest du die Daten</Link></>} />
     <div className="space-y-3">
-      <div role="group" aria-label="Akteure" className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1">{TYPES.map(item => <button type="button" key={item.key} aria-pressed={type === item.key} onClick={() => update("type", item.key)} className={`chip ${type === item.key ? "chip-on" : ""}`}>{item.label}</button>)}</div>
+      <div role="group" aria-label="Akteure" className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1">{TYPES.map(item => { const aura = item.key === "institution" ? "investor" : item.key === "corporate_insider" ? "insider" : item.key === "politician" ? "politician" : null; return <button type="button" key={item.key} aria-pressed={type === item.key} onClick={() => update("type", item.key)} className={`chip ${type === item.key ? "chip-on" : ""}`}>{aura && <i aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: `rgb(var(--aura-${aura}))` }} />}{item.label}</button>; })}</div>
       <div className="flex flex-wrap items-center gap-2">
-        <div role="group" aria-label="Vorgang" className="glass flex rounded-full p-1">{TXNS.map(item => <button type="button" key={item.key} aria-pressed={txnType === item.key} onClick={() => update("txnType", item.key)} className={`rounded-full px-3.5 text-xs font-medium transition ${txnType === item.key ? "bg-white text-ink shadow-[inset_0_1px_0_#fff,0_2px_8px_rgb(28_28_30/0.1)]" : "text-subtle hover:text-ink"}`}>{item.label}</button>)}</div>
+        <SegmentedControl label="Vorgang" size="sm" options={TXNS.map(item => [item.key, item.label] as const)} value={txnType} onChange={value => update("txnType", value)} />
         <form onSubmit={submit} role="search" className="relative min-w-[12rem] flex-1"><label htmlFor="feed-query" className="sr-only">Akteur, Unternehmen oder Ticker suchen</label><Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" /><input id="feed-query" type="search" value={q} maxLength={100} onChange={e => setQ(e.target.value)} onBlur={() => { if (q.trim() !== (params.get("q") || "")) update("q", q.trim()); }} placeholder="Name oder Ticker suchen …" className="field !pl-9"/></form>
         <button type="button" aria-expanded={more} aria-controls="feed-more" onClick={() => setMore(m => !m)} className={`chip ${more || extra ? "chip-on" : ""}`}><Icon name="filter" className="h-4 w-4" />Filter{extra ? ` · ${extra}` : ""}</button>
       </div>
-      {more && <div id="feed-more" className="lcard grid gap-3 p-4 sm:grid-cols-3">{["from","to"].map(key => <label key={key} className="text-xs font-medium text-subtle">{key === "from" ? "Offengelegt ab" : "Offengelegt bis"}<input type="date" value={params.get(key) || ""} onChange={e => update(key,e.target.value)} className="field mt-1 block min-w-0 !rounded-2xl"/></label>)}<label className="text-xs font-medium text-subtle">Meldungen pro Seite<select value={pageSize} onChange={e => update("size",e.target.value)} className="field mt-1 block !rounded-2xl">{[6,24,48].map(size => <option key={size} value={size}>{size}</option>)}</select></label></div>}
-      {type === "politician" && <p className="text-sm text-amber-800">Diese Quelle enthält historische Meldungen und Lücken. <Link className="underline" href="/status">Abdeckung prüfen</Link></p>}
+      {more && <div id="feed-more" className="card grid gap-3 p-4 sm:grid-cols-3">{["from","to"].map(key => <label key={key} className="text-xs font-medium text-subtle">{key === "from" ? "Offengelegt ab" : "Offengelegt bis"}<input type="date" value={params.get(key) || ""} onChange={e => update(key,e.target.value)} className="field mt-1 block min-w-0 !rounded-2xl"/></label>)}<label className="text-xs font-medium text-subtle">Meldungen pro Seite<select value={pageSize} onChange={e => update("size",e.target.value)} className="field mt-1 block !rounded-2xl">{[6,24,48].map(size => <option key={size} value={size}>{size}</option>)}</select></label></div>}
+      {type === "politician" && <p className="text-[13px] text-subtle">US-Repräsentantenhaus, STOCK-Act-Meldungen. Eingescannte PDFs fehlen noch. <Link className="underline" href="/status">Abdeckung prüfen</Link></p>}
       {filterKey && <button type="button" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink" onClick={() => {setPage(0);setMore(false);router.push("/feed",{scroll:false});}}><Icon name="close" className="h-4 w-4" />Alle Filter zurücksetzen</button>}
     </div>
     {error && <ErrorRetry onRetry={() => setRetry(r => r + 1)} />}

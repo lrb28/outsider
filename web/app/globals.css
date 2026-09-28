@@ -2,221 +2,464 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ĀURA design tokens. Plain, iOS-like surfaces: a quiet grouped background,
+ * white cards without borders, one monochrome primary action. Colour is kept
+ * for meaning — price moves and the three "auras" (investors, insiders,
+ * politicians). Values are "R G B" so Tailwind opacity modifiers work.
+ */
 :root {
   color-scheme: light;
+  --bg: 245 245 247;
+  --surface: 255 255 255;
+  --surface-2: 242 242 247;
+  --ink: 29 29 31;
+  --subtle: 108 108 112;
+  --muted: 174 174 178;
+  --hair: 229 229 234;
+  --brand: 29 29 31;
+  --brand-hover: 58 58 60;
+  --on-brand: 255 255 255;
+  --bull: 36 138 61;
+  --bull-fill: 52 199 89;
+  --bear: 215 0 21;
+  --bear-fill: 255 59 48;
+  --warn: 178 80 0;
+  --aura-investor: 42 120 214;
+  --aura-insider: 235 104 52;
+  --aura-politician: 194 71 154;
+  --n-50: 250 250 250;
+  --n-100: 244 244 245;
+  --n-200: 228 228 231;
+  --n-300: 212 212 216;
+  --n-400: 161 161 170;
+  --n-500: 113 113 122;
+  --n-600: 82 82 91;
+  --n-700: 63 63 70;
+  --n-800: 39 39 42;
+  --n-900: 24 24 27;
+  --n-950: 9 9 11;
+  /* Categorical data palette (dataviz reference order, validated for CVD):
+     fixed order, never cycled; an 9th series folds into "Übrige". */
+  --cat-1: 42 120 214;
+  --cat-2: 235 104 52;
+  --cat-3: 27 175 122;
+  --cat-4: 237 161 0;
+  --cat-5: 232 123 164;
+  --cat-6: 0 131 0;
+  --cat-7: 74 58 167;
+  --cat-8: 227 73 72;
+  --cat-other: 199 199 204;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
+  --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.08);
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 30px rgb(0 0 0 / 0.12);
+  /* Liquid glass */
+  --glass-fill: 255 255 255;
+  --glass-alpha: 0.22;
+  --glass-rim: rgb(255 255 255 / 0.85);
+  --glass-shade: rgb(0 0 0 / 0.07);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: 0 0 0;
+  --surface: 28 28 30;
+  --surface-2: 44 44 46;
+  --ink: 245 245 247;
+  --subtle: 152 152 157;
+  --muted: 99 99 102;
+  --hair: 56 56 58;
+  --brand: 245 245 247;
+  --brand-hover: 209 209 214;
+  --on-brand: 0 0 0;
+  --bull: 48 209 88;
+  --bull-fill: 48 209 88;
+  --bear: 255 105 97;
+  --bear-fill: 255 69 58;
+  --warn: 255 179 64;
+  --aura-investor: 57 135 229;
+  --aura-insider: 224 112 63;
+  --aura-politician: 213 95 174;
+  --n-50: 28 28 30;
+  --n-100: 36 36 38;
+  --n-200: 44 44 46;
+  --n-300: 58 58 60;
+  --n-400: 99 99 102;
+  --n-500: 142 142 147;
+  --n-600: 174 174 178;
+  --n-700: 199 199 204;
+  --n-800: 229 229 234;
+  --n-900: 242 242 247;
+  --n-950: 250 250 250;
+  --cat-1: 57 135 229;
+  --cat-2: 217 89 38;
+  --cat-3: 25 158 112;
+  --cat-4: 201 133 0;
+  --cat-5: 213 81 129;
+  --cat-6: 0 131 0;
+  --cat-7: 144 133 233;
+  --cat-8: 230 103 103;
+  --cat-other: 72 72 74;
+  --shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.06);
+  --shadow-card-hover: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 12px 32px rgb(0 0 0 / 0.5);
+  --shadow-float: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 30px rgb(0 0 0 / 0.55);
+  --glass-fill: 40 40 44;
+  --glass-alpha: 0.34;
+  --glass-rim: rgb(255 255 255 / 0.28);
+  --glass-shade: rgb(0 0 0 / 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: 0 0 0;
+    --surface: 28 28 30;
+    --surface-2: 44 44 46;
+    --ink: 245 245 247;
+    --subtle: 152 152 157;
+    --muted: 99 99 102;
+    --hair: 56 56 58;
+    --brand: 245 245 247;
+    --brand-hover: 209 209 214;
+    --on-brand: 0 0 0;
+    --bull: 48 209 88;
+    --bull-fill: 48 209 88;
+    --bear: 255 105 97;
+    --bear-fill: 255 69 58;
+    --warn: 255 179 64;
+    --aura-investor: 57 135 229;
+    --aura-insider: 224 112 63;
+    --aura-politician: 213 95 174;
+    --n-50: 28 28 30;
+    --n-100: 36 36 38;
+    --n-200: 44 44 46;
+    --n-300: 58 58 60;
+    --n-400: 99 99 102;
+    --n-500: 142 142 147;
+    --n-600: 174 174 178;
+    --n-700: 199 199 204;
+    --n-800: 229 229 234;
+    --n-900: 242 242 247;
+    --n-950: 250 250 250;
+    --cat-1: 57 135 229;
+    --cat-2: 217 89 38;
+    --cat-3: 25 158 112;
+    --cat-4: 201 133 0;
+    --cat-5: 213 81 129;
+    --cat-6: 0 131 0;
+    --cat-7: 144 133 233;
+    --cat-8: 230 103 103;
+    --cat-other: 72 72 74;
+    --shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.06);
+    --shadow-card-hover: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 12px 32px rgb(0 0 0 / 0.5);
+    --shadow-float: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 30px rgb(0 0 0 / 0.55);
+    --glass-fill: 40 40 44;
+    --glass-alpha: 0.34;
+    --glass-rim: rgb(255 255 255 / 0.28);
+    --glass-shade: rgb(0 0 0 / 0.35);
+  }
+}
+
+/* Inter Tight (OFL, see public/fonts/OFL-InterTight.txt) for headlines and
+   large numerals; body text stays in the system face (SF Pro on Apple). */
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/InterTight-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter Tight";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/InterTight-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
 html,
 body {
-  color: #1c1c1e;
-  background-color: #f2f2f7;
+  color: rgb(var(--ink));
+  background-color: rgb(var(--bg));
+  /* Decorative glows may reach past the content column, never the page. */
+  overflow-x: clip;
 }
 
-/* Ambient light (RonDesignLab-style soft colour fields): sky, sage, peach and
-   sand under a fine film grain. No purple. Glass only reads as glass when
-   something colourful sits behind it. */
 body {
-  background-image:
-    radial-gradient(52rem 36rem at 92% -6%, rgba(122, 190, 255, 0.34), transparent 62%),
-    radial-gradient(44rem 32rem at -10% 22%, rgba(150, 214, 170, 0.3), transparent 60%),
-    radial-gradient(40rem 30rem at 70% 58%, rgba(255, 214, 170, 0.22), transparent 62%),
-    radial-gradient(46rem 30rem at 18% 108%, rgba(255, 186, 150, 0.3), transparent 60%),
-    linear-gradient(180deg, #f6f6f9 0%, #ececf1 100%);
-  background-attachment: fixed;
-}
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-* {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Tight", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* Display face for headings (RonDesignLab: geometric, generous). */
 h1, h2, h3 {
-  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 ::selection {
-  background: rgba(28, 28, 30, 0.14);
+  background: rgb(var(--aura-investor) / 0.2);
 }
 
 @layer components {
   /* Springy press feedback — put on anything tappable. */
   .press {
-    @apply transition-all duration-200 ease-out active:scale-[0.97];
+    @apply transition-[transform,box-shadow,background-color,opacity] duration-300 ease-spring active:scale-[0.97];
   }
   .press-sm {
-    @apply transition-all duration-150 ease-out active:scale-95;
+    @apply transition-[transform,background-color,color,opacity] duration-200 ease-spring active:scale-95;
   }
 
-  /* Liquid glass (after dashersw/liquid-glass-js, in CSS): frosted, saturated
-     backdrop, a bright rim along the top edge and a specular sheen. Used for
-     chrome that floats above content — header, navigation, dialogs, heroes. */
-  .glass {
-    position: relative;
-    isolation: isolate;
-    background: linear-gradient(150deg, rgb(255 255 255 / 0.8) 0%, rgb(255 255 255 / 0.5) 100%);
-    -webkit-backdrop-filter: blur(22px) saturate(185%);
-    backdrop-filter: blur(22px) saturate(185%);
-    border: 1px solid rgb(255 255 255 / 0.72);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.95),
-      inset 0 -1px 0 rgb(255 255 255 / 0.3),
-      inset 0 0 0 0.5px rgb(28 28 30 / 0.05),
-      0 1px 2px rgb(28 28 30 / 0.05),
-      0 12px 32px rgb(28 28 30 / 0.08);
-  }
-  .glass::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-    background:
-      radial-gradient(120% 70% at 12% -12%, rgb(255 255 255 / 0.85), transparent 55%),
-      radial-gradient(80% 50% at 100% 120%, rgb(255 255 255 / 0.35), transparent 60%);
-  }
-
-  /* Content: frosted glassmorphism panels. Liquid Glass (lensing, specular
-     rim) is reserved for the navigation layer, as Apple's guidelines ask. */
-  .lcard {
-    @apply rounded-[1.75rem] transition-all duration-200 ease-out;
-    background: linear-gradient(160deg, rgb(255 255 255 / 0.74) 0%, rgb(255 255 255 / 0.52) 100%);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid rgb(255 255 255 / 0.65);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.9),
-      0 1px 2px rgb(28 28 30 / 0.03),
-      0 10px 30px rgb(28 28 30 / 0.06);
+  /* Content surface: a plain card, no border, a whisper of shadow. The
+     large, concentric radius is the only decoration. */
+  .lcard,
+  .card {
+    @apply rounded-[22px] bg-card shadow-card transition-[transform,box-shadow] duration-300 ease-spring;
   }
   .lcard-hover {
     @apply hover:-translate-y-0.5 hover:shadow-cardhover;
   }
 
-  /* Graphite, lit from above — primary actions and the active state. */
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition-all duration-200 ease-out active:scale-[0.97];
-    background: linear-gradient(180deg, #48484a 0%, #1c1c1e 55%, #111113 100%);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.28),
-      inset 0 -1px 0 rgb(0 0 0 / 0.4),
-      0 6px 18px rgb(28 28 30 / 0.22);
-  }
-  .btn-primary:hover {
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.32),
-      inset 0 -1px 0 rgb(0 0 0 / 0.4),
-      0 10px 26px rgb(28 28 30 / 0.3);
-  }
-  .btn-glass {
-    @apply glass inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 ease-out hover:bg-white/90 active:scale-[0.97];
+  /* Standard material (HIG "regular"): for sheets, popovers and menus that
+     float over content. Not Liquid Glass — that is reserved for navigation. */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    background: rgb(var(--surface) / 0.78);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--shadow-float);
   }
 
-  /* Filter chips. */
+  /* Primary action: a solid monochrome capsule. */
+  .btn-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-brand px-5 text-[15px] font-semibold text-on-brand transition-[transform,background-color] duration-200 ease-spring hover:bg-brand-hover active:scale-[0.97];
+  }
+
+  /* Menu button: a soft frosted capsule that floats (from the reference
+     onboarding). Secondary actions, header menus and paired choices. */
+  .btn-glass,
+  .btn-capsule {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-[15px] font-medium text-ink transition-[transform,background-color,box-shadow] duration-200 ease-spring active:scale-[0.97];
+    background: linear-gradient(180deg, rgb(var(--glass-fill) / 0.72), rgb(var(--glass-fill) / 0.5));
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-rim),
+      inset 0 0 0 0.5px rgb(var(--ink) / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 8px 24px rgb(0 0 0 / 0.06);
+  }
+  /* The search field wears the same frosted capsule. */
+  .search-capsule {
+    background: linear-gradient(180deg, rgb(var(--glass-fill) / 0.72), rgb(var(--glass-fill) / 0.5));
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-rim),
+      inset 0 0 0 0.5px rgb(var(--ink) / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.04),
+      0 8px 24px rgb(0 0 0 / 0.06);
+  }
+  .search-capsule:focus {
+    background: rgb(var(--surface));
+    box-shadow: 0 0 0 2px rgb(var(--ink) / 0.12), 0 8px 24px rgb(0 0 0 / 0.08);
+  }
+  .btn-glass:hover,
+  .btn-capsule:hover {
+    background: linear-gradient(180deg, rgb(var(--glass-fill) / 0.86), rgb(var(--glass-fill) / 0.66));
+  }
+
+  /* Filter chips: quiet fills; the selected one turns solid. */
   .chip {
-    @apply inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-sm font-medium text-subtle transition-all duration-150 ease-out hover:text-ink active:scale-95;
-    background: rgb(255 255 255 / 0.7);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 0 0 0.5px rgb(28 28 30 / 0.08);
+    @apply inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full bg-surface2 px-4 text-sm font-medium text-subtle transition-[transform,background-color,color] duration-200 ease-spring hover:text-ink active:scale-95;
   }
   .chip-on {
-    @apply text-white hover:text-white;
-    background: linear-gradient(180deg, #48484a 0%, #1c1c1e 60%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px rgb(28 28 30 / 0.2);
+    @apply bg-brand text-on-brand hover:text-on-brand;
   }
 
-  /* Liquid-glass input field. */
   .field {
-    @apply w-full rounded-full px-4 text-sm text-ink outline-none transition placeholder:text-subtle focus:bg-white;
-    background: rgb(255 255 255 / 0.72);
-    box-shadow: inset 0 1px 2px rgb(28 28 30 / 0.06), inset 0 0 0 0.5px rgb(28 28 30 / 0.1);
+    @apply w-full rounded-full bg-surface2 px-4 text-[15px] text-ink outline-none transition placeholder:text-subtle focus:bg-card focus:shadow-[0_0_0_2px_rgb(var(--ink)/0.12)];
   }
-  /* WebGL liquid glass host (components/LiquidGlass). The CSS glass above is
-     the fallback; once the shader draws, the canvas replaces the backdrop. */
+
+  /* Liquid Glass (navigation layer only). Every browser gets a clear, lit
+     glass; Chromium also gets real-time refraction from an SVG displacement
+     filter set by components/LiquidGlass. */
   .liquid-glass {
-    @apply glass;
+    position: relative;
+    isolation: isolate;
+    background: rgb(var(--glass-fill) / var(--glass-alpha));
+    -webkit-backdrop-filter: blur(14px) saturate(190%) brightness(1.04);
+    backdrop-filter: blur(14px) saturate(190%) brightness(1.04);
+    box-shadow:
+      inset 0 1px 1px var(--glass-rim),
+      inset 0 -1px 1px var(--glass-shade),
+      inset 0 0 0 0.5px rgb(255 255 255 / 0.35),
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 10px 30px rgb(0 0 0 / 0.1);
   }
-  .liquid-glass-canvas {
+  /* Specular rim: brighter where the light (top left) hits the bevel. */
+  .liquid-glass::after {
+    content: "";
     position: absolute;
     inset: 0;
-    z-index: -1;
-    width: 100%;
-    height: 100%;
     border-radius: inherit;
     pointer-events: none;
+    padding: 1px;
+    background: linear-gradient(135deg, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.1) 38%, rgb(255 255 255 / 0) 60%, rgb(255 255 255 / 0.45));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0.8;
   }
-  .liquid-glass[data-glass-live] {
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .liquid-glass[data-glass-live]::before {
-    opacity: 0.35;
+  .liquid-glass[data-refract] {
+    background: rgb(var(--glass-fill) / calc(var(--glass-alpha) * 0.55));
   }
 
-  /* Thin ring around an icon (RonDesignLab). */
+  /* The selection droplet that slides between tabs. */
+  .glass-droplet {
+    @apply absolute rounded-full transition-[transform,width,opacity] duration-500 ease-spring;
+    background: rgb(var(--ink) / 0.07);
+    box-shadow: inset 0 0 0 0.5px rgb(var(--ink) / 0.06);
+  }
+
   .icon-ring {
-    @apply inline-flex shrink-0 items-center justify-center rounded-full text-ink;
-    box-shadow: inset 0 0 0 1px rgb(28 28 30 / 0.16);
+    @apply inline-flex shrink-0 items-center justify-center rounded-full bg-surface2 text-ink;
   }
 
-  /* Big, light numerals with small units (RonDesignLab). */
+  /* Large numerals: bold, tight, tabular so they do not jitter. */
   .num-xl {
-    @apply font-display text-4xl font-light leading-none tracking-tight;
+    @apply font-display text-4xl font-semibold leading-none tracking-tight;
     font-variant-numeric: tabular-nums;
   }
   .num-lg {
-    @apply font-display text-2xl font-light leading-none tracking-tight;
+    @apply font-display text-2xl font-semibold leading-none tracking-tight;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Large title (HIG): top-level screens. */
+  .large-title {
+    @apply font-display text-[34px] font-bold leading-[1.05] tracking-[-0.03em];
+  }
+
+  /* Section eyebrow. */
+  .eyebrow {
+    @apply text-[13px] font-semibold uppercase tracking-[0.06em] text-subtle;
   }
 }
 
-/* Clear-glass wordmark: the letters are a masked, frosted window. */
-.wordmark-glass {
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.78) 0%, rgb(255 255 255 / 0.34) 60%, rgb(255 255 255 / 0.5) 100%);
-  -webkit-backdrop-filter: blur(12px) saturate(210%) brightness(1.08);
-  backdrop-filter: blur(12px) saturate(210%) brightness(1.08);
+/* The aura: a soft glow in the colour of whoever disclosed, behind the head of
+   a detail page. Set --aura to an "R G B" triplet. */
+.aura-header {
+  position: relative;
+  isolation: isolate;
 }
-@keyframes wordmarkSheen {
-  0%, 55% { transform: skewX(-18deg) translateX(0); }
-  100% { transform: skewX(-18deg) translateX(1500px); }
+.aura-header::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: -7rem;
+  width: min(62rem, 140vw);
+  height: 26rem;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(50% 55% at 50% 38%, rgb(var(--aura, var(--aura-investor)) / 0.26), transparent 70%),
+    radial-gradient(30% 40% at 78% 30%, rgb(var(--aura-2, var(--aura-insider)) / 0.14), transparent 70%);
+  filter: blur(8px);
 }
-.wordmark-sheen {
-  animation: wordmarkSheen 7s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+
+/* The animated aura field (components/AuraField). It fades in once the
+   shader has drawn; without WebGL a static gradient stands in. */
+.aura-field {
+  display: block;
+  opacity: 0;
+  transition: opacity 1.2s ease-out;
+}
+.aura-field[data-live] {
+  opacity: 1;
+}
+.aura-field[data-fallback] {
+  opacity: 1;
+  background:
+    radial-gradient(40% 55% at 30% 45%, rgb(var(--aura-investor) / 0.55), transparent 70%),
+    radial-gradient(35% 50% at 60% 35%, rgb(var(--aura-insider) / 0.45), transparent 70%),
+    radial-gradient(40% 55% at 75% 60%, rgb(var(--aura-politician) / 0.45), transparent 70%);
+  filter: blur(20px);
 }
 
 /* Scroll edge effect: content fades softly under floating bars. */
 .scroll-edge-top {
-  background: linear-gradient(180deg, rgb(242 242 247 / 0.92) 0%, rgb(242 242 247 / 0.7) 55%, rgb(242 242 247 / 0) 100%);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgb(var(--bg) / 0.94) 0%, rgb(var(--bg) / 0.72) 55%, rgb(var(--bg) / 0) 100%);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
   mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
 }
 .scroll-edge-bottom {
-  background: linear-gradient(0deg, rgb(242 242 247 / 0.9) 0%, rgb(242 242 247 / 0) 100%);
+  background: linear-gradient(0deg, rgb(var(--bg) / 0.9) 0%, rgb(var(--bg) / 0) 100%);
   -webkit-mask-image: linear-gradient(0deg, #000 40%, transparent 100%);
   mask-image: linear-gradient(0deg, #000 40%, transparent 100%);
 }
 
+/* Action menu items rise into place one after another. */
+@keyframes actionIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.action-item {
+  animation: actionIn 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Loading: a slow sheen across placeholders instead of a blink. */
+@keyframes shimmer {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+.shimmer {
+  background-color: rgb(var(--ink) / 0.06);
+  background-image: linear-gradient(90deg, transparent 0%, rgb(var(--surface) / 0.55) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Charts draw themselves in: set pathLength="1" on the path. */
+@keyframes drawLine {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.draw-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: drawLine 1.1s cubic-bezier(0.32, 0.72, 0, 1) 0.05s forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fadeIn 0.6s ease-out 0.35s both;
+}
+@keyframes riseY {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.rise-y {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: riseY 0.7s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 /* Gentle float for hero logos. */
 @keyframes floaty {
-  0%,
-  100% {
-    transform: translateY(0) rotate(var(--rot, 0deg));
-  }
-  50% {
-    transform: translateY(-7px) rotate(var(--rot, 0deg));
-  }
+  0%, 100% { transform: translateY(0) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-7px) rotate(var(--rot, 0deg)); }
 }
 .animate-floaty {
   animation: floaty 5s ease-in-out infinite;
@@ -224,34 +467,22 @@ h1, h2, h3 {
 
 /* Section entrance. */
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .fade-up {
-  animation: fadeUp 0.45s ease-out both;
+  animation: fadeUp 0.5s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 /* Live pulse dot. */
 @keyframes livePulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
 .animate-live {
   animation: livePulse 1.6s ease-in-out infinite;
 }
 
-/* Hide horizontal scrollbars on card rails. */
 .no-scrollbar {
   scrollbar-width: none;
 }
@@ -261,35 +492,34 @@ h1, h2, h3 {
 
 /* Balken, die von der Mittelachse nach außen wachsen (Gewinnbeitrag). */
 @keyframes growX {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 /* Keyboard focus remains visible on every interactive control. */
-:focus-visible { outline: 3px solid #1c1c1e; outline-offset: 4px; }
+:focus-visible { outline: 3px solid rgb(var(--aura-investor)); outline-offset: 3px; }
 button, input, select { min-height: 44px; }
 button:disabled { cursor: not-allowed; opacity: .55; }
-.skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: #fff; color: #1c1c1e; }
+.skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: rgb(var(--surface)); color: rgb(var(--ink)); }
 .skip-link:focus { top: 1rem; }
-dialog::backdrop { background: rgb(28 28 30 / .32); -webkit-backdrop-filter: blur(10px) saturate(140%); backdrop-filter: blur(10px) saturate(140%); }
-dialog[open] { animation: fadeUp .15s ease-out; }
-.prose-copy p { margin-top: 1rem; line-height: 1.8; color: #3a3a3c; }
-.prose-copy h2 { margin-top: 2rem; font-size: 1.2rem; font-weight: 650; }
-.prose-copy a { color: #1c1c1e; text-decoration: underline; text-underline-offset: 3px; }
+dialog { color: rgb(var(--ink)); }
+dialog::backdrop { background: rgb(0 0 0 / .28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+dialog[open] { animation: fadeUp .25s cubic-bezier(0.32, 0.72, 0, 1); }
+.prose-copy p { margin-top: 1rem; line-height: 1.75; color: rgb(var(--ink) / 0.8); }
+.prose-copy h2 { margin-top: 2rem; font-size: 1.25rem; font-weight: 650; }
+.prose-copy a { color: rgb(var(--ink)); text-decoration: underline; text-underline-offset: 3px; }
 
-/* Browsers without backdrop-filter get an opaque surface instead of
-   unreadable transparency. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass { background: rgb(255 255 255 / 0.96); }
+  .glass, .liquid-glass, .btn-glass, .btn-capsule { background: rgb(var(--surface) / 0.97); }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .glass, .lcard, .wordmark-glass, .scroll-edge-top { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  .liquid-glass-canvas, body::before { display: none; }
+  .glass, .liquid-glass, .btn-glass, .btn-capsule, .scroll-edge-top { background: rgb(var(--surface)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .lcard, .card { box-shadow: 0 0 0 1px rgb(var(--ink) / 0.25); }
+  .liquid-glass { background: rgb(var(--surface)); }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .draw-line { stroke-dashoffset: 0; }
 }

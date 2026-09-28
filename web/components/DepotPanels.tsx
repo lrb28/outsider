@@ -126,7 +126,9 @@ export function AllocView({
                     style={{
                       width: `${Math.max(1, p)}%`,
                       backgroundColor: s.color,
-                      transition: "width 900ms cubic-bezier(0.22,1,0.36,1)",
+                      // Grow with transform, not width: no layout work per frame.
+                      transformOrigin: "left",
+                      animation: "growX 900ms cubic-bezier(0.32,0.72,0,1) both",
                     }}
                   />
                 </div>
@@ -242,7 +244,7 @@ export function Pills<T extends string>({
           onClick={() => onChange(key)}
           className={`press-sm shrink-0 rounded-full transition-colors ${
             size === "sm" ? "px-2.5 py-1" : "px-3.5 py-1.5"
-          } ${value === key ? "bg-white text-ink shadow-card" : "text-subtle hover:text-ink"}`}
+          } ${value === key ? "bg-card text-ink shadow-card" : "text-subtle hover:text-ink"}`}
         >
           {label}
         </button>

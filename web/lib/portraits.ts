@@ -1,6 +1,8 @@
-// Portraits from Wikimedia Commons, each with its author and licence so the
-// credits on /methodik are exact. Served directly, no runtime lookup. People
-// without a freely licensed photo keep the monogram avatar.
+// Investor portraits from Wikimedia Commons, each with its author and licence
+// so the credits on /methodik are exact. Served directly, no runtime lookup.
+// Only freely licensed files are listed; people without one get an aura
+// monogram. Members of Congress use their official public-domain portraits
+// (lib/politicians.ts), not this list.
 export type Portrait = { name: string; src: string; author: string; license: string; page: string };
 
 export const PORTRAITS: Record<string, Portrait> = {
@@ -13,4 +15,13 @@ export const PORTRAITS: Record<string, Portrait> = {
   "Seth_Klarman": { name: "Seth Klarman", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b8/Seth_Klarman_at_147th_Preakness_Stakes.jpg/330px-Seth_Klarman_at_147th_Preakness_Stakes.jpg", author: "Maryland GovPics", license: "CC BY 2.0", page: "https://commons.wikimedia.org/wiki/File:Seth_Klarman_at_147th_Preakness_Stakes.jpg" },
   "Nancy_Pelosi": { name: "Nancy Pelosi", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a5/Official_photo_of_Speaker_Nancy_Pelosi_in_2019.jpg/330px-Official_photo_of_Speaker_Nancy_Pelosi_in_2019.jpg", author: "John Harrington", license: "Public domain", page: "https://commons.wikimedia.org/wiki/File:Official_photo_of_Speaker_Nancy_Pelosi_in_2019.jpg" },
   "Mohnish_Pabrai": { name: "Mohnish Pabrai", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0d/Mohnish_Pabrai.jpg/330px-Mohnish_Pabrai.jpg", author: "Fabarsi", license: "CC BY-SA 3.0", page: "https://commons.wikimedia.org/wiki/File:Mohnish_Pabrai.jpg" },
+  "Carl_Icahn": { name: "Carl Icahn", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Carl_Icahn%2C_1980s.jpg/330px-Carl_Icahn%2C_1980s.jpg", author: "AviateHistory", license: "CC0", page: "https://commons.wikimedia.org/wiki/File:Carl_Icahn,_1980s.jpg" },
+  "Bill_Gates": { name: "Bill Gates", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Bill_Gates_at_the_European_Commission_-_P067383-987995_%28cropped%29_5.jpg/330px-Bill_Gates_at_the_European_Commission_-_P067383-987995_%28cropped%29_5.jpg", author: "Bogdan Hoyaux / European Union", license: "CC BY 4.0", page: "https://commons.wikimedia.org/wiki/File:Bill_Gates_at_the_European_Commission_-_P067383-987995_(cropped)_5.jpg" },
+  "Cathie_Wood": { name: "Cathie Wood", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/44/Cathie_Wood_ARK_Invest_Photo.jpg/330px-Cathie_Wood_ARK_Invest_Photo.jpg", author: "Caroline Wood", license: "CC BY-SA 4.0", page: "https://commons.wikimedia.org/wiki/File:Cathie_Wood_ARK_Invest_Photo.jpg" },
+  "David_Tepper": { name: "David Tepper", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/David_Tepper_01.jpg/330px-David_Tepper_01.jpg", author: "Appaloosa Management", license: "CC BY-SA 3.0", page: "https://commons.wikimedia.org/wiki/File:David_Tepper_01.jpg" },
+  "Terry_Smith": { name: "Terry Smith", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Terry_Smith_MNZM_investiture.jpg/330px-Terry_Smith_MNZM_investiture.jpg", author: "New Zealand Government, Office of the Governor-General", license: "CC BY 4.0", page: "https://commons.wikimedia.org/wiki/File:Terry_Smith_MNZM_investiture.jpg" },
+  "Howard_Marks": { name: "Howard Marks", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Howard_Marks_2.17.12_%28cropped%29.jpg/330px-Howard_Marks_2.17.12_%28cropped%29.jpg", author: "kellywritershouse", license: "CC BY 2.0", page: "https://commons.wikimedia.org/wiki/File:Howard_Marks_2.17.12_(cropped).jpg" },
+  "Stephen_Mandel": { name: "Stephen Mandel", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/32/2013-05-21_Stephen_Mandel_%28cropped%29.jpg/330px-2013-05-21_Stephen_Mandel_%28cropped%29.jpg", author: "Dave Cournoyer", license: "CC BY-SA 2.0", page: "https://commons.wikimedia.org/wiki/File:2013-05-21_Stephen_Mandel_(cropped).jpg" },
+  "Brad_Gerstner": { name: "Brad Gerstner", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg/330px-Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg", author: "The White House", license: "Public domain", page: "https://commons.wikimedia.org/wiki/File:Brad_Gerstner_at_the_White_House_2025_(54581192563).jpg" },
+  "Prem_Watsa": { name: "Prem Watsa", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Prem_Watsa.jpg/330px-Prem_Watsa.jpg", author: "செல்வா at Tamil Wikipedia", license: "CC BY 3.0", page: "https://commons.wikimedia.org/wiki/File:Prem_Watsa.jpg" },
 };

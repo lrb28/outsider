@@ -166,12 +166,12 @@ export function sampleStock(ticker: string): StockDetail | null {
 // ── sample discover ─────────────────────────────────────────────────────────
 // ── sample politicians ──────────────────────────────────────────────────────
 export const SAMPLE_POLITICIANS: PoliticianRow[] = [
-  { slug: "nancy-pelosi", name: "Nancy Pelosi", party: "Democrat", chamber: "House", trades: 6, lastTrade: "2026-01-14" },
+  { slug: "nancy-pelosi", name: "Nancy Pelosi", party: "D", chamber: "House", seat: "CA-11", photo: "https://unitedstates.github.io/images/congress/225x275/P000197.jpg", trades: 6, lastTrade: "2026-01-14" },
 ];
 
 export function samplePolitician(slug: string): PoliticianDetail | null {
   if (slug !== "nancy-pelosi") return null;
-  return { slug, name: "Nancy Pelosi", party: "Democrat", chamber: "House", trades: [] };
+  return { slug, name: "Nancy Pelosi", party: "D", chamber: "House", seat: "CA-11", photo: "https://unitedstates.github.io/images/congress/225x275/P000197.jpg", trades: [] };
 }
 
 // Insider profiles only exist with a live DB; sample mode has none.

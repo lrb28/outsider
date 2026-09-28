@@ -201,63 +201,80 @@ export function initials(name: string): string {
   return (a + b).toUpperCase();
 }
 
-const AVATAR_COLORS = [
-  "bg-zinc-200 text-zinc-800",
-  "bg-emerald-100 text-emerald-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-700",
-  "bg-sky-100 text-sky-700",
-  "bg-orange-100 text-orange-800",
-  "bg-teal-100 text-teal-700",
-  "bg-cyan-100 text-cyan-700",
-];
-
-export function avatarColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+// Aura of an entity type: the identity colour used for avatars, glows and
+// chart marks (CSS variable names from globals.css).
+export type AuraKind = "investor" | "insider" | "politician";
+export function auraOf(entityType: string | null | undefined): AuraKind {
+  if (entityType === "politician") return "politician";
+  if (entityType === "corporate_insider") return "insider";
+  return "investor";
 }
 
-// Curated map: an entity's fund OR person name -> Wikipedia article title.
-// Matched by substring so it works whether the feed shows the fund or the person.
-// The app fetches the portrait from Wikipedia at runtime (CORS-enabled); anything
-// not listed / without a photo keeps the coloured initials avatar.
-const WIKI_TITLES: [string, string][] = [
-  ["berkshire", "Warren_Buffett"],
-  ["buffett", "Warren_Buffett"],
-  ["scion", "Michael_Burry"],
-  ["burry", "Michael_Burry"],
-  ["pershing", "Bill_Ackman"],
-  ["ackman", "Bill_Ackman"],
-  ["duquesne", "Stanley_Druckenmiller"],
-  ["druckenmiller", "Stanley_Druckenmiller"],
-  ["soros", "George_Soros"],
-  ["daily journal", "Charlie_Munger"],
-  ["munger", "Charlie_Munger"],
-  ["bridgewater", "Ray_Dalio"],
-  ["dalio", "Ray_Dalio"],
-  ["perceptive", "Joseph_Edelman"],
-  ["edelman", "Joseph_Edelman"],
-  ["dalal", "Mohnish_Pabrai"],
-  ["pabrai", "Mohnish_Pabrai"],
-  ["situational", "Leopold_Aschenbrenner"],
-  ["aschenbrenner", "Leopold_Aschenbrenner"],
-  ["point72", "Steven_A._Cohen"],
-  ["tiger global", "Chase_Coleman_III"],
-  ["baupost", "Seth_Klarman"],
-  ["pelosi", "Nancy_Pelosi"],
+// Curated registry: an entity's fund OR person name -> portrait key and the
+// person's display name. Matched by substring, so it works whether the feed
+// shows the fund or the person; keys are specific enough not to hit other
+// names. Portraits live in lib/portraits.ts (free licences only).
+const INVESTOR_PEOPLE: [string, string, string][] = [
+  ["berkshire", "Warren_Buffett", "Warren Buffett"],
+  ["buffett", "Warren_Buffett", "Warren Buffett"],
+  ["scion", "Michael_Burry", "Michael Burry"],
+  ["burry", "Michael_Burry", "Michael Burry"],
+  ["pershing", "Bill_Ackman", "Bill Ackman"],
+  ["ackman", "Bill_Ackman", "Bill Ackman"],
+  ["duquesne", "Stanley_Druckenmiller", "Stanley Druckenmiller"],
+  ["druckenmiller", "Stanley_Druckenmiller", "Stanley Druckenmiller"],
+  ["soros", "George_Soros", "George Soros"],
+  ["daily journal", "Charlie_Munger", "Charlie Munger"],
+  ["munger", "Charlie_Munger", "Charlie Munger"],
+  ["bridgewater", "Ray_Dalio", "Ray Dalio"],
+  ["dalio", "Ray_Dalio", "Ray Dalio"],
+  ["perceptive", "Joseph_Edelman", "Joseph Edelman"],
+  ["edelman", "Joseph_Edelman", "Joseph Edelman"],
+  ["dalal street", "Mohnish_Pabrai", "Mohnish Pabrai"],
+  ["pabrai", "Mohnish_Pabrai", "Mohnish Pabrai"],
+  ["situational", "Leopold_Aschenbrenner", "Leopold Aschenbrenner"],
+  ["aschenbrenner", "Leopold_Aschenbrenner", "Leopold Aschenbrenner"],
+  ["point72", "Steven_A._Cohen", "Steven A. Cohen"],
+  ["tiger global", "Chase_Coleman_III", "Chase Coleman"],
+  ["baupost", "Seth_Klarman", "Seth Klarman"],
+  ["icahn", "Carl_Icahn", "Carl Icahn"],
+  ["gates foundation", "Bill_Gates", "Bill Gates"],
+  ["ark investment", "Cathie_Wood", "Cathie Wood"],
+  ["cathie wood", "Cathie_Wood", "Cathie Wood"],
+  ["appaloosa", "David_Tepper", "David Tepper"],
+  ["himalaya capital", "Li_Lu", "Li Lu"],
+  ["third point", "Daniel_Loeb", "Daniel Loeb"],
+  ["fundsmith", "Terry_Smith", "Terry Smith"],
+  ["trian fund", "Nelson_Peltz", "Nelson Peltz"],
+  ["akre capital", "Chuck_Akre", "Chuck Akre"],
+  ["gardner russo", "Thomas_Russo", "Thomas Russo"],
+  ["oaktree", "Howard_Marks", "Howard Marks"],
+  ["coatue", "Philippe_Laffont", "Philippe Laffont"],
+  ["viking global", "Andreas_Halvorsen", "Andreas Halvorsen"],
+  ["lone pine", "Stephen_Mandel", "Stephen Mandel"],
+  ["altimeter", "Brad_Gerstner", "Brad Gerstner"],
+  ["d1 capital", "Dan_Sundheim", "Dan Sundheim"],
+  ["fairfax financial", "Prem_Watsa", "Prem Watsa"],
+  ["markel", "Tom_Gayner", "Tom Gayner"],
+  ["starboard value", "Jeff_Smith", "Jeff Smith"],
+  ["glenview", "Larry_Robbins", "Larry Robbins"],
+  ["pelosi", "Nancy_Pelosi", "Nancy Pelosi"],
 ];
 
-export function wikiTitleFor(name: string): string | null {
+function investorEntry(name: string): [string, string, string] | null {
   const n = name.toLowerCase();
-  for (const [sub, title] of WIKI_TITLES) if (n.includes(sub)) return title;
+  for (const entry of INVESTOR_PEOPLE) if (n.includes(entry[0])) return entry;
   return null;
 }
 
-// Display name of the person behind a fund (from the Wikipedia map).
+/** Portrait key (lib/portraits.ts) for a fund or person name. */
+export function wikiTitleFor(name: string): string | null {
+  return investorEntry(name)?.[1] ?? null;
+}
+
+// Display name of the person behind a fund.
 export function investorPerson(name: string): string | null {
-  const t = wikiTitleFor(name);
-  return t ? t.replace(/_/g, " ") : null;
+  return investorEntry(name)?.[2] ?? null;
 }
 
 // Short bio shown on investor pages (Eaves-style, 2–3 punchy sentences).
@@ -288,7 +305,68 @@ const BIO_COLEMAN =
 const BIO_KLARMAN =
   "Value-Legende und Autor des Kultbuchs „Margin of Safety“. Baupost investiert geduldig und hält gern viel Cash, wenn nichts günstig ist.";
 
+const BIO_ICAHN =
+  "Aktivist der ersten Stunde: kauft große Pakete und fordert dann öffentlich Veränderungen – von TWA bis Apple. Seine Beteiligungen laufen heute vor allem über Icahn Enterprises.";
+const BIO_GATES =
+  "Die Gates Foundation Trust verwaltet das Vermögen der Gates-Stiftung – ein ruhiges, konzentriertes Depot aus langfristigen Qualitätswerten.";
+const BIO_WOOD =
+  "Gründerin von ARK Invest und bekannteste Verfechterin „disruptiver Innovation“: KI, Robotik, Genomik, Krypto. Ihre aktiven ETFs handeln fast täglich; hier siehst du die Quartalsbestände.";
+const BIO_TEPPER =
+  "Gründer von Appaloosa, berühmt für seine Wette auf US-Banken nach der Finanzkrise 2009. Gehört seit Jahren zu den erfolgreichsten Hedgefonds-Managern und besitzt die Carolina Panthers.";
+const BIO_LILU =
+  "Gründer von Himalaya Capital; Charlie Munger vertraute ihm einen Teil seines Familienvermögens an. Hält nur eine Handvoll Positionen, gern in Asien und bei Finanzwerten.";
+const BIO_LOEB =
+  "Aktivistischer Investor mit Third Point – bekannt für scharf formulierte Briefe an Vorstände und eine Mischung aus Tech, Konsum und Sondersituationen.";
+const BIO_SMITH =
+  "Der „britische Buffett“: Fundsmith kauft nur Qualitätsunternehmen, zahlt keinen Überpreis und tut dann möglichst nichts. Sehr konzentriert, sehr geduldig.";
+const BIO_PELTZ =
+  "Aktivist mit Trian: kauft große Anteile an etablierten Konsum- und Industrieunternehmen und drängt in den Aufsichtsrat – etwa bei Procter & Gamble und Disney.";
+const BIO_AKRE =
+  "Akre Capital sucht „Compounding Machines“ – Firmen, die ihr Kapital jahrzehntelang hoch verzinsen – und hält wenige Positionen sehr lange.";
+const BIO_RUSSO =
+  "Thomas Russo investiert seit Jahrzehnten in globale Markenhersteller mit langem Atem – Getränke, Luxus, Konsumgüter – und hält sie oft über Jahrzehnte.";
+const BIO_MARKS =
+  "Mitgründer von Oaktree und Autor der berühmten Kunden-Memos, die viele Profis sofort lesen. Oaktree ist vor allem für Anleihen und Sondersituationen bekannt; der 13F zeigt nur den Aktienteil.";
+const BIO_LAFFONT =
+  "„Tiger Cub“ und Gründer von Coatue: setzt stark auf Technologie – von den großen Plattformen bis zu schnell wachsenden Software-Werten.";
+const BIO_HALVORSEN =
+  "Ebenfalls ein „Tiger Cub“: Viking Global verbindet gründliche Unternehmensanalyse mit einem breiten Portfolio aus Gesundheit, Finanzen und Tech.";
+const BIO_MANDEL =
+  "Der „Tiger Cub“ Stephen Mandel machte Lone Pine zu einem der bekanntesten Wachstumsfonds – konzentriert auf Qualitätsunternehmen mit starken Marken.";
+const BIO_GERSTNER =
+  "Gründer von Altimeter: investiert früh in Tech-Plattformen, hält Börsengewinner lange und setzt groß auf die Infrastruktur hinter KI.";
+const BIO_SUNDHEIM =
+  "Gründete D1 Capital nach Jahren bei Viking: börsennotierte Tech- und Konsumwerte, ergänzt um private Beteiligungen.";
+const BIO_WATSA =
+  "Der „kanadische Buffett“: führt Fairfax Financial wie Berkshire – Versicherungsgeld, geduldig und gern antizyklisch angelegt.";
+const BIO_GAYNER =
+  "Führt Markel, oft „Baby Berkshire“ genannt: ein Versicherer mit einem langfristigen Aktiendepot aus Qualitätstiteln.";
+const BIO_STARBOARD =
+  "Starboard Value ist einer der aktivsten Aktivisten der Wall Street: großer Anteil, konkreter Plan für bessere Margen, notfalls die Kampfabstimmung.";
+const BIO_ROBBINS =
+  "Glenview Capital ist auf Gesundheitswerte spezialisiert und bekannt für wenige, gründlich recherchierte Wetten.";
+
 const INVESTOR_BIO: [string, string][] = [
+  ["icahn", BIO_ICAHN],
+  ["gates foundation", BIO_GATES],
+  ["ark investment", BIO_WOOD],
+  ["appaloosa", BIO_TEPPER],
+  ["himalaya capital", BIO_LILU],
+  ["third point", BIO_LOEB],
+  ["fundsmith", BIO_SMITH],
+  ["trian fund", BIO_PELTZ],
+  ["akre capital", BIO_AKRE],
+  ["gardner russo", BIO_RUSSO],
+  ["oaktree", BIO_MARKS],
+  ["coatue", BIO_LAFFONT],
+  ["viking global", BIO_HALVORSEN],
+  ["lone pine", BIO_MANDEL],
+  ["altimeter", BIO_GERSTNER],
+  ["d1 capital", BIO_SUNDHEIM],
+  ["fairfax financial", BIO_WATSA],
+  ["markel", BIO_GAYNER],
+  ["starboard value", BIO_STARBOARD],
+  ["glenview", BIO_ROBBINS],
   ["buffett", BIO_BUFFETT],
   ["berkshire", BIO_BUFFETT],
   ["burry", BIO_BURRY],
