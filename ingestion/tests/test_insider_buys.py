@@ -64,3 +64,9 @@ def test_only_open_market_purchases_above_the_minimum_are_kept():
 def test_trading_days_skip_weekends():
     days = trading_days(date(2026, 9, 28), 3)  # Monday
     assert days == [date(2026, 9, 28), date(2026, 9, 25), date(2026, 9, 24)]
+
+
+def test_unlisted_issuers_are_skipped():
+    for placeholder in (b"NONE", b"N/A"):
+        xml = _as_purchase(FIXTURE).replace(b"<issuerTradingSymbol>AAPL</issuerTradingSymbol>", b"<issuerTradingSymbol>" + placeholder + b"</issuerTradingSymbol>")
+        assert purchases(parse_form4(xml), 10_000) == []

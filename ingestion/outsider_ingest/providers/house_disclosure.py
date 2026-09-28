@@ -81,6 +81,7 @@ class HouseDisclosureProvider(FilingsProvider):
                     period_of_report=None,
                     source_url=PTR_PDF.format(year=year, doc_id=doc_id),
                     primary_document=f"{doc_id}.pdf",
+                    state_dst=t("StateDst"),
                 )
             )
         return out

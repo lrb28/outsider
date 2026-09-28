@@ -90,8 +90,15 @@ def _amount(text: str) -> tuple[str, Optional[int], Optional[int]]:
     return f"${lo:,} - ${hi:,}" if hi else f"${lo:,} -", lo, hi
 
 
+ACCOUNT_PREFIX_RE = re.compile(r"^\d{6,}\s+")
+
+
 def parse_ptr_text(text: str) -> list[dict]:
     """Pure text -> rows (unit-testable without a PDF)."""
+    # Some filers' PDFs render the spaced field labels ("F      S     : New")
+    # with NUL glyphs instead of spaces. Left alone, the labels are not
+    # recognised, run into the asset name, and PostgreSQL rejects the NULs.
+    text = text.replace("\x00", " ")
     blocks: list[tuple[re.Match, list[str]]] = []
     current: Optional[tuple[re.Match, list[str]]] = None
     for raw in text.splitlines():
@@ -126,6 +133,7 @@ def parse_ptr_text(text: str) -> list[dict]:
         raw_type = match.group("type")
         asset = PAREN_TICKER_RE.split(match.group("asset") + " " + tail)[0]
         asset = ASSET_CODE_RE.sub("", asset).strip(" -")
+        asset = ACCOUNT_PREFIX_RE.sub("", re.sub(r"\s+", " ", asset))
         rows.append(
             {
                 "ticker": ticker.group(1) if ticker else None,

@@ -51,6 +51,9 @@ class Repository:
             ON CONFLICT (slug) DO UPDATE SET
                 full_name = EXCLUDED.full_name,
                 org_name  = EXCLUDED.org_name,
+                role      = COALESCE(EXCLUDED.role, entities.role),
+                party     = COALESCE(EXCLUDED.party, entities.party),
+                chamber   = COALESCE(EXCLUDED.chamber, entities.chamber),
                 highlight = entities.highlight OR EXCLUDED.highlight,
                 external_ids = entities.external_ids || EXCLUDED.external_ids
             RETURNING id
@@ -185,12 +188,55 @@ class Repository:
             (filing_id, entity_id, security_id, as_of_date, shares, market_value, put_call or ""),
         )
 
+    def upsert_holdings_bulk(self, rows: Sequence[tuple]) -> None:
+        """Many holdings in one pipelined round trip: (filing_id, entity_id,
+        security_id, as_of_date, shares, market_value, put_call) per row."""
+        with self.conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO holdings (filing_id, entity_id, security_id, as_of_date, shares, market_value, put_call)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (filing_id, security_id, put_call) DO UPDATE SET
+                    shares = EXCLUDED.shares, market_value = EXCLUDED.market_value
+                """,
+                [(*row[:6], row[6] or "") for row in rows],
+            )
+
+    def filing_has_holdings(self, source_url: str) -> bool:
+        """A 13F filing is stored completely once its holdings exist (holdings
+        and QoQ changes are committed together)."""
+        row = self.conn.execute(
+            "SELECT EXISTS (SELECT 1 FROM filings f JOIN holdings h ON h.filing_id = f.id WHERE f.source_url = %s)",
+            (source_url,),
+        ).fetchone()
+        return bool(row and row[0])
+
+    def known_securities_by_cusip(self) -> tuple[dict[str, int], dict[str, int]]:
+        """(resolved via the symbol cache, any security with that CUSIP) — one
+        query each instead of several round trips per holding."""
+        resolved = dict(self.conn.execute("SELECT raw_identifier, security_id FROM symbols_cache").fetchall())
+        by_cusip = dict(self.conn.execute("SELECT cusip, id FROM securities WHERE cusip IS NOT NULL").fetchall())
+        return resolved, by_cusip
+
     def supersede_legacy_transactions(self, filing_id: int) -> None:
         # Called only after a source was parsed successfully. It shares the same
         # transaction as the replacement inserts, so a failed import rolls back.
         self.conn.execute(
             "UPDATE transactions SET superseded = true WHERE filing_id = %s AND source_line IS NULL",
             (filing_id,),
+        )
+
+    def claim_filing(self, filing_id: int, entity_id: int) -> None:
+        """Make entity_id the only filer of a filing.
+
+        A House PTR belongs to one member. If an earlier import stored it under
+        another entity (e.g. the raw index name before members were matched),
+        that entity's rows for this filing are superseded, not deleted.
+        """
+        self.conn.execute("UPDATE filings SET entity_id = %s WHERE id = %s", (entity_id, filing_id))
+        self.conn.execute(
+            "UPDATE transactions SET superseded = true WHERE filing_id = %s AND entity_id <> %s",
+            (filing_id, entity_id),
         )
 
     def insert_transaction(
