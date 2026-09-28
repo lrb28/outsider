@@ -29,6 +29,7 @@ class FilingRef:
     period_of_report: Optional[date]
     source_url: str
     primary_document: Optional[str] = None
+    state_dst: Optional[str] = None     # House index "CA11" (state + district)
 
 
 @dataclass(frozen=True)

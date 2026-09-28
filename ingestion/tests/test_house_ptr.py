@@ -71,3 +71,21 @@ if __name__ == "__main__":
     print(f"OK  House PTR text parser: {len(rows)} ticker rows extracted")
     for r in rows:
         print(f"  {r['txn_type']:4} {r['ticker']:5} ${r['amount_min']:,.0f}-${r['amount_max']:,.0f}  {r['txn_date']}")
+
+
+def test_nul_glyph_field_labels_end_the_asset():
+    # Some PDFs draw the spaced labels with NUL glyphs; the asset name must stop
+    # before "Filing status" and carry no NUL (PostgreSQL rejects it).
+    text = (
+        "SP 2000140446 American Funds AMCAP Fund Class A P 06/03/2025 06/04/2025 $500,001 -\n"
+        "(SMCWX) [MF] $1,000,000\n"
+        "F\x00\x00\x00\x00\x00 S\x00\x00\x00\x00\x00: New\n"
+        "S\x00\x00\x00\x00\x00\x00\x00\x00\x00 O\x00: Raymond James Brokerage\n"
+    )
+    rows = parse_ptr_text(text)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["ticker"] == "SMCWX"
+    assert row["asset"] == "American Funds AMCAP Fund Class A"
+    assert "\x00" not in row["asset"]
+    assert (row["amount_min"], row["amount_max"]) == (500001, 1000000)

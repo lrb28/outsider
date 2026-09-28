@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only this source key (form4, insider-buys, senate, house, 13f, names, prices); empty = all"
+        description: "Run only this source key (form4, insider-buys, house, 13f, names, prices); empty = all"
         required: false
         default: ""
       args:
@@ -32,12 +32,10 @@ jobs:
           - source: SEC Form 4 market-wide purchases
             key: insider-buys
             command: python -m outsider_ingest.pipelines.ingest_insider_buys --days 4
-          - source: US Senate
-            key: senate
-            command: python -m outsider_ingest.pipelines.ingest_senate
           - source: US House
             key: house
-            command: python -m outsider_ingest.pipelines.ingest_house --year "$(date +%Y)"
+            # Late PTRs for December land in the previous year's index.
+            command: python -m outsider_ingest.pipelines.ingest_house --year "$(date +%Y)" --year "$(date -d '-45 days' +%Y)"
           - source: SEC 13F
             key: 13f
             command: python -m outsider_ingest.pipelines.ingest_13f --all
@@ -65,8 +63,10 @@ jobs:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
-          PRICE_PROVIDER: stooq
-          PRICE_FALLBACKS: yahoo
+          # Stooq answers datacenter IPs with an HTML page; Yahoo leads.
+          PRICE_PROVIDER: yahoo
+          PRICE_FALLBACKS: stooq
+          PYTHONUNBUFFERED: "1"
           EXTRA_ARGS: ${{ inputs.args }}
         run: ${{ matrix.command }} $EXTRA_ARGS
       - name: Record outcome
