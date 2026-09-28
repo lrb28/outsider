@@ -37,9 +37,11 @@ class YahooPriceProvider(PriceProvider):
         # Yahoo throttles in bursts (429). Back off briefly and alternate
         # between its two API hosts instead of failing the symbol at once.
         resp = None
+        # Share classes: SEC writes BRK.B, Yahoo expects BRK-B.
+        symbol = ticker.strip().upper().replace(".", "-")
         for attempt, host in enumerate(("query1", "query2", "query1")):
             url = (
-                f"https://{host}.finance.yahoo.com/v8/finance/chart/{ticker}"
+                f"https://{host}.finance.yahoo.com/v8/finance/chart/{symbol}"
                 f"?range={self.default_range}&interval=1d"
             )
             resp = self.session.get(url, timeout=self.timeout_s)

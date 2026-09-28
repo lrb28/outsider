@@ -38,7 +38,7 @@ export function FollowButton({
         aria-pressed={on}
         aria-label={on ? "Nicht mehr folgen" : "Folgen"}
         className={`h-11 w-11 shrink-0 rounded-full px-1.5 text-lg leading-none transition ${
-          on ? "text-amber-500" : "text-zinc-400 hover:text-amber-500"
+          on ? "text-warn" : "text-zinc-400 hover:text-warn"
         }`}
       >
         <Icon name="star" className={`h-5 w-5 ${on ? "[&_path]:fill-current" : ""}`} />
@@ -52,7 +52,7 @@ export function FollowButton({
         aria-pressed={on}
       className={`press-sm inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold ${
         on
-          ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-200"
+          ? "bg-warn/15 text-warn ring-1 ring-warn/25 hover:bg-warn/25"
           : "btn-primary !px-4 !py-1.5"
       }`}
     >

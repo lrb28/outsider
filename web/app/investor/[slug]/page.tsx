@@ -70,14 +70,14 @@ export default function InvestorPage() {
   const buys = inv.trades.filter((t) => t.txnType === "buy").length;
   const sells = inv.trades.filter((t) => t.txnType === "sell").length;
   const moves = [
-    { label: "Aufstockungen", value: buys, color: "#16a34a" },
-    { label: "Bestandsabbau", value: sells, color: "#dc2626" },
+    { label: "Aufstockungen", value: buys, color: "rgb(var(--bull-fill))" },
+    { label: "Bestandsabbau", value: sells, color: "rgb(var(--bear-fill))" },
   ];
   const moveTotal = buys + sells;
 
   return (
     <div className="space-y-6">
-      <p className="rounded-xl bg-zinc-100/80 p-3 text-sm leading-6 text-zinc-800 ring-1 ring-black/5">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
+      <p className="rounded-xl bg-zinc-100/80 p-3 text-sm leading-6 text-zinc-800">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
       <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
         <Icon name="chevronLeft" className="h-4 w-4" />
         Entdecken
@@ -118,7 +118,7 @@ export default function InvestorPage() {
                 key={key}
                 onClick={() => setSort(key)}
                 className={`press-sm rounded-full px-3 py-1 ${
-                  sort === key ? "bg-white text-ink shadow-card" : "text-subtle"
+                  sort === key ? "bg-card text-ink shadow-card" : "text-subtle"
                 }`}
               >
                 {label}

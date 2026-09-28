@@ -80,9 +80,9 @@ export default function StockPage() {
   const countBy = (v: "buy" | "sell" | "hold") =>
     [...lastAction.values()].filter((x) => x === v).length;
   const act = [
-    { label: "Bestand erhöht", value: countBy("buy"), color: "#16a34a" },
-    { label: "Gehalten", value: countBy("hold"), color: "#94a3b8" },
-    { label: "Bestand reduziert", value: countBy("sell"), color: "#dc2626" },
+    { label: "Bestand erhöht", value: countBy("buy"), color: "rgb(var(--bull-fill))" },
+    { label: "Gehalten", value: countBy("hold"), color: "rgb(var(--n-400))" },
+    { label: "Bestand reduziert", value: countBy("sell"), color: "rgb(var(--bear-fill))" },
   ];
   const actTotal = act.reduce((a, s) => a + s.value, 0);
 
@@ -93,8 +93,8 @@ export default function StockPage() {
   const insBought = new Set([...latestInsider].filter(([,code]) => code === "P").map(([name]) => name));
   const insSold = new Set([...latestInsider].filter(([,code]) => code === "S").map(([name]) => name));
   const insAct = [
-    { label: "Gekauft", value: insBought.size, color: "#16a34a" },
-    { label: "Verkauft", value: insSold.size, color: "#dc2626" },
+    { label: "Gekauft", value: insBought.size, color: "rgb(var(--bull-fill))" },
+    { label: "Verkauft", value: insSold.size, color: "rgb(var(--bear-fill))" },
   ];
   const insTotal = insBought.size + insSold.size;
 
@@ -129,10 +129,10 @@ export default function StockPage() {
               {fixTicker(stock.ticker, stock.company) ?? "—"}
             </span>
             {quote && (
-              <span className="flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1 text-sm font-semibold ring-1 ring-black/5">
+              <span className="flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-sm font-semibold">
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${
-                    quote.marketState === "REGULAR" ? "animate-live bg-emerald-500" : "bg-slate-300"
+                    quote.marketState === "REGULAR" ? "animate-live bg-bull-fill" : "bg-slate-300"
                   }`}
                 />
                 {quote.currency || "Kurs"} {" "}
@@ -164,7 +164,7 @@ export default function StockPage() {
                   key={label}
                   onClick={() => setRange(i)}
                   className={`press-sm rounded-full px-2.5 py-1 ${
-                    range === i ? "bg-white text-ink shadow-card" : "text-subtle"
+                    range === i ? "bg-card text-ink shadow-card" : "text-subtle"
                   }`}
                 >
                   {label}
@@ -211,7 +211,7 @@ export default function StockPage() {
                   key={k}
                   onClick={() => setActTab(k)}
                   className={`press-sm rounded-full px-3 py-1 ${
-                    actTab === k ? "bg-white text-ink shadow-card" : "text-subtle"
+                    actTab === k ? "bg-card text-ink shadow-card" : "text-subtle"
                   }`}
                 >
                   {l}

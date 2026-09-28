@@ -36,11 +36,18 @@ export interface TradeFilters {
   to?: string;
 }
 
+// The Senate is out of scope: its old rows stay in the database but are never
+// shown. Every query that lists politicians or their trades applies this.
+const NOT_SENATE = "e.chamber is distinct from 'Senate'";
+
+// "Abgeordnete·r CA-11" -> "CA-11"
+const seatOf = (role: unknown) => (typeof role === "string" ? role.match(/[A-Z]{2}-(?:\d+|AL)$/)?.[0] ?? null : null);
+
 // entry = close of nearest trading day ON OR AFTER the reference date (lateral
 // joins); current = latest close. Percent change computed in JS from those.
 const SQL = (whereSql: string, limIdx: number, offIdx: number) => `
   select t.id, e.full_name as entity_name, e.slug as entity_slug,
-         e.type as entity_type, e.highlight,
+         e.type as entity_type, e.highlight, e.external_ids->>'portrait' as entity_photo,
          s.ticker, s.name as security_name,
          t.txn_type, nullif(t.put_call, '') as put_call,
          t.txn_date, t.disclosed_at, t.shares, t.amount_min, t.amount_max,
@@ -115,6 +122,7 @@ function toFeedRow(r: Record<string, unknown>): FeedRow {
     priceAsOf,
     reportingDate: r.period_of_report ? new Date(r.period_of_report as string).toISOString().slice(0, 10) : null,
     sourceUrl: r.source_url as string,
+    entityPhoto: (r.entity_photo as string) ?? null,
   };
 }
 
@@ -122,7 +130,7 @@ export async function getTrades(f: TradeFilters): Promise<FeedRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
-  const where: string[] = ["coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'"];
+  const where: string[] = ["coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'", NOT_SENATE];
   const params: unknown[] = [];
   if (f.type) {
     params.push(f.type);
@@ -272,13 +280,14 @@ export async function getPoliticians(): Promise<PoliticianRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
   const { rows } = await pool.query(`
-    select e.slug, e.full_name as name, e.party, e.chamber,
+    select e.slug, e.full_name as name, e.party, e.chamber, e.role,
+           e.external_ids->>'portrait' as photo,
            count(t.id) as trades, max(t.disclosed_at) as last
     from entities e
     left join transactions t on t.entity_id = e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
-    where e.type = 'politician' and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
-    group by e.id, e.slug, e.full_name, e.party, e.chamber
-    order by trades desc, e.full_name
+    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
+    order by max(t.disclosed_at) desc nulls last, trades desc, e.full_name
   `);
   return rows
     .map((r) => ({
@@ -286,6 +295,8 @@ export async function getPoliticians(): Promise<PoliticianRow[]> {
       name: r.name as string,
       party: (r.party as string) ?? null,
       chamber: (r.chamber as string) ?? null,
+      seat: seatOf(r.role),
+      photo: (r.photo as string) ?? null,
       trades: Number(r.trades) || 0,
       lastTrade: r.last ? new Date(r.last as string).toISOString().slice(0, 10) : null,
     }))
@@ -296,7 +307,8 @@ export async function getPolitician(slug: string): Promise<PoliticianDetail | nu
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
   const ent = await pool.query(
-    `select slug, full_name as name, party, chamber from entities where slug = $1 and type = 'politician' limit 1`,
+    `select e.slug, e.full_name as name, e.party, e.chamber, e.role, e.external_ids->>'portrait' as photo
+     from entities e where e.slug = $1 and e.type = 'politician' and ${NOT_SENATE} limit 1`,
     [slug],
   );
   if (ent.rows.length === 0) return null;
@@ -307,6 +319,8 @@ export async function getPolitician(slug: string): Promise<PoliticianDetail | nu
     name: e.name as string,
     party: (e.party as string) ?? null,
     chamber: (e.chamber as string) ?? null,
+    seat: seatOf(e.role),
+    photo: (e.photo as string) ?? null,
     trades,
   };
 }
@@ -608,10 +622,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
 
   // Aktivste Politiker (nach Anzahl gemeldeter Trades).
   const polQ = pool.query(`
-    select e.slug, e.full_name as name, e.party, e.chamber, count(t.id) as n
+    select e.slug, e.full_name as name, e.party, e.chamber, e.role, e.external_ids->>'portrait' as photo, count(t.id) as n
     from entities e join transactions t on t.entity_id = e.id
-    where e.type = 'politician' and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
-    group by e.id, e.slug, e.full_name, e.party, e.chamber
+    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+      and t.disclosed_at >= current_date - 365
+    group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
     order by n desc
     limit 12
   `);
@@ -663,9 +678,10 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     ),
     topPoliticians: pols.rows.map((r) => ({
       slug: r.slug as string,
-      fund: [r.party, r.chamber].filter(Boolean).join(" · ") || "US-Kongress",
+      fund: [r.party, seatOf(r.role)].filter(Boolean).join("-") || "US-Repräsentantenhaus",
       person: (r.name as string) ?? null,
       metric: `${Number(r.n)} Trades`,
+      photo: (r.photo as string) ?? null,
     })),
   };
 }

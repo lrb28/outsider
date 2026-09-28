@@ -13,18 +13,18 @@ export async function getStats(): Promise<Stats> {
   if (!pool) throw new Error("DATABASE_URL not configured");
   const [counts, groups] = await Promise.all([
     pool.query(`with price_dates as (select upper(s.ticker) as symbol, max(p.date) as latest from securities s left join prices p on p.security_id=s.id where s.ticker is not null group by upper(s.ticker))
-      select (select count(*) from entities) as entities,
+      select (select count(*) from entities where chamber is distinct from 'Senate') as entities,
       (select count(*) from entities where type = 'institution') as institutions,
       (select count(*) from entities where type = 'corporate_insider') as insiders,
-      (select count(*) from entities where type = 'politician') as politicians,
-      (select count(*) from transactions t where coalesce(to_jsonb(t)->>'superseded','false') = 'false') as trades,
-      (select max(disclosed_at)::text from transactions t where coalesce(to_jsonb(t)->>'superseded','false') = 'false') as disclosure,
+      (select count(*) from entities where type = 'politician' and chamber is distinct from 'Senate') as politicians,
+      (select count(*) from transactions t join entities e on e.id=t.entity_id where e.chamber is distinct from 'Senate' and coalesce(to_jsonb(t)->>'superseded','false') = 'false') as trades,
+      (select max(t.disclosed_at)::text from transactions t join entities e on e.id=t.entity_id where e.chamber is distinct from 'Senate' and coalesce(to_jsonb(t)->>'superseded','false') = 'false') as disclosure,
       (select max(latest)::text from price_dates) as price,
       (select count(*) from price_dates) as price_symbols,
       (select count(*) from price_dates where latest >= current_date - 7) as fresh`),
     pool.query(`select e.type, max(t.disclosed_at)::text as latest,
       count(t.id) filter (where t.id is not null and t.disclosed_at is null) as missing, count(t.id) as trades
-      from entities e left join transactions t on t.entity_id=e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false' group by e.type`),
+      from entities e left join transactions t on t.entity_id=e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false' where e.chamber is distinct from 'Senate' group by e.type`),
   ]);
   const r = counts.rows[0];
   return { entities: Number(r.entities), institutions: Number(r.institutions), insiders: Number(r.insiders),

@@ -107,12 +107,13 @@ export function Donut({
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#eef1f5"
+          stroke="rgb(var(--surface-2))"
           strokeWidth={thickness}
         />
         {segments.map((s, i) => {
           const full = (s.value / total) * c;
-          const len = full * progress;
+          // A 2 px gap in the surface colour separates neighbouring segments.
+          const len = segments.length > 1 ? Math.max(0, full - 2) * progress : full * progress;
           const active = activeIndex === i;
           const el = (
             <circle
@@ -144,8 +145,8 @@ export function Donut({
           x="50%"
           y="47%"
           textAnchor="middle"
-          className="fill-ink tabular-nums"
-          style={{ fontSize: size * 0.2, fontWeight: 700 }}
+          className="fill-ink font-display tabular-nums"
+          style={{ fontSize: size * 0.19, fontWeight: 700, letterSpacing: "-0.02em" }}
         >
           {countFormat(countTo * progress)}
         </text>
@@ -155,8 +156,8 @@ export function Donut({
             x="50%"
             y="47%"
             textAnchor="middle"
-            className="fill-ink tabular-nums"
-            style={{ fontSize: size * 0.2, fontWeight: 700 }}
+            className="fill-ink font-display tabular-nums"
+            style={{ fontSize: size * 0.19, fontWeight: 700, letterSpacing: "-0.02em" }}
           >
             {centerTop}
           </text>

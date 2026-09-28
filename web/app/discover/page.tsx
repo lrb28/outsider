@@ -1,19 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ErrorRetry } from "@/components/ErrorRetry";
-import { fetchCatalogue } from "@/lib/fetchJson";
-import { Suspense, ReactNode, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { ErrorRetry } from "@/components/ErrorRetry";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
-import { LiquidGlass } from "@/components/LiquidGlass";
 import { SkeletonList } from "@/components/Skeleton";
+import { AuraCard, EmptyState, ListCard, ListRow, PageTitle, SegmentedControl, politicianLine } from "@/components/ui";
+import { fetchCatalogue } from "@/lib/fetchJson";
 import { abbrevMoney, formatDate } from "@/lib/format";
-import {
+import type {
   CollectionInvestor,
   CollectionItem,
   DiscoverData,
@@ -24,291 +23,185 @@ import {
   StockRow,
   StocksResponse,
 } from "@/lib/types";
-import { Icon } from "@/components/Icon";
 
 type Tab = "highlights" | "investors" | "stocks" | "politicians";
 
-const TABS: [Tab, string][] = [
+const TABS = [
   ["highlights", "Highlights"],
   ["investors", "Investoren"],
-  ["stocks", "Aktien"],
   ["politicians", "Politiker"],
-];
+  ["stocks", "Aktien"],
+] as const;
 
 function LogoTrio({ items }: { items: CollectionItem[] }) {
+  if (!items.length) return <div className="h-[52px]" />;
   return (
     <div className="flex items-center">
       {items.slice(0, 3).map((it, i) => (
-        <div
-          key={(it.ticker ?? it.company) + i}
-          style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }}
-          className="rounded-2xl shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
-        >
-          <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-2xl" />
+        <div key={(it.ticker ?? it.company) + i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }} className="rounded-[14px] shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
+          <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-[14px]" />
         </div>
       ))}
     </div>
   );
 }
 
-function FaceTrio({ people }: { people: CollectionInvestor[] }) {
+function FaceTrio({ people, kind = "investor" }: { people: CollectionInvestor[]; kind?: "investor" | "politician" }) {
+  if (!people.length) return <div className="h-[52px]" />;
   return (
     <div className="flex items-center">
       {people.slice(0, 3).map((p, i) => (
-        <div
-          key={p.slug + i}
-          style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }}
-          className="rounded-full shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
-        >
-          <Avatar name={p.person ?? p.fund} size={i === 0 ? 52 : 44} />
+        <div key={p.slug + i} style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_10px_rgb(0_0_0/0.14)]">
+          <Avatar name={p.person ?? p.fund} src={p.photo} kind={kind} size={i === 0 ? 52 : 44} />
         </div>
       ))}
     </div>
   );
 }
 
-function Hero({
-  href,
-  title,
-  blurb,
-  gradient,
-  visual,
-}: {
-  href: string;
-  title: string;
-  blurb: string;
-  gradient: string;
-  visual: ReactNode;
-}) {
+export default function DiscoverPage() {
   return (
-    <Link
-      href={href}
-      className={`press lcard-hover flex flex-col justify-between rounded-3xl p-5 shadow-card ring-1 ring-black/5 ${gradient}`}
-    >
-      {visual}
-      <div className="mt-6">
-        <div className="flex items-center gap-1 text-lg font-semibold tracking-tight text-slate-900">
-          {title} <Icon name="chevronRight" className="inline h-4 w-4 align-[-2px] text-subtle" />
-        </div>
-        <p className="mt-1 text-sm leading-snug text-slate-600">{blurb}</p>
-      </div>
-    </Link>
+    <Suspense fallback={<SkeletonList n={4} />}>
+      <Discover />
+    </Suspense>
   );
 }
 
-export default function DiscoverPage() { return <Suspense fallback={<SkeletonList n={4}/>}><Discover /></Suspense>; }
 function Discover() {
-  const query = useSearchParams(); const router = useRouter();
+  const query = useSearchParams();
+  const router = useRouter();
   const tab = (TABS.some(([key]) => key === query.get("tab")) ? query.get("tab") : "highlights") as Tab;
-  const setTab = (key: Tab) => router.push(`/discover?tab=${key}`, {scroll:false});
-  const [error,setError] = useState(false); const [retry,setRetry] = useState(0);
+  const setTab = (key: Tab) => router.push(`/discover?tab=${key}`, { scroll: false });
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [data, setData] = useState<DiscoverData | null>(null);
   const [investors, setInvestors] = useState<InvestorRow[] | null>(null);
   const [stocks, setStocks] = useState<StockRow[] | null>(null);
   const [politicians, setPoliticians] = useState<PoliticianRow[] | null>(null);
 
   useEffect(() => {
-    let on = true; setError(false);
-    const request = tab === "highlights" ? fetchCatalogue<DiscoverData>("/api/discover").then(d => {if(on) setData(d);})
-      : tab === "investors" ? fetchCatalogue<InvestorsResponse>("/api/investors").then(d => {if(on) setInvestors(d.rows);})
-      : tab === "stocks" ? fetchCatalogue<StocksResponse>("/api/stocks").then(d => {if(on) setStocks(d.rows);})
-      : fetchCatalogue<PoliticiansResponse>("/api/politicians").then(d => {if(on) setPoliticians(d.rows);});
-    request.catch(() => {if(on) setError(true);}); return () => {on = false;};
-  }, [tab,retry]);
+    let on = true;
+    setError(false);
+    const request =
+      tab === "highlights" ? fetchCatalogue<DiscoverData>("/api/discover").then((d) => on && setData(d))
+      : tab === "investors" ? fetchCatalogue<InvestorsResponse>("/api/investors").then((d) => on && setInvestors(d.rows))
+      : tab === "stocks" ? fetchCatalogue<StocksResponse>("/api/stocks").then((d) => on && setStocks(d.rows))
+      : fetchCatalogue<PoliticiansResponse>("/api/politicians").then((d) => on && setPoliticians(d.rows));
+    request.catch(() => on && setError(true));
+    return () => {
+      on = false;
+    };
+  }, [tab, retry]);
 
-  const sortedStocks = useMemo(
-    () => (stocks ? [...stocks].sort((a, b) => b.investors - a.investors) : null),
-    [stocks],
-  );
+  const sortedStocks = useMemo(() => (stocks ? [...stocks].sort((a, b) => b.investors - a.investors) : null), [stocks]);
 
   return (
     <div className="space-y-6">
-      <div className="fade-up">
-        <h1 className="text-2xl font-semibold tracking-tight">Entdecken</h1>
-        <p className="text-sm text-subtle">Öffentliche Meldungen und gemeldete Bestände einordnen.</p>
-      </div>
+      <PageTitle title="Entdecken" subtitle="Was Investoren halten, Insider kaufen und Abgeordnete handeln – aus den Originalmeldungen." />
 
-      {/* Segments */}
-      <LiquidGlass role="tablist" aria-label="Bereiche" radius={999} className="fade-up no-scrollbar flex w-fit max-w-full overflow-x-auto rounded-full p-1">
-        {TABS.map(([key, label]) => (
-          <button
-            key={key}
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={`press-sm shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm ${
-              tab === key
-                ? "bg-white/80 font-semibold text-ink shadow-[inset_0_1px_0_#fff,0_2px_10px_rgb(28_28_30/0.12)]"
-                : "font-medium text-subtle hover:text-ink"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </LiquidGlass>
+      <SegmentedControl label="Bereiche" options={TABS} value={tab} onChange={setTab} className="fade-up" />
 
-      {error && <ErrorRetry onRetry={() => setRetry(r => r+1)} />}
-      {tab === "politicians" && <p className="text-sm text-amber-800">Historische Quelle mit Datenlücken. <Link href="/status" className="underline">Datenstand prüfen</Link></p>}
-      {/* ── Highlights ─────────────────────────────────────────────────────── */}
+      {error && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
+
       {tab === "highlights" &&
         (!data ? (
           error ? null : <SkeletonList n={5} />
         ) : (
           <div className="fade-up space-y-8">
             <section className="space-y-3">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-subtle">Aktien</h2>
+              <h2 className="eyebrow">Aktien</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Hero
-                  href="/discover/boughtq"
-                  title="Häufige Aufstockungen"
-                  blurb="Bestandserhöhungen im jüngsten verfügbaren Quartalsbericht jedes Investors."
-                  gradient="bg-gradient-to-b from-amber-100 via-orange-50 to-white"
-                  visual={<LogoTrio items={data.mostBoughtQ} />}
-                />
-                <Hero
-                  href="/discover/mostheld"
-                  title="Am meisten gehalten"
-                  blurb="Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben."
-                  gradient="bg-gradient-to-b from-sky-100 via-cyan-50 to-white"
-                  visual={<LogoTrio items={data.mostHeld} />}
-                />
-                <Hero
-                  href="/discover/conviction"
-                  title="Höchste Gewichtung"
-                  blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände ohne Optionen."
-                  gradient="bg-gradient-to-b from-zinc-200 via-zinc-50 to-white"
-                  visual={<LogoTrio items={data.highestConviction} />}
-                />
-                <Hero
-                  href="/discover/biggest"
-                  title="Größte Positionen"
-                  blurb="Die größten gemeldeten Aktienpositionen in US-Dollar."
-                  gradient="bg-gradient-to-b from-emerald-100 via-teal-50 to-white"
-                  visual={<LogoTrio items={data.biggest} />}
-                />
-                <Hero
-                  href="/discover/insiderbuys"
-                  title="Insider kaufen"
-                  blurb="Form-4-Käufe mit Code P, ohne Derivate, in den letzten 90 Tagen."
-                  gradient="bg-gradient-to-b from-lime-100 via-green-50 to-white"
-                  visual={<LogoTrio items={data.insiderBuys} />}
-                />
+                <AuraCard href="/discover/boughtq" aura="investor" title="Häufige Aufstockungen" blurb="Bestandserhöhungen im jüngsten Quartalsbericht jedes Investors." visual={<LogoTrio items={data.mostBoughtQ} />} />
+                <AuraCard href="/discover/insiderbuys" aura="insider" title="Insider kaufen" blurb="Käufe von Vorständen und Direktoren mit eigenem Geld (Form 4, Code P), letzte 90 Tage." visual={<LogoTrio items={data.insiderBuys} />} />
+                <AuraCard href="/discover/mostheld" aura="neutral" title="Am meisten gehalten" blurb="Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben." visual={<LogoTrio items={data.mostHeld} />} />
+                <AuraCard href="/discover/conviction" aura="neutral" title="Höchste Gewichtung" blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände, ohne Optionen." visual={<LogoTrio items={data.highestConviction} />} />
+                <AuraCard href="/discover/biggest" aura="neutral" title="Größte Positionen" blurb="Die wertvollsten gemeldeten Einzelpositionen in US-Dollar." visual={<LogoTrio items={data.biggest} />} />
               </div>
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-sm font-medium uppercase tracking-wide text-subtle">
-                Investoren & Politiker
-              </h2>
+              <h2 className="eyebrow">Menschen</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Hero
-                  href="/discover/biggestfunds"
-                  title="Größte Fonds"
-                  blurb="Die verfolgten Investoren mit dem größten gemeldeten Portfolio."
-                  gradient="bg-gradient-to-b from-rose-100 via-pink-50 to-white"
-                  visual={<FaceTrio people={data.biggestFunds} />}
-                />
-                <Hero
-                  href="/discover/concentrated"
-                  title="Am konzentriertesten"
-                  blurb="Investoren, die den größten Anteil in eine einzige Aktie stecken."
-                  gradient="bg-gradient-to-b from-slate-100 via-slate-50 to-white"
-                  visual={<FaceTrio people={data.mostConcentrated} />}
-                />
-                <Hero
-                  href="/discover/politicians"
-                  title="Aktivste Politiker"
-                  blurb="Kongressmitglieder mit den meisten gemeldeten Aktien-Trades."
-                  gradient="bg-gradient-to-b from-blue-100 via-sky-50 to-white"
-                  visual={<FaceTrio people={data.topPoliticians} />}
-                />
+                <AuraCard href="/discover/politicians" aura="politician" title="Aktivste Politiker" blurb="Abgeordnete des US-Repräsentantenhauses mit den meisten Aktien-Trades im letzten Jahr." visual={<FaceTrio people={data.topPoliticians} kind="politician" />} />
+                <AuraCard href="/discover/biggestfunds" aura="investor" title="Größte Fonds" blurb="Die verfolgten Investoren mit dem größten gemeldeten Portfolio." visual={<FaceTrio people={data.biggestFunds} />} />
+                <AuraCard href="/discover/concentrated" aura="investor" title="Am konzentriertesten" blurb="Investoren, die den größten Anteil in eine einzige Aktie stecken." visual={<FaceTrio people={data.mostConcentrated} />} />
               </div>
             </section>
           </div>
         ))}
 
-      {/* ── Investoren ─────────────────────────────────────────────────────── */}
       {tab === "investors" &&
         (investors === null ? (
           error ? null : <SkeletonList n={8} />
+        ) : investors.length === 0 ? (
+          <EmptyState title="Noch keine Investoren-Daten" />
         ) : (
-          <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
+          <ListCard className="fade-up">
             {investors.map((iv) => (
-              <div key={iv.slug} className="flex items-center border-b border-hair pr-3 last:border-0"><Link href={`/investor/${iv.slug}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-white">
-                <Avatar name={iv.person ?? iv.fund} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">{iv.person ?? iv.fund}</div>
-                  <div className="truncate text-xs text-subtle">{iv.fund}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium">{iv.positions} Positionen</div>
-                  <div className="text-xs text-subtle">{abbrevMoney(iv.value)}</div>
-                </div>
-              </Link><FollowButton kind="investor" id={iv.slug} variant="star" /></div>
+              <ListRow
+                key={iv.slug}
+                href={`/investor/${iv.slug}`}
+                leading={<Avatar name={iv.person ?? iv.fund} size={44} />}
+                title={iv.person ?? iv.fund}
+                subtitle={iv.person ? iv.fund : `13F ${formatDate(iv.asOf)}`}
+                trailing={
+                  <>
+                    <div className="text-[15px] font-semibold tabular-nums">{abbrevMoney(iv.value)}</div>
+                    <div className="text-[13px] text-subtle">{iv.positions} Positionen</div>
+                  </>
+                }
+                chevron={false}
+                after={<FollowButton kind="investor" id={iv.slug} variant="star" />}
+              />
             ))}
-            {investors.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-subtle">Noch keine Daten.</div>
-            )}
-          </div>
+          </ListCard>
         ))}
 
-      {/* ── Aktien ─────────────────────────────────────────────────────────── */}
-      {tab === "stocks" &&
-        (sortedStocks === null ? (
-          error ? null : <SkeletonList n={8} />
-        ) : (
-          <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
-            {sortedStocks.map((s) => (
-              <div key={s.ticker} className="flex items-center border-b border-hair pr-3 last:border-0"><Link href={`/stock/${s.ticker}`} className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 hover:bg-white">
-                <CompanyLogo ticker={s.ticker} company={s.company} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">{s.company}</div>
-                  <div className="text-xs text-subtle">
-                    {s.investors} {s.investors === 1 ? "Investor" : "Investoren"} ·{" "}
-                    {abbrevMoney(s.value)}
-                  </div>
-                </div>
-                <FaceStack names={s.holderNames} />
-              </Link>{s.ticker && <FollowButton kind="stock" id={s.ticker} variant="star" />}</div>
-            ))}
-            {sortedStocks.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-subtle">Noch keine Daten.</div>
-            )}
-          </div>
-        ))}
-
-      {/* ── Politiker ──────────────────────────────────────────────────────── */}
       {tab === "politicians" &&
         (politicians === null ? (
           error ? null : <SkeletonList n={6} />
+        ) : politicians.length === 0 ? (
+          <EmptyState icon="people" title="Noch keine Politiker-Trades">Die Meldungen des Repräsentantenhauses werden gerade eingelesen.</EmptyState>
         ) : (
-          <div className="fade-up overflow-hidden rounded-3xl bg-white/80 shadow-card ring-1 ring-black/5 backdrop-blur">
+          <ListCard className="fade-up">
             {politicians.map((p) => (
-              <Link
+              <ListRow
                 key={p.slug}
                 href={`/politician/${p.slug}`}
-                className="flex items-center gap-3 border-b border-hair px-4 py-3 transition last:border-0 hover:bg-white"
-              >
-                <Avatar name={p.name} size={44} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold">{p.name}</div>
-                  <div className="text-xs text-subtle">
-                    {[p.party, p.chamber].filter(Boolean).join(" · ") || "US-Kongress"}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium">{p.trades} Trades</div>
-                  <div className="text-xs text-subtle">{formatDate(p.lastTrade)}</div>
-                </div>
-                <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
-              </Link>
+                leading={<Avatar name={p.name} src={p.photo} kind="politician" size={44} />}
+                title={p.name}
+                subtitle={politicianLine(p.party, p.seat)}
+                trailing={
+                  <>
+                    <div className="text-[15px] font-semibold tabular-nums">{p.trades} Trades</div>
+                    <div className="text-[13px] text-subtle">{formatDate(p.lastTrade)}</div>
+                  </>
+                }
+              />
             ))}
-            {politicians.length === 0 && (
-              <div className="px-4 py-10 text-center text-sm text-subtle">
-                Noch keine Politiker-Trades geladen.
-              </div>
-            )}
-          </div>
+          </ListCard>
+        ))}
+
+      {tab === "stocks" &&
+        (sortedStocks === null ? (
+          error ? null : <SkeletonList n={8} />
+        ) : sortedStocks.length === 0 ? (
+          <EmptyState title="Noch keine Aktien-Daten" />
+        ) : (
+          <ListCard className="fade-up">
+            {sortedStocks.map((s) => (
+              <ListRow
+                key={s.ticker ?? s.company}
+                href={`/stock/${encodeURIComponent(s.ticker ?? "")}`}
+                leading={<CompanyLogo ticker={s.ticker} company={s.company} size={44} />}
+                title={s.company}
+                subtitle={`${s.investors} ${s.investors === 1 ? "Investor" : "Investoren"} · ${abbrevMoney(s.value)}`}
+                trailing={<FaceStack names={s.holderNames} />}
+                chevron={false}
+                after={s.ticker ? <FollowButton kind="stock" id={s.ticker} variant="star" /> : null}
+              />
+            ))}
+          </ListCard>
         ))}
     </div>
   );

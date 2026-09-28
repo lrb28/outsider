@@ -1,56 +1,46 @@
 "use client";
 
 import Link from "next/link";
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 
+import { AuraField } from "@/components/AuraField";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { CountUp } from "@/components/CountUp";
 import { DataStatus } from "@/components/DataStatus";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { Icon } from "@/components/Icon";
 import { Skeleton, SkeletonList } from "@/components/Skeleton";
 import { SwipeRow } from "@/components/SwipeRow";
 import { TradeDetailModal } from "@/components/TradeDetailModal";
+import { AuraCard, SectionHeader } from "@/components/ui";
 import { Watchlist } from "@/components/Watchlist";
-import { Wordmark } from "@/components/Wordmark";
 import { fetchCatalogue, fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, companyName, formatDate, investorPerson, pct, tradeSignal } from "@/lib/format";
+import { abbrevMoney, auraOf, companyName, formatDate, investorPerson, pct, tradeSignal } from "@/lib/format";
 import { getTxns, positionsFrom } from "@/lib/portfolio";
-import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, MatchResponse, MatchRow, TradesResponse } from "@/lib/types";
+import type { StatsResponse } from "@/lib/stats";
+import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, MatchResponse, MatchRow, PoliticianRow, PoliticiansResponse, TradesResponse } from "@/lib/types";
 
-/* ── Gateway hero card: floating logos on a soft gradient ─────────────────── */
+/* ── Floating logos for the entry cards ──────────────────────────────────── */
 const LOGO_SPOTS = [
-  { left: "14%", top: "32%", rot: -8, size: 58 },
-  { left: "50%", top: "9%", rot: 7, size: 66 },
-  { left: "46%", top: "50%", rot: -3, size: 54 },
+  { left: "0%", top: "14%", rot: -8, size: 56 },
+  { left: "34%", top: "0%", rot: 7, size: 64 },
+  { left: "30%", top: "46%", rot: -3, size: 50 },
 ];
 
-function GatewayCard({ href, title, subtitle, gradient, items }: { href: string; title: string; subtitle: string; gradient: string; items: CollectionItem[] }) {
+function FloatingLogos({ items }: { items: CollectionItem[] }) {
   return (
-    <Link href={href} className={`lcard lcard-hover press relative flex h-72 w-[300px] shrink-0 snap-start flex-col justify-end overflow-hidden p-5 ${gradient}`}>
-      <div className="absolute inset-x-0 top-0 h-44">
-        {items.slice(0, 3).map((it, i) => {
-          const s = LOGO_SPOTS[i];
-          return (
-            <div key={`${it.ticker ?? it.company}-${i}`} className="animate-floaty absolute drop-shadow-md" style={{ left: s.left, top: s.top, "--rot": `${s.rot}deg`, animationDelay: `${i * 0.7}s` } as CSSProperties}>
-              <CompanyLogo ticker={it.ticker} company={it.company} size={s.size} rounded="rounded-2xl" />
-            </div>
-          );
-        })}
-      </div>
-      <div className="relative">
-        <div className="flex items-center justify-between gap-2 font-display text-xl font-semibold leading-tight tracking-tight text-ink">
-          {title}
-          <span className="icon-ring h-8 w-8"><Icon name="chevronRight" className="h-4 w-4" /></span>
-        </div>
-        <p className="mt-1.5 text-sm leading-snug text-ink/65">{subtitle}</p>
-      </div>
-    </Link>
+    <div className="relative h-32 w-48">
+      {items.slice(0, 3).map((it, i) => {
+        const s = LOGO_SPOTS[i];
+        return (
+          <div key={`${it.ticker ?? it.company}-${i}`} className="animate-floaty absolute rounded-[16px] shadow-[0_6px_18px_rgb(0_0_0/0.14)]" style={{ left: s.left, top: s.top, "--rot": `${s.rot}deg`, animationDelay: `${i * 0.7}s` } as CSSProperties}>
+            <CompanyLogo ticker={it.ticker} company={it.company} size={s.size} rounded="rounded-[16px]" />
+          </div>
+        );
+      })}
+    </div>
   );
-}
-
-function GatewaySkeleton() {
-  return <div className="lcard flex h-72 w-[300px] shrink-0 flex-col justify-end gap-2 p-5"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-3 w-5/6" /></div>;
 }
 
 /* ── Trade card: who, what happened, which company ────────────────────────── */
@@ -61,50 +51,41 @@ function TradeCard({ row, onOpen }: { row: FeedRow; onOpen: () => void }) {
   const perf = row.pctSinceDisclosure;
   const tone = signal.tone === "bull" ? "text-bull" : signal.tone === "bear" ? "text-bear" : "text-ink";
   return (
-    <button onClick={onOpen} className="lcard lcard-hover press w-72 shrink-0 snap-start p-4 text-left">
+    <button onClick={onOpen} className="card lcard-hover press w-72 shrink-0 snap-start p-4 text-left">
       <div className="relative mb-3 h-12 w-16">
-        <Avatar name={row.entityName} size={46} />
-        <div className="absolute -bottom-1 left-8 rounded-lg shadow-[0_2px_10px_rgb(28_28_30/0.18)]">
-          <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-lg" />
+        <Avatar name={row.entityName} src={row.entityPhoto} kind={auraOf(row.entityType)} size={46} />
+        <div className="absolute -bottom-1 left-8 rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.16)]">
+          <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-[10px]" />
         </div>
       </div>
-      <div className="text-sm leading-snug">
+      <div className="text-[15px] leading-snug">
         <span className="font-semibold">{name}</span>
         <span className="text-subtle"> · </span>
         <span className={`font-medium ${tone}`}>{signal.text}</span>
         <span className="text-subtle"> · </span>
         <span className="font-semibold">{company}</span>
       </div>
-      <div className="mt-1.5 text-xs text-subtle">
+      <div className="mt-1.5 text-[13px] text-subtle">
         {row.sizeDisplay} · {formatDate(row.disclosedAt)}
-        {perf != null && <span className={perf >= 0 ? "text-bull" : "text-bear"}> · {pct(perf)} seit Meldung</span>}
+        {perf != null && <span className={perf >= 0 ? "text-bull" : "text-bear"}> · {perf >= 0 ? "▲" : "▼"} {pct(perf)} seit Meldung</span>}
       </div>
     </button>
   );
 }
 
-/* ── Section shell ────────────────────────────────────────────────────────── */
-function Section({ title, moreHref, moreLabel = "Alle", children }: { title: string; moreHref?: string; moreLabel?: string; children: ReactNode }) {
+function TradeCardSkeleton() {
   return (
-    <section className="fade-up space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-        {moreHref && (
-          <Link href={moreHref} className="inline-flex min-h-11 items-center gap-0.5 text-sm font-medium text-subtle hover:text-ink">
-            {moreLabel}
-            <Icon name="chevronRight" className="h-4 w-4" />
-          </Link>
-        )}
-      </div>
-      {children}
-    </section>
+    <div className="card w-72 shrink-0 space-y-3 p-4">
+      <Skeleton className="h-11 w-11 rounded-full" />
+      <Skeleton className="h-4 w-4/5" />
+      <Skeleton className="h-3 w-1/2" />
+    </div>
   );
 }
 
 /**
- * Ein einzelner 13F-Bericht oder eine Form-4-Serie erzeugt Dutzende Zeilen zum
- * selben Akteur bzw. zur selben Aktie. Deshalb je Akteur höchstens zwei und je
- * Aktie nur die jüngste Karte zeigen.
+ * A single row of cards per actor would be one fund's 13F over and over, so
+ * each actor appears at most twice and each stock once.
  */
 function varied(rows: FeedRow[], n = 8) {
   const entities = new Map<string, number>();
@@ -118,15 +99,42 @@ function varied(rows: FeedRow[], n = 8) {
     out.push(row);
     if (out.length >= n) break;
   }
-  // Lieber ein paar Wiederholungen als eine fast leere Reihe.
   return out.length >= 3 ? out : rows.slice(0, n);
+}
+
+/* ── The three auras: who discloses ───────────────────────────────────────── */
+function AuraTile({ href, kind, title, count, unit, faces }: { href: string; kind: "investor" | "insider" | "politician"; title: string; count: number | null; unit: string; faces: { name: string; src?: string | null }[] }) {
+  return (
+    <Link href={href} className="card lcard-hover press relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden p-4">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full blur-2xl" style={{ background: `rgb(var(--aura-${kind}) / 0.32)` }} />
+      <div className="relative flex items-center">
+        {faces.slice(0, 3).map((f, i) => (
+          <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.14)]">
+            <Avatar name={f.name} src={f.src} kind={kind} size={34} />
+          </div>
+        ))}
+        {faces.length === 0 && <Skeleton className="h-[34px] w-20 rounded-full" />}
+      </div>
+      <div className="relative">
+        <div className="num-lg">{count == null ? "–" : <CountUp value={count} />}</div>
+        <div className="mt-1 flex items-center gap-1 text-[14px] font-semibold">
+          <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: `rgb(var(--aura-${kind}))` }} />
+          {title}
+          <span className="font-normal text-subtle">{unit}</span>
+        </div>
+      </div>
+    </Link>
+  );
 }
 
 export default function HomePage() {
   const [discover, setDiscover] = useState<DiscoverData | null>(null);
   const [investors, setInvestors] = useState<InvestorRow[]>([]);
+  const [politicians, setPoliticians] = useState<PoliticianRow[]>([]);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [inst, setInst] = useState<FeedRow[] | null>(null);
   const [insiders, setInsiders] = useState<FeedRow[] | null>(null);
+  const [pols, setPols] = useState<FeedRow[] | null>(null);
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [depotCount, setDepotCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
@@ -135,115 +143,137 @@ export default function HomePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const fail = (key: string) => { if (!controller.signal.aborted) setErrors(e => [...e, key]); };
+    const live = () => !controller.signal.aborted;
+    const fail = (key: string) => { if (live()) setErrors((e) => [...e, key]); };
     setErrors([]);
-    fetchCatalogue<DiscoverData>("/api/discover").then(d => { if (!controller.signal.aborted) setDiscover(d); }).catch(() => fail("discover"));
-    fetchCatalogue<InvestorsResponse>("/api/investors").then(d => { if (!controller.signal.aborted) setInvestors(d.rows); }).catch(() => fail("investors"));
-    fetchJson<TradesResponse>("/api/trades?type=institution&limit=120", { signal: controller.signal }).then(d => setInst(d.rows)).catch(() => fail("inst"));
-    fetchJson<TradesResponse>("/api/trades?type=corporate_insider&limit=60", { signal: controller.signal }).then(d => setInsiders(d.rows)).catch(() => fail("insiders"));
-    const holdings = positionsFrom(getTxns()).filter(p => p.shares > 0);
+    fetchCatalogue<DiscoverData>("/api/discover").then((d) => live() && setDiscover(d)).catch(() => fail("discover"));
+    fetchCatalogue<InvestorsResponse>("/api/investors").then((d) => live() && setInvestors(d.rows)).catch(() => fail("investors"));
+    fetchCatalogue<PoliticiansResponse>("/api/politicians").then((d) => live() && setPoliticians(d.rows)).catch(() => {});
+    fetchCatalogue<StatsResponse>("/api/stats").then((d) => live() && setStats(d)).catch(() => {});
+    fetchJson<TradesResponse>("/api/trades?type=institution&limit=120", { signal: controller.signal }).then((d) => setInst(d.rows)).catch(() => fail("inst"));
+    fetchJson<TradesResponse>("/api/trades?type=corporate_insider&limit=60", { signal: controller.signal }).then((d) => setInsiders(d.rows)).catch(() => fail("insiders"));
+    fetchJson<TradesResponse>("/api/trades?type=politician&limit=60", { signal: controller.signal }).then((d) => setPols(d.rows)).catch(() => fail("pols"));
+    const holdings = positionsFrom(getTxns()).filter((p) => p.shares > 0);
     setDepotCount(holdings.length);
     if (holdings.length) {
-      const tickers = holdings.map(p => p.ticker).filter(t => /^[A-Z0-9.\-]{1,12}$/.test(t)).slice(0, 200).join(",");
-      fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(tickers)}`, { signal: controller.signal }).then(d => setMatches(d.rows.slice(0, 5))).catch(() => {});
+      const tickers = holdings.map((p) => p.ticker).filter((t) => /^[A-Z0-9.\-]{1,12}$/.test(t)).slice(0, 200).join(",");
+      fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(tickers)}`, { signal: controller.signal }).then((d) => setMatches(d.rows.slice(0, 5))).catch(() => {});
     }
     return () => controller.abort();
   }, [attempt]);
-  const retry = () => setAttempt(n => n + 1);
+  const retry = () => setAttempt((n) => n + 1);
 
-  const spotlight = investors.filter(i => i.person).slice(0, 10);
+  const spotlight = investors.filter((i) => i.person).slice(0, 12);
+  const insiderFaces = (insiders ?? []).slice(0, 12).filter((r, i, all) => all.findIndex((x) => x.entityName === r.entityName) === i).map((r) => ({ name: r.entityName }));
   const gateways = [
-    { href: "/discover/boughtq", title: "Häufigste Aufstockungen", subtitle: "Diese Aktien stocken die verfolgten Investoren im letzten 13F-Quartal am häufigsten auf.", gradient: "bg-gradient-to-b from-sky-200 via-sky-100 to-blue-50", items: discover?.mostBoughtQ ?? [] },
-    { href: "/discover/insiderbuys", title: "Insider greifen zu", subtitle: "Bestätigte Form-4-Käufe von Führungskräften der letzten 90 Tage.", gradient: "bg-gradient-to-b from-emerald-200 via-emerald-100 to-teal-50", items: discover?.insiderBuys ?? [] },
-    { href: "/discover/conviction", title: "Die mutigsten Wetten", subtitle: "Aktien mit dem höchsten Anteil am gemeldeten Depot eines Investors.", gradient: "bg-gradient-to-b from-zinc-300 via-zinc-100 to-white", items: discover?.highestConviction ?? [] },
-    { href: "/discover/biggest", title: "Die größten Positionen", subtitle: "Die wertvollsten gemeldeten Einzelpositionen des smarten Geldes.", gradient: "bg-gradient-to-b from-amber-200 via-orange-100 to-yellow-50", items: discover?.biggest ?? [] },
+    { href: "/discover/boughtq", aura: "investor" as const, title: "Häufigste Aufstockungen", blurb: "Diese Aktien stocken die verfolgten Investoren im letzten Quartal am häufigsten auf.", items: discover?.mostBoughtQ ?? [] },
+    { href: "/discover/insiderbuys", aura: "insider" as const, title: "Insider greifen zu", blurb: "Vorstände und Direktoren, die mit eigenem Geld Aktien ihrer Firma kaufen.", items: discover?.insiderBuys ?? [] },
+    { href: "/discover/conviction", aura: "neutral" as const, title: "Die mutigsten Wetten", blurb: "Aktien mit dem höchsten Anteil am gemeldeten Depot eines Investors.", items: discover?.highestConviction ?? [] },
+    { href: "/discover/biggest", aura: "neutral" as const, title: "Die größten Positionen", blurb: "Die wertvollsten gemeldeten Einzelpositionen des großen Geldes.", items: discover?.biggest ?? [] },
   ];
 
   return (
-    <div className="space-y-9">
-      {/* Wordmark hero: clear liquid glass over soft colour fields. */}
-      <section className="fade-up relative isolate">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
-          <div className="absolute -left-4 -top-2 h-24 w-[38%] rounded-full bg-sky-400/55 blur-2xl" />
-          <div className="absolute left-[30%] top-0 h-20 w-[36%] rounded-full bg-orange-300/55 blur-2xl" />
-          <div className="absolute right-0 -top-2 h-24 w-[36%] rounded-full bg-emerald-300/55 blur-2xl" />
-        </div>
-        <h1 className="sr-only">Outsider – öffentliche Meldungen von Investoren, Insidern und US-Politikern</h1>
-        <Wordmark fluid variant="clear" />
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-          <p className="max-w-md font-mono text-[11px] uppercase leading-relaxed tracking-[0.16em] text-ink/70">Was Investoren, Insider und US-Politiker offenlegen. Mit Quelle, zum Nachprüfen.</p>
-          <Link href="/feed" className="btn-glass min-h-10 font-mono !text-[11px] uppercase tracking-[0.14em]">Alle Meldungen <Icon name="arrowRight" className="h-4 w-4" /></Link>
+    <div className="space-y-10">
+      {/* Hero: the aura behind plain, large type. */}
+      <section className="fade-up relative isolate -mx-4 overflow-hidden px-4 pb-2 pt-6 sm:pt-10">
+        <AuraField className="pointer-events-none absolute -right-24 -top-24 -z-10 h-[30rem] w-[44rem] max-w-none [mask-image:radial-gradient(closest-side,#000_45%,transparent)] sm:-right-10" />
+        <p className="eyebrow">Öffentliche Meldungen · live aus den Originalquellen</p>
+        <h1 className="mt-3 max-w-2xl font-display text-[44px] font-bold leading-[0.98] tracking-[-0.045em] sm:text-[64px]">
+          Sieh, was die Mächtigen kaufen.
+        </h1>
+        <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-subtle">
+          Investoren, Unternehmensinsider und US-Abgeordnete müssen ihre Trades offenlegen. ĀURA macht daraus einen klaren Überblick – jede Zeile mit Quelle.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-2.5">
+          <Link href="/feed" className="btn-primary">Meldungen ansehen <Icon name="arrowRight" className="h-4 w-4" /></Link>
+          <Link href="/discover" className="btn-capsule">Entdecken</Link>
         </div>
       </section>
 
-      {/* Gateway cards */}
-      <div>
+      {/* The three auras */}
+      <section className="fade-up grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Wer offenlegt">
+        <AuraTile href="/discover?tab=investors" kind="investor" title="Investoren" unit="13F-Depots" count={stats?.institutions ?? (investors.length || null)} faces={spotlight.map((i) => ({ name: i.person ?? i.fund }))} />
+        <AuraTile href="/feed?type=corporate_insider" kind="insider" title="Insider" unit="mit Form 4" count={stats?.insiders ?? null} faces={insiderFaces} />
+        <AuraTile href="/discover?tab=politicians" kind="politician" title="Politiker" unit="im Repräsentantenhaus" count={stats?.politicians ?? (politicians.length || null)} faces={politicians.slice(0, 3).map((p) => ({ name: p.name, src: p.photo }))} />
+      </section>
+
+      {/* Entry cards */}
+      <section className="space-y-3">
+        <SectionHeader title="Einstiege" href="/discover" />
         {errors.includes("discover") ? <ErrorRetry onRetry={retry} /> : (
-          <SwipeRow className="fade-up gap-4">
-            {discover ? gateways.map(g => <GatewayCard key={g.href} {...g} />) : [0, 1, 2].map(i => <GatewaySkeleton key={i} />)}
+          <SwipeRow className="gap-4">
+            {discover
+              ? gateways.map((g) => <AuraCard key={g.href} href={g.href} aura={g.aura} title={g.title} blurb={g.blurb} visual={<FloatingLogos items={g.items} />} className="h-72 w-[290px] shrink-0 snap-start" />)
+              : [0, 1, 2].map((i) => <div key={i} className="card flex h-72 w-[290px] shrink-0 flex-col justify-end gap-2 p-5"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-3 w-5/6" /></div>)}
           </SwipeRow>
         )}
-      </div>
+      </section>
 
       <Watchlist />
 
-      {/* Portfolio matches */}
       {depotCount > 0 && matches.length > 0 && (
-        <Section title="Portfolio-Matches" moreHref="/me" moreLabel="Mein Depot">
+        <section className="space-y-3">
+          <SectionHeader title="Wer hält, was du hältst" href="/me" more="Mein Depot" />
           <SwipeRow className="gap-4">
-            {matches.map(m => (
-              <Link key={m.slug} href={`/investor/${m.slug}`} className="lcard lcard-hover press flex w-56 shrink-0 snap-start flex-col items-center p-5 text-center">
+            {matches.map((m) => (
+              <Link key={m.slug} href={`/investor/${m.slug}`} className="card lcard-hover press flex w-56 shrink-0 snap-start flex-col items-center p-5 text-center">
                 <Avatar name={m.person ?? m.fund} size={64} />
-                <div className="mt-2 w-full truncate text-sm font-semibold">{m.person ?? m.fund}</div>
-                <div className="mt-1 text-xl font-bold text-ink">
-                  {m.sharedCount} <span className="text-xs font-medium text-subtle">von {depotCount} deiner Werte</span>
+                <div className="mt-2 w-full truncate text-[15px] font-semibold">{m.person ?? m.fund}</div>
+                <div className="mt-1 num-lg">
+                  {m.sharedCount} <span className="font-sans text-xs font-medium text-subtle">von {depotCount} deiner Werte</span>
                 </div>
-                <div className="mt-2 flex items-center">
+                <div className="mt-3 flex items-center">
                   {m.sharedTickers.slice(0, 3).map((t, i) => (
-                    <div key={t} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }} className="rounded-lg shadow-[0_2px_10px_rgb(28_28_30/0.18)]">
-                      <CompanyLogo ticker={t} company={t} size={26} rounded="rounded-lg" />
+                    <div key={t} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }} className="rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.14)]">
+                      <CompanyLogo ticker={t} company={t} size={26} rounded="rounded-[10px]" />
                     </div>
                   ))}
                 </div>
               </Link>
             ))}
           </SwipeRow>
-        </Section>
+        </section>
       )}
 
       {/* Spotlight */}
-      <Section title="Im Rampenlicht" moreHref="/discover?tab=investors">
+      <section className="space-y-3">
+        <SectionHeader title="Im Rampenlicht" href="/discover?tab=investors" />
         {errors.includes("investors") ? <ErrorRetry onRetry={retry} /> : spotlight.length === 0 ? <SkeletonList n={2} /> : (
           <SwipeRow className="gap-4">
-            {spotlight.map(iv => (
-              <Link key={iv.slug} href={`/investor/${iv.slug}`} className="press w-40 shrink-0 snap-start">
-                <div className="lcard lcard-hover flex h-40 items-center justify-center !bg-gradient-to-b from-sky-200 via-sky-100 to-blue-50">
-                  <Avatar name={iv.person ?? iv.fund} size={92} />
+            {spotlight.map((iv) => (
+              <Link key={iv.slug} href={`/investor/${iv.slug}`} className="press w-36 shrink-0 snap-start">
+                <div className="card lcard-hover relative flex h-40 items-center justify-center overflow-hidden">
+                  <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-2/3" style={{ background: "radial-gradient(70% 90% at 50% 100%, rgb(var(--aura-investor) / 0.22), transparent 70%)" }} />
+                  <Avatar name={iv.person ?? iv.fund} size={92} className="relative" />
                 </div>
                 <div className="mt-2 px-1">
-                  <div className="truncate text-sm font-semibold">{iv.person ?? iv.fund}</div>
-                  <div className="text-xs text-subtle">{abbrevMoney(iv.value)} · 13F {formatDate(iv.asOf)}</div>
+                  <div className="truncate text-[15px] font-semibold">{iv.person ?? iv.fund}</div>
+                  <div className="text-[13px] text-subtle">{abbrevMoney(iv.value)} · {formatDate(iv.asOf)}</div>
                 </div>
               </Link>
             ))}
           </SwipeRow>
         )}
-      </Section>
+      </section>
 
       {/* Recent disclosures */}
       {[
-        { key: "inst", title: "Letzte Investoren-Meldungen", type: "institution", rows: inst, empty: "Noch keine Investoren-Meldungen." },
-        { key: "insiders", title: "Letzte Insider-Meldungen", type: "corporate_insider", rows: insiders, empty: "Noch keine Insider-Meldungen." },
-      ].map(section => (
-        <Section key={section.key} title={section.title} moreHref={`/feed?type=${section.type}`} moreLabel="Zum Feed">
-          {errors.includes(section.key) ? <ErrorRetry onRetry={retry} /> : section.rows === null ? <SkeletonList n={3} /> : section.rows.length === 0 ? (
-            <div className="lcard p-8 text-center text-sm text-subtle">{section.empty}</div>
+        { key: "pols", title: "Neu von Abgeordneten", type: "politician", rows: pols, empty: "Noch keine Meldungen aus dem Repräsentantenhaus." },
+        { key: "insiders", title: "Neu von Insidern", type: "corporate_insider", rows: insiders, empty: "Noch keine Insider-Meldungen." },
+        { key: "inst", title: "Neu von Investoren", type: "institution", rows: inst, empty: "Noch keine Investoren-Meldungen." },
+      ].map((section) => (
+        <section key={section.key} className="space-y-3">
+          <SectionHeader title={section.title} href={`/feed?type=${section.type}`} more="Alle" />
+          {errors.includes(section.key) ? <ErrorRetry onRetry={retry} /> : section.rows === null ? (
+            <SwipeRow className="gap-4">{[0, 1, 2].map((i) => <TradeCardSkeleton key={i} />)}</SwipeRow>
+          ) : section.rows.length === 0 ? (
+            <div className="card p-8 text-center text-[15px] text-subtle">{section.empty}</div>
           ) : (
             <SwipeRow className="gap-4">
-              {varied(section.rows).map(row => <TradeCard key={row.id} row={row} onOpen={() => setSelected(row)} />)}
+              {varied(section.rows).map((row) => <TradeCard key={row.id} row={row} onOpen={() => setSelected(row)} />)}
             </SwipeRow>
           )}
-        </Section>
+        </section>
       ))}
 
       <DataStatus />

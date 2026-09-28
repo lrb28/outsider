@@ -36,7 +36,7 @@ export default function PoliticiansPage() {
       {loading && <SkeletonList n={6} />}
 
       {error && <ErrorRetry onRetry={() => setRetry(r => r+1)}/>}
-      <p className="text-sm text-amber-800">Historische Quelle mit erheblichen Datenlücken. <Link href="/status" className="underline">Abdeckung prüfen</Link></p>
+      <p className="text-sm text-warn">Historische Quelle mit erheblichen Datenlücken. <Link href="/status" className="underline">Abdeckung prüfen</Link></p>
       {!loading && !error && (
         <div className="overflow-hidden rounded-2xl bg-card shadow-card">
           {rows.map((p) => (

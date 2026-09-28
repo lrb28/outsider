@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { CountUp } from "@/components/Donut";
+import { CAT, OTHER } from "@/lib/palette";
 import { ChartSeries, DepotChart, ReturnBars } from "@/components/DepotChart";
 import { DivEntry, DividendChart, DividendSplit } from "@/components/DividendChart";
 import { fetchMatches } from "@/lib/fetchMatches";
@@ -156,10 +157,9 @@ const PERF_VIEWS: readonly (readonly [PerfView, string])[] = [
   ["kapital", "Kapital"],
 ];
 
-const POS_COLORS = [
-  "#1c1c1e", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
-  "#8b5cf6", "#14b8a6", "#ef4444", "#65a30d", "#0891b2",
-];
+// Fixed categorical order (lib/palette); positions past the eighth share the
+// "Übrige" grey instead of reusing a hue.
+const posColor = (i: number) => (i < CAT.length ? CAT[i] : OTHER);
 
 // ── Hilfen ──────────────────────────────────────────────────────────────────
 
@@ -645,7 +645,7 @@ export default function MePage() {
           vol: Math.sqrt(v) * Math.sqrt(252),
           ret: r.unrealPct,
           weight: total > 0 ? (r.value ?? 0) / total : 0,
-          color: POS_COLORS[i % POS_COLORS.length],
+          color: posColor(i),
         } as RiskPoint;
       })
       .filter((p): p is RiskPoint => p !== null);
@@ -823,7 +823,7 @@ export default function MePage() {
         {
           key: "dd",
           label: "Rückgang vom Hoch",
-          color: "#e11d48",
+          color: "rgb(var(--bear-fill))",
           fill: true,
           points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
         },
@@ -834,7 +834,7 @@ export default function MePage() {
         {
           key: "twr",
           label: "Dein Depot",
-          color: "#1c1c1e",
+          color: "rgb(var(--ink))",
           fill: true,
           points: twrCurve(seriesR),
         },
@@ -843,7 +843,7 @@ export default function MePage() {
         out.push({
           key: "bench",
           label: bench.label,
-          color: "#64748b",
+          color: "rgb(var(--subtle))",
           dashed: true,
           points: returnCurve(benchR),
         });
@@ -854,14 +854,14 @@ export default function MePage() {
       {
         key: "value",
         label: "Depotwert",
-        color: "#1c1c1e",
+        color: "rgb(var(--ink))",
         fill: true,
         points: seriesR.map((p) => ({ date: p.date, value: p.value })),
       },
       {
         key: "invested",
         label: hasCashFlows ? "Netto eingezahlt" : "In Wertpapieren gebunden",
-        color: "#94a3b8",
+        color: "rgb(var(--n-400))",
         step: true,
         points: seriesR.map((p) => ({
           date: p.date,
@@ -873,7 +873,7 @@ export default function MePage() {
       out.push({
         key: "bench",
         label: `${bench.label} (gleicher Einsatz)`,
-        color: "#0ea5e9",
+        color: "rgb(var(--n-400))",
         dashed: true,
         points: indexTo(benchR, seriesR[0].value).map((b) => ({ date: b.date, value: b.close })),
       });
@@ -892,14 +892,14 @@ export default function MePage() {
     return [...m.entries()].map(([label, value]) => ({
       label,
       value,
-      color: colors[label] ?? "#cbd5e1",
+      color: colors[label] ?? "rgb(var(--cat-other))",
     }));
   };
 
   const posSegs: Segment[] = rows
     .filter((r) => r.value !== null)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-    .map((r, i) => ({ label: r.company, value: r.value as number, color: POS_COLORS[i % POS_COLORS.length] }));
+    .map((r, i) => ({ label: r.company, value: r.value as number, color: posColor(i) }));
 
   const weights = posSegs.map((s) => s.value / (total || 1));
 
@@ -953,15 +953,15 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
-      {!empty && <div className="rounded-2xl bg-zinc-100/80 p-4 text-sm leading-6 text-zinc-800 ring-1 ring-black/5">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
+      {!empty && <div className="rounded-2xl bg-zinc-100/80 p-4 text-sm leading-6 text-zinc-800">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
       {/* Kopf */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
             {liveCount > 0 && (
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
-                <span className="animate-live h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="flex items-center gap-1.5 rounded-full bg-bull/10 px-2.5 py-1 text-xs font-medium text-bull ring-1 ring-bull/20">
+                <span className="animate-live h-1.5 w-1.5 rounded-full bg-bull-fill" />
                 Kurse automatisch aktualisiert
               </span>
             )}
@@ -1011,7 +1011,7 @@ export default function MePage() {
       />
 
       {msg && (
-        <div className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-ink ring-1 ring-black/5">
+        <div className="rounded-xl bg-zinc-100 px-4 py-2.5 text-sm font-medium text-ink">
           {msg}
         </div>
       )}
@@ -1077,8 +1077,8 @@ export default function MePage() {
                 <div
                   className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
                     perfPortfolio >= perfBench
-                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
-                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                      ? "bg-bull/10 text-bull ring-1 ring-bull/20"
+                      : "bg-bear/10 text-bear ring-1 ring-bear/20"
                   }`}
                 >
                   {perfPortfolio >= perfBench
@@ -1104,7 +1104,7 @@ export default function MePage() {
               {noPrice > 0 && (
                 <button
                   onClick={() => setTab("positions")}
-                  className="press-sm w-full rounded-xl bg-slate-50 px-4 py-3 text-left text-sm text-subtle ring-1 ring-black/5 hover:bg-slate-100"
+                  className="press-sm w-full rounded-xl bg-slate-50 px-4 py-3 text-left text-sm text-subtle hover:bg-slate-100"
                 >
                   <span className="font-semibold text-ink">
                     {noPrice} {noPrice === 1 ? "Position ohne Kurs" : "Positionen ohne Kurs"}
@@ -1297,7 +1297,7 @@ export default function MePage() {
                         {
                           key: "dd2",
                           label: "Rückgang",
-                          color: "#e11d48",
+                          color: "rgb(var(--bear-fill))",
                           fill: true,
                           points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
                         },
@@ -1869,7 +1869,7 @@ function BenchmarkTable({
               <div className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className={`absolute inset-y-0 rounded-full ${
-                    isMe ? "bg-brand" : r >= 0 ? "bg-emerald-400" : "bg-rose-400"
+                    isMe ? "bg-brand" : r >= 0 ? "bg-bull-fill" : "bg-bear-fill"
                   }`}
                   style={{ left: "0%", width: `${(Math.abs(r) / max) * 100}%` }}
                 />
@@ -2136,17 +2136,17 @@ function ActivityTab({
 
   const label = KIND_LABEL;
   const badge: Record<TxnKind, string> = {
-    buy: "bg-emerald-50 text-emerald-700",
-    sell: "bg-rose-50 text-rose-700",
-    dividend: "bg-sky-50 text-sky-700",
+    buy: "bg-bull/10 text-bull",
+    sell: "bg-bear/10 text-bear",
+    dividend: "bg-investor/10 text-investor",
     deposit: "bg-slate-100 text-slate-600",
     withdrawal: "bg-slate-100 text-slate-600",
-    interest: "bg-amber-50 text-amber-700",
-    split: "bg-sky-50 text-sky-800",
+    interest: "bg-warn/10 text-warn",
+    split: "bg-investor/10 text-investor",
   };
 
   const inputCls =
-    "rounded-full border border-hair bg-white px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-zinc-200";
+    "rounded-full border border-hair bg-card px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-zinc-200";
 
   return (
     <div className="space-y-4">
@@ -2475,7 +2475,7 @@ function UnpricedPanel({
                   onChange={(e) => setPriceDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && saveManual(r)}
                   placeholder={`Kurs je Stück (${currencySymbol().trim()})`}
-                  className="w-40 rounded-full border border-hair bg-white px-3 py-1 text-sm focus:border-brand"
+                  className="w-40 rounded-full border border-hair bg-card px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
                   onClick={() => saveManual(r)}
@@ -2490,7 +2490,7 @@ function UnpricedPanel({
                   value={draft[r.ticker] ?? ""}
                   onChange={(e) => setDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
                   placeholder="Kürzel, z. B. AAPL"
-                  className="w-36 rounded-full border border-hair bg-white px-3 py-1 text-sm focus:border-brand"
+                  className="w-36 rounded-full border border-hair bg-card px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
                   onClick={() => {
@@ -2550,7 +2550,7 @@ function BigStat({
 
 function AssumedHint({ n, onGo }: { n: number; onGo: () => void }) {
   return (
-    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-subtle ring-1 ring-black/5">
+    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-subtle">
       <span className="font-semibold">
         {n} {n === 1 ? "Position hat" : "Positionen haben"} kein Kaufdatum.
       </span>{" "}
@@ -2568,7 +2568,7 @@ function Check({ ok, text }: { ok: boolean; text: string }) {
     <div className="flex items-start gap-2">
       <span
         className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
-          ok ? "bg-emerald-500" : "bg-slate-300"
+          ok ? "bg-bull-fill" : "bg-slate-300"
         }`}
       >
         {ok ? "✓" : "·"}

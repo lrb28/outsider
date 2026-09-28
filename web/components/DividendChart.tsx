@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Donut } from "@/components/Donut";
+import { CAT, OTHER } from "@/lib/palette";
 import { cAbbrev, cMoney } from "@/lib/money";
 
 export interface DivEntry {
@@ -12,11 +13,8 @@ export interface DivEntry {
   amount: number;
 }
 
-const COLORS = [
-  "#1c1c1e", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
-  "#8b5cf6", "#14b8a6", "#ef4444", "#65a30d", "#0891b2",
-  "#a16207", "#be123c",
-];
+// Fixed categorical order; payers beyond the eighth share the "Übrige" grey.
+const colorAt = (i: number) => (i < CAT.length ? CAT[i] : OTHER);
 
 const MONTH_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -51,7 +49,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
       .map(([ticker, v]) => ({ ticker, ...v }))
       .sort((a, b) => b.amount - a.amount);
     const map = new Map<string, string>();
-    ranked.forEach((r, i) => map.set(r.ticker, COLORS[i % COLORS.length]));
+    ranked.forEach((r, i) => map.set(r.ticker, colorAt(i)));
     return { colorOf: map, perTicker: ranked };
   }, [entries]);
 
@@ -117,7 +115,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
               key={y}
               onClick={() => setYear(y)}
               className={`press-sm shrink-0 rounded-full px-3 py-1 ${
-                year === y ? "bg-white text-ink shadow-card" : "text-subtle hover:text-ink"
+                year === y ? "bg-card text-ink shadow-card" : "text-subtle hover:text-ink"
               }`}
             >
               {y === "alle" ? "Alle Jahre" : y}
@@ -191,7 +189,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
                       key={p.ticker + i}
                       style={{
                         height: `${(p.amount / t) * 100}%`,
-                        backgroundColor: colorOf.get(p.ticker) ?? "#cbd5e1",
+                        backgroundColor: colorOf.get(p.ticker) ?? "rgb(var(--cat-other))",
                       }}
                     />
                   ))
@@ -226,7 +224,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
               <div key={d.ticker + i} className="flex items-center gap-2 text-xs">
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: colorOf.get(d.ticker) ?? "#cbd5e1" }}
+                  style={{ backgroundColor: colorOf.get(d.ticker) ?? "rgb(var(--cat-other))" }}
                 />
                 <span className="min-w-0 flex-1 truncate">{d.name}</span>
                 <span className="font-semibold tabular-nums">{cMoney(d.amount)}</span>
@@ -248,13 +246,13 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
               key={p.ticker}
               onClick={() => setFocusTicker(on ? null : p.ticker)}
               className={`press-sm flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors ${
-                on ? "bg-ink text-white" : "bg-white/70 text-subtle ring-1 ring-black/5 hover:text-ink"
+                on ? "bg-ink text-white" : "bg-card text-subtle hover:text-ink"
               }`}
               title={`${p.name}: ${cMoney(p.amount)}`}
             >
               <span
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: colorOf.get(p.ticker) ?? "#cbd5e1" }}
+                style={{ backgroundColor: colorOf.get(p.ticker) ?? "rgb(var(--cat-other))" }}
               />
               <span className="max-w-[9rem] truncate">{p.name}</span>
               <span className="tabular-nums opacity-70">{cAbbrev(p.amount)}</span>
@@ -283,10 +281,10 @@ export function DividendSplit({ entries }: { entries: DivEntry[] }) {
       const cur = m.get(e.ticker);
       m.set(e.ticker, { name: e.name, amount: (cur?.amount ?? 0) + e.amount });
     }
-    return [...m.values()]
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10)
-      .map((v, i) => ({ label: v.name, value: v.amount, color: COLORS[i % COLORS.length] }));
+    const ranked = [...m.values()].sort((a, b) => b.amount - a.amount);
+    const top = ranked.slice(0, 8).map((v, i) => ({ label: v.name, value: v.amount, color: colorAt(i) }));
+    const tail = ranked.slice(8).reduce((a, v) => a + v.amount, 0);
+    return tail > 0 ? [...top, { label: `Übrige (${ranked.length - 8})`, value: tail, color: OTHER }] : top;
   }, [entries]);
 
   const total = segs.reduce((a, s) => a + s.value, 0);

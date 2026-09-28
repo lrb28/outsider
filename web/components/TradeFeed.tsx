@@ -53,7 +53,7 @@ export function TradeFeed({
     ? "bg-slate-900/60 ring-1 ring-white/10"
     : "lcard";
   const headBorder = dark ? "border-white/10 text-slate-400" : "border-hair text-subtle";
-  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-black/5 hover:bg-white/70";
+  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-black/5 hover:bg-card";
   const nameCls = dark ? "text-slate-100" : "";
   const subCls = dark ? "text-slate-400" : "text-subtle";
   const emptyCls = dark ? "text-slate-400" : "text-subtle";
@@ -114,9 +114,9 @@ export function TradeFeed({
             const sig = tradeSignal(r);
             const badge =
               sig.tone === "bull"
-                ? "bg-emerald-50 text-bull"
+                ? "bg-bull/10 text-bull"
                 : sig.tone === "bear"
-                ? "bg-rose-50 text-bear"
+                ? "bg-bear/10 text-bear"
                 : dark
                 ? "bg-white/10 text-slate-300"
                 : "bg-zinc-100 text-zinc-700";
@@ -136,7 +136,7 @@ export function TradeFeed({
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
                         <span className="truncate">{r.entityName}</span>
-                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-amber-500 [&_path]:fill-current" aria-label="Hervorgehoben" />}
+                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
                       </div>
                       <div className={`text-xs ${subCls}`}>{TYP[r.entityType]}</div>
                     </div>
