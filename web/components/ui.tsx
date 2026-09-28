@@ -96,7 +96,7 @@ export function PageTitle({ title, subtitle, children }: { title: string; subtit
 export function SectionHeader({ title, href, more = "Alle", children }: { title: string; href?: string; more?: string; children?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">{title}</h2>
+      <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">{title}</h2>
       {children}
       {href && (
         <Link href={href} className="inline-flex min-h-11 items-center gap-0.5 text-[15px] font-medium text-subtle hover:text-ink">
@@ -186,7 +186,7 @@ export function AuraCard({
       <span aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: glow }} />
       <div className="relative">{visual}</div>
       <div className="relative mt-6">
-        <div className="flex items-center gap-1 font-display text-[19px] font-bold tracking-[-0.02em]">
+        <div className="flex items-center gap-1 font-display text-[19px] font-bold tracking-[-0.01em]">
           {title} <Icon name="chevronRight" className="h-4 w-4 text-subtle" />
         </div>
         <p className="mt-1 text-[14px] leading-snug text-subtle">{blurb}</p>
@@ -218,7 +218,7 @@ export function StatRow({ items }: { items: { label: string; value: ReactNode; c
     <div className={`card grid ${cols} overflow-hidden`}>
       {items.map((s, i) => (
         <div key={s.label} className={`min-w-0 px-3 py-3.5 sm:px-5 sm:py-4 ${i > 0 ? "border-l border-hair" : ""} ${items.length === 4 && i === 2 ? "max-sm:border-l-0 max-sm:border-t" : ""} ${items.length === 4 && i === 3 ? "max-sm:border-t" : ""}`}>
-          <div className={`truncate font-display text-[19px] font-bold leading-tight tracking-[-0.02em] tabular-nums sm:text-[24px] ${s.cls ?? ""}`}>{s.value}</div>
+          <div className={`truncate font-display text-[19px] font-bold leading-tight tracking-[-0.01em] tabular-nums sm:text-[24px] ${s.cls ?? ""}`}>{s.value}</div>
           <div className="mt-1 truncate text-[12px] text-subtle sm:text-[13px]">{s.label}</div>
         </div>
       ))}

@@ -21,7 +21,7 @@ export function AllocationBar({ holdings, title = "Verteilung" }: { holdings: Ho
 
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">{title}</h2>
+      <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">{title}</h2>
       <div className="card p-4 sm:p-5">
         <div className="flex h-3.5 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={segs.map((s) => `${s.label} ${weightPct(s.weight)}`).join(", ")}>
           {segs.map((s, i) => (

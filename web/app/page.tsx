@@ -178,7 +178,7 @@ export default function HomePage() {
       <section className="fade-up relative isolate -mx-4 px-4 pb-2 pt-6 sm:pt-10">
         <AuraField focus={[0.85, 1.25, 1]} className="pointer-events-none absolute -right-40 -top-28 -z-10 h-[34rem] w-[48rem] max-w-none [mask-image:radial-gradient(closest-side,#000_35%,transparent)] sm:-right-16" />
         <p className="eyebrow">Live aus den Originalquellen</p>
-        <h1 className="mt-3 max-w-2xl font-display text-[44px] font-bold leading-[0.98] tracking-[-0.045em] sm:text-[64px]">
+        <h1 className="mt-3 max-w-2xl font-display text-[clamp(34px,11vw,44px)] font-bold leading-[0.98] tracking-[-0.025em] sm:text-[64px]">
           Sieh, was die Mächtigen kaufen.
         </h1>
         <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-subtle">

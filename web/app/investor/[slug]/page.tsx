@@ -100,7 +100,7 @@ export default function InvestorPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Positionen</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Positionen</h2>
           <SegmentedControl label="Sortierung" size="sm" options={[["value", "Wert"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
         </div>
 
@@ -147,7 +147,7 @@ export default function InvestorPage() {
 
       {moveTotal > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Bewegungen im Quartal</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Bewegungen im Quartal</h2>
           <div className="card flex flex-col items-center gap-6 p-5 sm:flex-row">
             <Donut
               segments={moves}
@@ -171,7 +171,7 @@ export default function InvestorPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letzte Meldungen</h2>
         <TradeFeed
           rows={inv.trades}
           showActor={false}

@@ -162,7 +162,7 @@ export default function StockPage() {
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-[14rem] flex-1">
-              <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Aktivität</h2>
+              <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Aktivität</h2>
               {/* Hinweis, weil diese Summe größer sein darf als „Investoren mit
                   Bestand“: wer komplett verkauft hat, taucht hier noch auf. */}
               <p className="text-xs text-subtle">
@@ -210,7 +210,7 @@ export default function StockPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Wer hält diese Aktie</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Wer hält diese Aktie</h2>
         <div className="card overflow-hidden">
           {stock.holders.map((h) => (
             <Link
@@ -241,7 +241,7 @@ export default function StockPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letzte Meldungen</h2>
         <TradeFeed rows={stock.trades} empty="Keine gemeldeten Trades für diese Aktie." />
       </section>
     </div>

@@ -90,7 +90,7 @@ export default function PoliticianPage() {
 
       {pol.trades.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Handelsaktivität</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Handelsaktivität</h2>
           <div className="card p-4 sm:p-5">
             <ActivityBars rows={pol.trades} />
           </div>
@@ -99,7 +99,7 @@ export default function PoliticianPage() {
 
       {summary.top.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Meistgehandelt</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Meistgehandelt</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {summary.top.map((t) => (
               <Link key={t.ticker} href={`/stock/${encodeURIComponent(t.ticker)}`} className="card lcard-hover press flex items-center gap-3 p-3">
@@ -115,7 +115,7 @@ export default function PoliticianPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Meldungen</h2>
         <TradeFeed
           rows={pol.trades}
           showActor={false}

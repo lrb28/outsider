@@ -48,8 +48,8 @@ const config: Config = {
         float: "var(--shadow-float)",
       },
       fontFamily: {
-        sans: ["-apple-system", "BlinkMacSystemFont", '"SF Pro Text"', '"Inter Tight"', '"Segoe UI"', "Roboto", "Helvetica", "Arial", "sans-serif"],
-        display: ['"Inter Tight"', "-apple-system", "BlinkMacSystemFont", '"SF Pro Display"', "system-ui", "sans-serif"],
+        sans: ["-apple-system", "BlinkMacSystemFont", '"SF Pro Text"', "system-ui", '"Segoe UI"', "Roboto", "Helvetica", "Arial", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", '"SF Pro Display"', "system-ui", '"Segoe UI"', "Roboto", "Helvetica", "Arial", "sans-serif"],
       },
       borderRadius: {
         "4xl": "2rem",

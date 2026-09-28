@@ -101,7 +101,7 @@ export function DepotSkyline({ holdings, aura = "investor", title = "Depot in 3D
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">{title}</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">{title}</h2>
         <span className="text-[13px] text-subtle">Höhe = Gewicht · ziehen zum Drehen</span>
       </div>
       <div

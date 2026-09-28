@@ -52,9 +52,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="de">
-      <head>
-        <link rel="preload" href="/fonts/InterTight-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-      </head>
       <body className="min-h-screen text-ink">
         <a href="#main" className="skip-link">Zum Inhalt springen</a>
         {/* Floating navigation layer (HIG): separate glass elements over a

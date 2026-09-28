@@ -91,7 +91,7 @@ export default function InsiderPage() {
 
       {ins.trades.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Handelsaktivität</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Handelsaktivität</h2>
           <div className="card p-4 sm:p-5">
             <ActivityBars rows={ins.trades} />
           </div>
@@ -99,7 +99,7 @@ export default function InsiderPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Meldungen</h2>
         <TradeFeed rows={ins.trades} showActor={false} empty="Noch keine gemeldeten Trades." />
       </section>
 

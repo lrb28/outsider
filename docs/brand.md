@@ -9,7 +9,8 @@ it, colour only where it carries meaning.
 - Written **ĀURA** (bar over the first A) in the wordmark and headlines,
   **AURA** where a plain ASCII name is needed (app name, share titles).
 - The wordmark is one flat path (`web/lib/wordmark.ts`), generated from Inter
-  Tight at weight 620 with 0.14 em tracking by `web/scripts/generate-wordmark.py`.
+  Tight (OFL, only in `web/scripts/fonts`, not loaded by the site) at weight
+  620 with 0.14 em tracking by `web/scripts/generate-wordmark.py`.
   It uses `currentColor`; never add effects to it.
 - App icon: a white Ā on the three auras over near-black (`web/app/icon.svg`,
   PNGs in `web/public`).
@@ -43,9 +44,14 @@ change is always spelled out with ▲/▼ and a number, never colour alone.
 
 ## Type
 
-- Text: the system face (SF Pro on Apple devices), 15–17 px.
-- Headlines and large numerals: Inter Tight (self-hosted, OFL), bold, tight
-  tracking (−0.02 to −0.045 em). Large title 34 px; numerals tabular.
+- One family: the system face, SF Pro on Apple devices (`font-sans` for text,
+  `font-display` for headlines, which picks SF Pro Display). It is never
+  self-hosted: Apple's licence only covers the copy on the device. Other
+  platforms fall back to Segoe UI or Roboto.
+- Text 15–17 px. Headlines and large numerals bold with light negative
+  tracking (−0.01 em for section titles up to −0.025 em for the hero); SF Pro
+  Display is spaced for large sizes, so go no tighter. Large title 34 px;
+  numerals tabular.
 
 ## Surfaces and controls
 
