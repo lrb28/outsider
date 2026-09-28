@@ -569,8 +569,10 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
     group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
   `);
+  // Ranked by how many different insiders bought, then by the money they put in.
   const insiderBuysQ = pool.query(`
-    select s.ticker, s.name as security_name, count(*) as n
+    select s.ticker, s.name as security_name, count(distinct t.entity_id) as insiders,
+      sum(t.shares * t.price) filter (where t.shares > 0 and t.price > 0) as value
     from transactions t
     join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
     join securities s on s.id = t.security_id
@@ -578,7 +580,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       and coalesce(to_jsonb(t)->>'is_derivative', 'false') = 'false'
       and coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'
       and t.disclosed_at >= current_date - 90
-    group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
+    group by s.id, s.ticker, s.name order by insiders desc, value desc nulls last, s.ticker limit 12
   `);
   // Größte Fonds (nach Portfolio-Wert).
   const fundsQ = pool.query(`
@@ -650,7 +652,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       return item(r, s);
     }),
     mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Aufstockungen`)),
-    insiderBuys: insiderBuys.rows.map((r) => item(r, `${Number(r.n)} Insider-Käufe`)),
+    insiderBuys: insiderBuys.rows.map((r) => {
+      const insiders = Number(r.insiders);
+      const value = r.value == null ? null : Number(r.value);
+      return item(r, `${insiders} Insider${value ? ` · ${abbrevMoney(value)}` : ""}`);
+    }),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
       inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),

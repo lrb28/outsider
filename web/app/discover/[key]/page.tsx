@@ -20,7 +20,7 @@ const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: Disco
   },
   insiderbuys: {
     title: "Insider kaufen",
-    blurb: "Form-4-Käufe mit Code P ohne Derivate, offengelegt in den letzten 90 Tagen. Ältere Daten ohne Originalcode werden nicht mitgezählt.",
+    blurb: "Börsenkäufe von Insidern (Form 4, Code P, ohne Derivate) aus allen US-Unternehmen, offengelegt in den letzten 90 Tagen. Sortiert nach Zahl der kaufenden Insider und investiertem Betrag.",
     pick: (d) => d.insiderBuys,
   },
   mostheld: {
