@@ -22,7 +22,7 @@ import {
   TreeItem,
 } from "@/components/PerformanceViews";
 import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
-import { companyName, fixTicker, formatDate, pct } from "@/lib/format";
+import { NBSP, companyName, fixTicker, formatDate, num, pct, pctOf, stockHref } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
 import { ImportReport, importCsv, summarize } from "@/lib/brokers";
 import {
@@ -87,12 +87,7 @@ import {
   volatility,
   xirr,
 } from "@/lib/portfolio";
-import {
-  ASSET_COLOR,
-  REGION_COLOR,
-  SECTOR_COLOR,
-  assetMeta,
-} from "@/lib/sectors";
+import { assetMeta } from "@/lib/sectors";
 import { MatchResponse, MatchRow } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
@@ -167,8 +162,7 @@ const usd = cMoney;
 const abbrevMoney = cAbbrev;
 const signed = cSigned;
 
-const pct2 = (v: number | null): string =>
-  v === null || Number.isNaN(v) ? "—" : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)} %`;
+const pct2 = (v: number | null): string => pctOf(v, 2);
 
 const tone = (v: number | null): "bull" | "bear" | null =>
   v === null || Number.isNaN(v) ? null : v >= 0 ? "bull" : "bear";
@@ -882,18 +876,24 @@ export default function MePage() {
   }, [seriesR, benchR, mode, bench.label, hasCashFlows]);
 
   // ── Aufteilungen ──────────────────────────────────────────────────────────
-  const groupSegs = (pick: (t: string) => string, colors: Record<string, string>): Segment[] => {
+  // Groups take the categorical palette by size, like positions do. Fixed
+  // hex colours per sector used to include near-black, which vanished on the
+  // dark card ("Technologie", "USA", "Aktie").
+  const groupSegs = (pick: (t: string) => string): Segment[] => {
     const m = new Map<string, number>();
     for (const r of rows) {
       if (r.value === null) continue;
       const k = pick(r.symbol ?? r.ticker);
       m.set(k, (m.get(k) ?? 0) + r.value);
     }
-    return [...m.entries()].map(([label, value]) => ({
-      label,
-      value,
-      color: colors[label] ?? "rgb(var(--cat-other))",
-    }));
+    let i = 0;
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value]) => ({
+        label,
+        value,
+        color: label === "Unbekannt" ? OTHER : CAT[i++] ?? OTHER,
+      }));
   };
 
   const posSegs: Segment[] = rows
@@ -953,48 +953,35 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
-      {!empty && <div className="rounded-2xl bg-zinc-100/80 p-4 text-sm leading-6 text-zinc-800">Bewertung mit den verfügbaren Kursen. Fehlende oder über sieben Tage alte Kurse und fehlende Wechselkurse werden ausgelassen. Tagesänderungen enthalten keine Wechselkursbewegungen. <Link href="/datenschutz" className="underline">Datenschutz & Sicherung</Link>{Object.values(hist).some(e => e.source === "none") && <button className="ml-2 underline" disabled={loadingHist} onClick={() => {searched.current.clear();setHist(current => Object.fromEntries(Object.entries(current).filter(([,e]) => e.source !== "none")));setMapTick(t => t+1);}}>Fehlende Kurse erneut laden</button>}</div>}
       {/* Kopf */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">Mein Depot</h1>
-            {liveCount > 0 && (
-              <span className="flex items-center gap-1.5 rounded-full bg-bull/10 px-2.5 py-1 text-xs font-medium text-bull ring-1 ring-bull/20">
-                <span className="animate-live h-1.5 w-1.5 rounded-full bg-bull-fill" />
-                Kurse automatisch aktualisiert
-              </span>
-            )}
-          </div>
-          {!empty && (
-            <div className="mt-1 flex flex-wrap items-baseline gap-3">
-              <LiveValue
-                value={total}
-                format={(v) => cMoney(v)}
-                className="num-xl sm:text-5xl"
-              />
-              {dayPctSum != null && (
-                <span
-                  className={`text-sm font-semibold tabular-nums ${
-                    dayPctSum >= 0 ? "text-bull" : "text-bear"
-                  }`}
-                >
-                  {dayAbsSum >= 0 ? "+" : "−"}
-                  {cMoney(Math.abs(dayAbsSum))} ({pct2(dayPctSum)}) heute
-                </span>
-              )}
-            </div>
-          )}
-          {empty && (
-            <p className="text-sm text-subtle">
-              Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
-              Gespeichert wird nur lokal in deinem Browser.
-            </p>
+      <div className="fade-up space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="large-title">Mein Depot</h1>
+          {liveCount > 0 && (
+            <span className="flex items-center gap-1.5 rounded-full bg-bull/10 px-2.5 py-1 text-[12px] font-medium text-bull">
+              <span className="animate-live h-1.5 w-1.5 rounded-full bg-bull-fill" />
+              Live-Kurse
+            </span>
           )}
         </div>
         {!empty && (
-          <Pills options={TABS} value={tab} onChange={setTab} />
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <LiveValue value={total} format={(v) => cMoney(v)} className="num-xl sm:text-5xl" />
+            {dayPctSum != null && (
+              <span className={`text-[15px] font-semibold tabular-nums ${dayPctSum >= 0 ? "text-bull" : "text-bear"}`}>
+                {dayAbsSum >= 0 ? "▲ +" : "▼ −"}
+                {cMoney(Math.abs(dayAbsSum))} ({pct2(dayPctSum)}) heute
+              </span>
+            )}
+          </div>
         )}
+        {empty && (
+          <p className="max-w-xl text-[15px] leading-snug text-subtle">
+            Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
+            Gespeichert wird nur lokal in deinem Browser.
+          </p>
+        )}
+        {!empty && <Pills options={TABS} value={tab} onChange={setTab} label="Depotbereiche" />}
       </div>
 
       {empty && <EmptyState onPick={() => fileRef.current?.click()} />}
@@ -1082,8 +1069,8 @@ export default function MePage() {
                   }`}
                 >
                   {perfPortfolio >= perfBench
-                    ? `Dein Depot schlägt den ${bench.label} um ${((perfPortfolio - perfBench) * 100).toFixed(1)} Prozentpunkte (${range}).`
-                    : `Dein Depot liegt ${((perfBench - perfPortfolio) * 100).toFixed(1)} Prozentpunkte hinter dem ${bench.label} (${range}).`}{" "}
+                    ? `Dein Depot schlägt den ${bench.label} um ${num((perfPortfolio - perfBench) * 100)} Prozentpunkte (${range}).`
+                    : `Dein Depot liegt ${num((perfBench - perfPortfolio) * 100)} Prozentpunkte hinter dem ${bench.label} (${range}).`}{" "}
                   Du {pct(perfPortfolio)}, Index {pct(perfBench)}.
                 </div>
               )}
@@ -1093,7 +1080,7 @@ export default function MePage() {
               <div className="grid gap-4 lg:grid-cols-2">
                 <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
+                  segments={groupSegs((t) => assetMeta(t).sector)}
                   total={total}
                   title="Aufteilung nach Sektor"
                  
@@ -1137,57 +1124,46 @@ export default function MePage() {
           {tab === "performance" && (
             <>
               {/* Kopf: die drei Renditezahlen, die wirklich zählen */}
-              <div className="lcard overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 px-5 pt-5">
-                  <Pills
-                    options={PERF_VIEWS}
-                    value={perfView}
-                    onChange={setPerfView}
-                    size="sm"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Pills
-                      options={BENCHMARKS.map((b) => [b.key, b.label] as const)}
-                      value={bench.key}
-                      onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))}
-                      size="sm"
-                    />
-                    <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
-                  </div>
+              <div className="space-y-2">
+                <Pills label="Performance-Ansicht" options={PERF_VIEWS} value={perfView} onChange={setPerfView} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pills label="Zeitraum" options={RANGES} value={range} onChange={setRange} size="sm" />
+                  <BenchSelect value={benchIdx} onChange={setBenchIdx} />
                 </div>
-
-                <div className="grid gap-px bg-hair p-px sm:grid-cols-3">
-                  <BigStat
-                    label="Zeitgewichtet"
-                    value={perfPortfolio}
-                    sub="Wie gut deine Auswahl war — unabhängig davon, wann du eingezahlt hast."
-                  />
-                  <BigStat
-                    label="Geldgewichtet (IZF)"
-                    value={izf}
-                    sub="Was dein Geld tatsächlich verdient hat, inklusive Timing der Einzahlungen."
-                  />
-                  <BigStat
-                    label={bench.label}
-                    value={perfBench}
-                    sub={
-                      perfPortfolio != null && perfBench != null
-                        ? `Du liegst ${Math.abs((perfPortfolio - perfBench) * 100).toFixed(1)} Punkte ${
-                            perfPortfolio >= perfBench ? "davor" : "dahinter"
-                          }.`
-                        : "Gleicher Zeitraum, reine Kursentwicklung."
-                    }
-                    muted
-                  />
-                </div>
+              </div>
+              <div className="lcard grid overflow-hidden sm:grid-cols-3">
+                <BigStat
+                  label="Zeitgewichtet"
+                  value={perfPortfolio}
+                  sub="Wie gut deine Auswahl war — unabhängig davon, wann du eingezahlt hast."
+                />
+                <BigStat
+                  label="Geldgewichtet (IZF)"
+                  value={izf}
+                  sub="Was dein Geld tatsächlich verdient hat, inklusive Timing der Einzahlungen."
+                  divider
+                />
+                <BigStat
+                  label={bench.label}
+                  value={perfBench}
+                  sub={
+                    perfPortfolio != null && perfBench != null
+                      ? `Du liegst ${num(Math.abs((perfPortfolio - perfBench) * 100))} Prozentpunkte ${
+                          perfPortfolio >= perfBench ? "davor" : "dahinter"
+                        }.`
+                      : "Gleicher Zeitraum, reine Kursentwicklung."
+                  }
+                  muted
+                  divider
+                />
               </div>
 
               {/* ── Verlauf ─────────────────────────────────────────────── */}
               {perfView === "verlauf" && (
                 <>
-                  <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Monatsrenditen</div>
-                    <p className="mb-3 text-[11px] text-subtle">
+                  <div className="lcard p-4 sm:p-5">
+                    <div className="mb-0.5 text-[15px] font-semibold">Monatsrenditen</div>
+                    <p className="mb-3 text-[12px] text-subtle">
                       Jede Kachel ein Monat, jede Zeile ein Jahr.
                     </p>
                     <MonthHeatmap months={monthsAll} years={years} />
@@ -1233,12 +1209,12 @@ export default function MePage() {
                     <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
                     <Kpi
                       label="Volatilität p. a."
-                      value={vol === null ? "—" : `${(vol * 100).toFixed(1)} %`}
+                      value={pctOf(vol, 1, false)}
                       hint="Schwankungsbreite der Tagesrenditen"
                     />
                     <Kpi
                       label="Sharpe Ratio"
-                      value={shp === null ? "—" : shp.toFixed(2)}
+                      value={shp === null ? "—" : num(shp, 2)}
                       tone={shp === null ? null : shp >= 1 ? "bull" : shp < 0 ? "bear" : null}
                       sub={
                         shp === null
@@ -1252,13 +1228,13 @@ export default function MePage() {
                     />
                     <Kpi
                       label="Max. Drawdown"
-                      value={mdd ? `${(mdd.dd * 100).toFixed(1)} %` : "—"}
+                      value={mdd ? pctOf(mdd.dd, 1, false) : "—"}
                       tone={mdd ? "bear" : null}
                       sub={mdd ? `Tief am ${formatDate(mdd.date)}` : undefined}
                     />
                     <Kpi
                       label={`Beta zu ${bench.label}`}
-                      value={bta === null ? "—" : bta.toFixed(2)}
+                      value={bta === null ? "—" : num(bta, 2)}
                       sub={
                         bta === null
                           ? undefined
@@ -1271,12 +1247,12 @@ export default function MePage() {
                     />
                     <Kpi
                       label="Korrelation"
-                      value={corr === null ? "—" : corr.toFixed(2)}
+                      value={corr === null ? "—" : num(corr, 2)}
                       hint="1,0 = läuft exakt parallel zum Index"
                     />
                     <Kpi
                       label="Positive Tage"
-                      value={hit === null ? "—" : `${(hit * 100).toFixed(0)} %`}
+                      value={pctOf(hit, 0, false)}
                     />
                     <Kpi
                       label="Bester / schwächster Tag"
@@ -1304,7 +1280,7 @@ export default function MePage() {
                       ]}
                       height={190}
                       zeroLine
-                      format={(v) => `${(v * 100).toFixed(1)} %`}
+                      format={(v) => pctOf(v, 1, false)}
                     />
                   </div>
                 </>
@@ -1327,7 +1303,7 @@ export default function MePage() {
                       value={abbrevMoney(feesTotal || null)}
                       sub={
                         depositedNet > 0
-                          ? `${((feesTotal / depositedNet) * 100).toFixed(2)} % des eingesetzten Geldes`
+                          ? `${pctOf(feesTotal / depositedNet, 2, false)} des eingesetzten Geldes`
                           : undefined
                       }
                     />
@@ -1360,19 +1336,19 @@ export default function MePage() {
                 <AllocView segments={posSegs} total={total} title="Nach Position" />
                 <Concentration weights={weights} count={rows.length} />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR)}
+                  segments={groupSegs((t) => assetMeta(t).sector)}
                   total={total}
                   title="Nach Sektor"
                  
                 />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).region, REGION_COLOR)}
+                  segments={groupSegs((t) => assetMeta(t).region)}
                   total={total}
                   title="Nach Region"
                  
                 />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).assetClass, ASSET_COLOR)}
+                  segments={groupSegs((t) => assetMeta(t).assetClass)}
                   total={total}
                   title="Nach Anlageklasse"
                 />
@@ -1384,26 +1360,26 @@ export default function MePage() {
                   <div className="space-y-2 text-sm">
                     <Check
                       ok={weights[0] !== undefined && weights[0] <= 0.25}
-                      text={`Größte Position unter 25 % (${((weights[0] ?? 0) * 100).toFixed(0)} %)`}
+                      text={`Größte Position unter 25${NBSP}% (${pctOf(weights[0] ?? 0, 0, false)})`}
                     />
                     <Check ok={rows.length >= 10} text={`Mindestens 10 Positionen (${rows.length})`} />
                     <Check
                       ok={
-                        groupSegs((t) => assetMeta(t).sector, SECTOR_COLOR).filter((s) => s.value > 0)
+                        groupSegs((t) => assetMeta(t).sector).filter((s) => s.value > 0)
                           .length >= 4
                       }
                       text="Mindestens 4 Sektoren vertreten"
                     />
                     <Check
                       ok={
-                        groupSegs((t) => assetMeta(t).region, REGION_COLOR).filter((s) => s.value > 0)
+                        groupSegs((t) => assetMeta(t).region).filter((s) => s.value > 0)
                           .length >= 2
                       }
                       text="Mehr als eine Region"
                     />
                     <Check
                       ok={mdd === null || mdd.dd > -0.35}
-                      text={`Maximaler Rückgang unter 35 % (${mdd ? (mdd.dd * 100).toFixed(0) : "—"} %)`}
+                      text={`Maximaler Rückgang unter 35${NBSP}% (${mdd ? pctOf(mdd.dd, 0, false) : "—"})`}
                     />
                   </div>
                 </div>
@@ -1446,6 +1422,25 @@ export default function MePage() {
           {tab === "investors" && (
             <InvestorsTab matches={matches} rows={rows} total={total} />
           )}
+
+          <p className="text-[12px] leading-relaxed text-subtle">
+            Bewertet wird mit den verfügbaren Kursen; fehlende oder über sieben Tage alte Kurse und
+            fehlende Wechselkurse bleiben außen vor. Tagesänderungen enthalten keine
+            Wechselkursbewegungen. <Link href="/datenschutz" className="underline underline-offset-2">Datenschutz & Sicherung</Link>
+            {Object.values(hist).some((e) => e.source === "none") && (
+              <button
+                className="ml-2 !min-h-0 underline underline-offset-2"
+                disabled={loadingHist}
+                onClick={() => {
+                  searched.current.clear();
+                  setHist((current) => Object.fromEntries(Object.entries(current).filter(([, e]) => e.source !== "none")));
+                  setMapTick((t) => t + 1);
+                }}
+              >
+                Fehlende Kurse erneut laden
+              </button>
+            )}
+          </p>
         </>
       )}
     </div>
@@ -1502,46 +1497,63 @@ function ChartCard({
 }) {
   const isPct = mode !== "value";
   return (
-    <div className="lcard p-5">
+    <div className="lcard p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Pills
+          label="Ansicht"
           options={[
-            ["value", "Wertentwicklung"],
-            ["return", "Rendite %"],
-            ["drawdown", "Drawdown"],
+            ["value", "Wert"],
+            ["return", "Rendite"],
+            ["drawdown", "Rückgang"],
           ] as const}
           value={mode}
           onChange={setMode}
           size="sm"
         />
-        <div className="ml-auto flex flex-wrap gap-2">
-          {mode !== "drawdown" && (
-            <Pills
-              options={BENCHMARKS.map((b) => [b.key, b.label] as const)}
-              value={BENCHMARKS[benchIdx].key}
-              onChange={(k) => setBenchIdx(BENCHMARKS.findIndex((b) => b.key === k))}
-              size="sm"
-            />
-          )}
-          <Pills options={RANGES} value={range} onChange={setRange} size="sm" />
-        </div>
+        {mode !== "drawdown" && <BenchSelect value={benchIdx} onChange={setBenchIdx} />}
       </div>
       <DepotChart
         series={chartSeries}
-        height={260}
+        height={240}
         zeroLine={isPct}
-        format={(v) => (isPct ? `${(v * 100).toFixed(2)} %` : usd(v))}
-        formatAxis={(v) => (isPct ? `${(v * 100).toFixed(0)} %` : abbrevMoney(v))}
+        format={(v) => (isPct ? pctOf(v, 2, false) : usd(v))}
+        formatAxis={(v) => (isPct ? pctOf(v, 0, false) : abbrevMoney(v))}
       />
-      <p className="mt-2 text-[11px] text-subtle">
+      <div className="mt-3">
+        <Pills label="Zeitraum" options={RANGES} value={range} onChange={setRange} size="sm" />
+      </div>
+      <p className="mt-2 text-[12px] leading-snug text-subtle">
         {mode === "value"
-          ? "Graue Treppe = netto zugeführtes Kapital. Der Abstand zur blauen Linie ist dein Gewinn."
+          ? "Graue Treppe = netto eingezahltes Geld. Der Abstand zur Depotlinie ist dein Gewinn."
           : mode === "return"
           ? "Zeitgewichtete Rendite — Ein- und Auszahlungen verzerren den Vergleich nicht."
           : "Rückgang vom jeweils höchsten Stand."}{" "}
-        Fahr mit der Maus über den Chart (am Handy: wischen).
+        Wischen oder mit der Maus darüberfahren zeigt einzelne Tage.
       </p>
     </div>
+  );
+}
+
+/** Benchmark picker: one capsule with the native menu, not a third tab row. */
+function BenchSelect({ value, onChange }: { value: number; onChange: (i: number) => void }) {
+  return (
+    <label className="btn-capsule relative !min-h-9 !gap-1 !px-3.5 text-[13px]">
+      <span className="text-subtle">vs.</span>
+      <span className="font-semibold">{BENCHMARKS[value].label}</span>
+      <Icon name="chevronDown" className="h-3.5 w-3.5 text-subtle" />
+      <select
+        aria-label="Vergleichsindex"
+        value={BENCHMARKS[value].key}
+        onChange={(e) => onChange(BENCHMARKS.findIndex((b) => b.key === e.target.value))}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {BENCHMARKS.map((b) => (
+          <option key={b.key} value={b.key}>
+            {b.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -1569,7 +1581,7 @@ function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
           return (
             <Link
               key={r.ticker}
-              href={r.symbol ? `/stock/${r.symbol}` : "/me"}
+              href={r.symbol ? stockHref(r.symbol) : "/me"}
               className="flex items-center gap-2.5"
             >
               <CompanyLogo ticker={r.symbol} company={r.company} size={30} />
@@ -1696,11 +1708,11 @@ function PositionsTable({
     <div className="space-y-3">
       <div className="lcard overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-auto text-sm">
             <thead>
               <tr className="border-b border-hair text-[11px] uppercase tracking-wide text-subtle">
                 {head.map(([key, label, cls]) => (
-                  <th key={key} className={`px-4 py-2.5 font-medium ${cls}`}>
+                  <th key={key} className={`px-2 py-2.5 font-medium first:pl-4 ${cls}`}>
                     <button
                       onClick={() => {
                         if (sort === key) setDesc((d) => !d);
@@ -1709,14 +1721,14 @@ function PositionsTable({
                           setDesc(key !== "name");
                         }
                       }}
-                      className="press-sm inline-flex items-center gap-1 hover:text-ink"
+                      className="press-sm inline-flex !min-h-8 items-center gap-1 hover:text-ink"
                     >
                       {label}
                       {sort === key && <span className="text-[9px]">{desc ? "▼" : "▲"}</span>}
                     </button>
                   </th>
                 ))}
-                <th className="w-8" />
+                <th className="w-10" />
               </tr>
             </thead>
             <tbody>
@@ -1724,13 +1736,13 @@ function PositionsTable({
                 const w = r.value != null && total > 0 ? (r.value / total) * 100 : null;
                 return (
                   <tr key={r.ticker} className="border-b border-hair last:border-0 hover:bg-slate-50/70">
-                    <td className="px-4 py-3">
+                    <td className="w-full max-w-0 py-3 pl-4 pr-2">
                       <div className="flex items-center gap-2.5">
                         <CompanyLogo ticker={r.symbol} company={r.company} size={34} />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           {r.symbol ? (
                             <Link
-                              href={`/stock/${r.symbol}`}
+                              href={stockHref(r.symbol)}
                               className="block truncate font-medium hover:text-brand"
                             >
                               {r.company}
@@ -1738,11 +1750,13 @@ function PositionsTable({
                           ) : (
                             <div className="truncate font-medium">{r.company}</div>
                           )}
-                          <div className="font-mono text-[11px] text-subtle">
+                          <div className="truncate text-[12px] text-subtle">
                             {r.symbol ? fixTicker(r.symbol, r.company) : r.ticker} ·{" "}
-                            {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.
-                            {r.avgPrice ? ` · Ø ${usd(r.avgPrice)}` : ""}
+                            {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}{NBSP}St.
                           </div>
+                          {r.avgPrice ? (
+                            <div className="truncate text-[12px] tabular-nums text-subtle">Ø {usd(r.avgPrice)}</div>
+                          ) : null}
                           {r.manualPrice != null && (
                             <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-subtle">
                               Kurs manuell gesetzt
@@ -1759,7 +1773,7 @@ function PositionsTable({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-2 py-3 text-right">
                       <div className="font-semibold tabular-nums">
                         {r.value != null ? abbrevMoney(r.value) : "—"}
                       </div>
@@ -1777,7 +1791,7 @@ function PositionsTable({
                       </div>
                       <div className="text-[11px] tabular-nums text-subtle">{signed(r.dayAbs)}</div>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-2 py-3 text-right">
                       <div
                         className={`font-semibold tabular-nums ${
                           r.unrealPct === null ? "text-subtle" : r.unrealPct >= 0 ? "text-bull" : "text-bear"
@@ -1788,18 +1802,20 @@ function PositionsTable({
                       <div className="text-[11px] tabular-nums text-subtle">{signed(r.unreal)}</div>
                     </td>
                     <td className="hidden px-4 py-3 text-right md:table-cell">
-                      <div className="font-medium tabular-nums">{w != null ? `${w.toFixed(1)} %` : "—"}</div>
+                      <div className="font-medium tabular-nums">{w != null ? pctOf(w / 100, 1, false) : "—"}</div>
                       <div className="mt-1 h-1 w-16 overflow-hidden rounded-full bg-slate-100">
                         <div className="h-full rounded-full bg-brand" style={{ width: `${w ?? 0}%` }} />
                       </div>
                     </td>
-                    <td className="pr-3 text-right">
+                    <td className="w-10 pr-2 text-right">
                       <button
-                        onClick={() => onRemove(r.ticker)}
-                        aria-label="Position entfernen"
-                        className="press-sm rounded-full px-1.5 text-slate-300 hover:text-bear"
+                        onClick={() => {
+                          if (confirm(`${r.company} mit allen Buchungen entfernen?`)) onRemove(r.ticker);
+                        }}
+                        aria-label={`${r.company} entfernen`}
+                        className="press-sm inline-flex h-9 w-9 !min-h-0 items-center justify-center rounded-full text-muted hover:bg-bear/10 hover:text-bear"
                       >
-                        <Icon name="close" className="h-5 w-5" />
+                        <Icon name="delete" className="h-[18px] w-[18px]" />
                       </button>
                     </td>
                   </tr>
@@ -1942,12 +1958,12 @@ function DividendsTab({
         />
         <Kpi
           label="Dividendenrendite"
-          value={info.yieldNow ? `${(info.yieldNow * 100).toFixed(2)} %` : "—"}
+          value={info.yieldNow ? pctOf(info.yieldNow, 2, false) : "—"}
           sub="auf aktuellen Kurs"
         />
         <Kpi
           label="Rendite auf Einstand"
-          value={info.yieldOnCost ? `${(info.yieldOnCost * 100).toFixed(2)} %` : "—"}
+          value={info.yieldOnCost ? pctOf(info.yieldOnCost, 2, false) : "—"}
           tone={
             info.yieldOnCost && info.yieldNow && info.yieldOnCost > info.yieldNow ? "bull" : null
           }
@@ -2014,10 +2030,10 @@ function DividendsTab({
                       {p.annual > 0 ? abbrevMoney(p.annual) : "—"}
                     </td>
                     <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
-                      {p.yieldNow ? `${(p.yieldNow * 100).toFixed(2)} %` : "—"}
+                      {p.yieldNow ? pctOf(p.yieldNow, 2, false) : "—"}
                     </td>
                     <td className="hidden px-4 py-3 text-right tabular-nums md:table-cell">
-                      {p.yieldOnCost ? `${(p.yieldOnCost * 100).toFixed(2)} %` : "—"}
+                      {p.yieldOnCost ? pctOf(p.yieldOnCost, 2, false) : "—"}
                     </td>
                   </tr>
                 ))}
@@ -2040,7 +2056,7 @@ function DividendsTab({
             {closed.map((x) => (
               <div key={x.ticker} className="flex items-center gap-3 text-sm">
                 <span className="min-w-0 flex-1 truncate">{x.name}</span>
-                <span className="font-mono text-[11px] text-subtle">{x.ticker}</span>
+                <span className="text-[12px] text-subtle">{x.ticker}</span>
                 <span className="w-24 text-right font-semibold tabular-nums">
                   {abbrevMoney(x.amount)}
                 </span>
@@ -2145,29 +2161,28 @@ function ActivityTab({
     split: "bg-investor/10 text-investor",
   };
 
-  const inputCls =
-    "rounded-full border border-hair bg-card px-3.5 py-1.5 text-sm transition focus:border-brand focus:ring-2 focus:ring-zinc-200";
+  const inputCls = "field h-11";
 
   return (
     <div className="space-y-4">
-      <div className="lcard p-5">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold">Transaktion erfassen</span>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <button onClick={onImport} className="btn-primary">
+      <div className="lcard p-4 sm:p-5">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[15px] font-semibold">Transaktion erfassen</span>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onImport} className="btn-capsule !min-h-9 !px-3.5 text-[13px]">
+              <Icon name="upload" className="h-4 w-4" />
               CSV importieren
             </button>
-            <button
-              onClick={onExport}
-              className="press-sm rounded-full bg-slate-100 px-4 py-2 text-sm font-medium hover:bg-slate-200"
-            >
+            <button onClick={onExport} className="btn-capsule !min-h-9 !px-3.5 text-[13px]">
+              <Icon name="download" className="h-4 w-4" />
               Exportieren
             </button>
           </div>
         </div>
 
-        <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
+        <form onSubmit={submit} className="space-y-3">
           <Pills
+            label="Art der Buchung"
             options={(["buy", "sell", "dividend", "deposit", "withdrawal"] as const).map(
               (k) => [k, label[k]] as const,
             )}
@@ -2175,54 +2190,69 @@ function ActivityTab({
             onChange={setKind}
             size="sm"
           />
-          <input
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            placeholder="Datum (17.03.2022)"
-            className={`w-44 ${inputCls}`}
-          />
-          {needsTicker && (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <input
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              placeholder="Ticker"
-              className={`w-32 ${inputCls}`}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              placeholder="Datum, z. B. 17.03.2022"
+              aria-label="Datum"
+              inputMode="numeric"
+              className={`col-span-2 sm:col-span-1 ${inputCls}`}
             />
-          )}
-          {needsShares ? (
-            <>
+            {needsTicker && (
               <input
-                value={shares}
-                onChange={(e) => setShares(e.target.value)}
-                placeholder="Stück"
-                className={`w-24 ${inputCls}`}
+                value={ticker}
+                onChange={(e) => setTicker(e.target.value)}
+                placeholder="Ticker oder ISIN"
+                aria-label="Ticker oder ISIN"
+                autoCapitalize="characters"
+                className={`col-span-2 sm:col-span-1 ${inputCls}`}
               />
+            )}
+            {needsShares ? (
+              <>
+                <input
+                  value={shares}
+                  onChange={(e) => setShares(e.target.value)}
+                  placeholder="Stück"
+                  aria-label="Stück"
+                  inputMode="decimal"
+                  className={inputCls}
+                />
+                <input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="Kurs $"
+                  aria-label="Kurs in Dollar"
+                  inputMode="decimal"
+                  className={inputCls}
+                />
+              </>
+            ) : (
               <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="Kurs $"
-                className={`w-28 ${inputCls}`}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Betrag $"
+                aria-label="Betrag in Dollar"
+                inputMode="decimal"
+                className={inputCls}
               />
-            </>
-          ) : (
+            )}
             <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Betrag $"
-              className={`w-32 ${inputCls}`}
+              value={fee}
+              onChange={(e) => setFee(e.target.value)}
+              placeholder="Gebühr $"
+              aria-label="Gebühr in Dollar"
+              inputMode="decimal"
+              className={inputCls}
             />
-          )}
-          <input
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
-            placeholder="Gebühr"
-            className={`w-24 ${inputCls}`}
-          />
-          <button className="btn-primary press-sm !py-1.5">
-            Hinzufügen
-          </button>
+            <button className="btn-primary col-span-2 sm:col-span-1">
+              <Icon name="plus" className="h-4 w-4" />
+              Hinzufügen
+            </button>
+          </div>
         </form>
-        <p className="mt-2 text-[11px] text-subtle">
+        <p className="mt-3 text-[12px] leading-snug text-subtle">
           Ohne Datum gilt die Position als „von Anfang an gehalten“. Für exakte Rendite, IZF und
           Dividendenzuordnung lohnt es sich, Datum und Kurs zu ergänzen.
         </p>
@@ -2241,32 +2271,32 @@ function ActivityTab({
         </div>
         <div className="max-h-[32rem] overflow-y-auto">
           {shown.map((t) => (
-            <div key={t.id} className="flex items-center gap-3 border-b border-hair px-5 py-2.5 last:border-0">
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${badge[t.kind]}`}>
-                {label[t.kind]}
-              </span>
-              <span className="w-24 shrink-0 text-xs text-subtle">
-                {t.date ? formatDate(t.date) : "ohne Datum"}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-sm">
-                {t.name || t.ticker || "—"}
-                {t.name && t.ticker && (
-                  <span className="ml-1.5 font-mono text-[11px] text-subtle">{t.ticker}</span>
-                )}
-              </span>
-              <span className="text-right text-sm tabular-nums">
-                {t.kind === "buy" || t.kind === "sell"
-                  ? `${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
-                  : t.kind === "split"
-                  ? `${t.shares > 0 ? "+" : ""}${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St.`
-                  : usd(t.amount)}
-              </span>
+            <div key={t.id} className="cv-row flex items-center gap-3 border-b border-hair py-2.5 pl-5 pr-2 last:border-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-medium">
+                    {t.name || t.ticker || "—"}
+                    {t.name && t.ticker && <span className="ml-1.5 text-[12px] font-normal text-subtle">{t.ticker}</span>}
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap text-[15px] tabular-nums">
+                    {t.kind === "buy" || t.kind === "sell"
+                      ? `${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
+                      : t.kind === "split"
+                      ? `${t.shares > 0 ? "+" : ""}${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}${NBSP}St.`
+                      : usd(t.amount)}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge[t.kind]}`}>{label[t.kind]}</span>
+                  <span className="text-[12px] text-subtle">{t.date ? formatDate(t.date) : "ohne Datum"}</span>
+                </div>
+              </div>
               <button
                 onClick={() => removeTxn(t.id)}
                 aria-label="Buchung löschen"
-                className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
+                className="press-sm inline-flex h-9 w-9 !min-h-0 shrink-0 items-center justify-center rounded-full text-muted hover:bg-bear/10 hover:text-bear"
               >
-                <Icon name="close" className="h-5 w-5" />
+                <Icon name="delete" className="h-[18px] w-[18px]" />
               </button>
             </div>
           ))}
@@ -2335,7 +2365,7 @@ function InvestorsTab({
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold tabular-nums">
-                  {uw != null ? `${(uw * 100).toFixed(0)} %` : "—"}
+                  {uw != null ? pctOf(uw, 0, false) : "—"}
                 </div>
                 <div className="text-[11px] text-subtle">deines Depots</div>
               </div>
@@ -2454,8 +2484,8 @@ function UnpricedPanel({
           <div key={r.ticker} className="flex flex-wrap items-center gap-3 border-b border-hair px-5 py-3 last:border-0">
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{r.company}</div>
-              <div className="font-mono text-[11px] text-subtle">
-                {r.ticker} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} St. ·
+              <div className="text-[12px] text-subtle">
+                {r.ticker} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}{NBSP}St. ·
                 Einstand {cAbbrev(r.costBasis)}
               </div>
             </div>
@@ -2523,14 +2553,17 @@ function BigStat({
   value,
   sub,
   muted,
+  divider,
 }: {
   label: string;
   value: number | null;
   sub: string;
   muted?: boolean;
+  /** Hairline to the previous cell: above on phones, left on wider screens. */
+  divider?: boolean;
 }) {
   return (
-    <div className="bg-card p-5">
+    <div className={`p-5 ${divider ? "border-t border-hair sm:border-l sm:border-t-0" : ""}`}>
       <div className="text-xs text-subtle">{label}</div>
       <div
         className={`num-xl mt-1 ${
@@ -2540,7 +2573,7 @@ function BigStat({
         {value === null ? (
           "—"
         ) : (
-          <CountUp to={value * 100} format={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(1)} %`} />
+          <CountUp to={value * 100} format={(v) => pctOf(v / 100, 1)} />
         )}
       </div>
       <p className="mt-1.5 text-[11px] leading-snug text-subtle">{sub}</p>

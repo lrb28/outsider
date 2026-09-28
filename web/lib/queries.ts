@@ -4,6 +4,7 @@ import {
   companyName,
   investorBio,
   investorPerson,
+  pctOf,
   personName,
   sizeDisplay,
 } from "./format";
@@ -260,6 +261,19 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     ? new Date(asOfRow.rows[0].as_of as string).toISOString().slice(0, 10)
     : null;
 
+  // The whole latest quarter, not just the trades loaded for the list.
+  const moveRows = asOf
+    ? (await pool.query(
+        `select t.txn_type, count(*)::int as n
+         from transactions t join filings f on f.id = t.filing_id
+         where t.entity_id = $1 and not t.superseded and nullif(t.put_call, '') is null
+           and coalesce(f.period_of_report, t.txn_date) = $2::date
+         group by t.txn_type`,
+        [e.id, asOf],
+      )).rows
+    : [];
+  const moveCount = (type: string) => Number(moveRows.find((r) => r.txn_type === type)?.n ?? 0);
+
   return {
     slug: e.slug as string,
     fund: e.fund as string,
@@ -271,6 +285,7 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     asOf,
     holdings,
     trades,
+    moves: { buys: moveCount("buy"), sells: moveCount("sell") },
   };
 }
 
@@ -656,13 +671,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   return {
     mostHeld: mostHeld.rows.map((r) => item(r, `${Number(r.n)} Investoren`)),
     highestConviction: conviction.rows.map((r) =>
-      item(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Gewicht`),
+      item(r, `${pctOf(Number(r.mw) || 0, 0, false)} Gewicht`),
     ),
     biggest: biggest.rows.map((r) => {
       const mv = Number(r.mv) || 0;
-      const s =
-        mv >= 1e9 ? `$${(mv / 1e9).toFixed(1)} Mrd.` : `$${(mv / 1e6).toFixed(0)} Mio.`;
-      return item(r, s);
+      return item(r, abbrevMoney(mv));
     }),
     mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Aufstockungen`)),
     insiderBuys: insiderBuys.rows.map((r) => {
@@ -672,7 +685,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     }),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
-      inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),
+      inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} Top-Position`),
     ),
     topPoliticians: pols.rows.map((r) => ({
       slug: r.slug as string,

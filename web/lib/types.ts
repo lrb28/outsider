@@ -63,6 +63,8 @@ export interface InvestorDetail {
   asOf: string | null;
   holdings: HoldingRow[];
   trades: FeedRow[];
+  /** Stock positions raised and cut in the latest reported quarter. */
+  moves?: { buys: number; sells: number };
 }
 
 export interface InvestorsResponse {

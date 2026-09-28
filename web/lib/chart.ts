@@ -1,18 +1,25 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-/** Width of an element in CSS px, kept current with a ResizeObserver. */
+/**
+ * Width of an element in CSS px, kept current with a ResizeObserver, for an
+ * element that may mount later than its component (charts first
+ * render a placeholder while data loads). A callback ref attaches the observer
+ * whenever the element appears; a mount-only effect never saw it and left the
+ * chart at its fallback width, wider than the card.
+ */
 export function useWidth<T extends HTMLElement>(fallback = 640) {
-  const ref = useRef<T>(null);
   const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const el = ref.current;
+  const observer = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: T | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
     if (!el) return;
     const update = () => setWidth(Math.max(1, Math.round(el.getBoundingClientRect().width)));
     update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
+    observer.current = new ResizeObserver(update);
+    observer.current.observe(el);
   }, []);
+  useEffect(() => () => observer.current?.disconnect(), []);
   return { ref, width };
 }
 

@@ -14,7 +14,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { politicianLine, StatRow, DetailTopBar } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
-import { companyName, formatDate, shortDate } from "@/lib/format";
+import { companyName, formatDate, shortDate, stockHref } from "@/lib/format";
 import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
 export default function PoliticianPage() {
@@ -102,7 +102,7 @@ export default function PoliticianPage() {
           <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Meistgehandelt</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {summary.top.map((t) => (
-              <Link key={t.ticker} href={`/stock/${encodeURIComponent(t.ticker)}`} className="card lcard-hover press flex items-center gap-3 p-3">
+              <Link key={t.ticker} href={stockHref(t.ticker)} className="card lcard-hover press flex items-center gap-3 p-3">
                 <CompanyLogo ticker={t.ticker} company={t.name} size={40} />
                 <div className="min-w-0">
                   <div className="truncate text-[15px] font-semibold">{t.name}</div>

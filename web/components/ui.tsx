@@ -30,11 +30,29 @@ export function SegmentedControl<T extends string>({
   const track = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<T, HTMLButtonElement>());
   const [box, setBox] = useState<{ x: number; w: number } | null>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const readEdges = useCallback(() => {
+    const el = track.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }, []);
   const measure = useCallback(() => {
     const el = buttons.current.get(value);
     setBox(el ? { x: el.offsetLeft, w: el.offsetWidth } : null);
-  }, [value]);
+    readEdges();
+  }, [value, readEdges]);
   useIsoLayoutEffect(measure, [measure]);
+  // When the tabs overflow (seven Depot tabs on a phone), the chosen one is
+  // scrolled into view; otherwise the selection could sit off screen.
+  useEffect(() => {
+    const el = buttons.current.get(value);
+    const host = track.current;
+    if (!el || !host || host.scrollWidth <= host.clientWidth) return;
+    const left = el.offsetLeft - (host.clientWidth - el.offsetWidth) / 2;
+    host.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [value]);
   useEffect(() => {
     const el = track.current;
     if (!el) return;
@@ -43,18 +61,23 @@ export function SegmentedControl<T extends string>({
     return () => ro.disconnect();
   }, [measure]);
   const h = size === "sm" ? "min-h-8 px-3 text-[13px]" : "min-h-9 px-4 text-[14px]";
+  const fade = edges.left || edges.right
+    ? `linear-gradient(90deg, ${edges.left ? "transparent, #000 28px" : "#000"}, ${edges.right ? "#000 calc(100% - 28px), transparent" : "#000"})`
+    : undefined;
   return (
     <div
       ref={track}
       role="tablist"
       aria-label={label}
+      onScroll={readEdges}
+      style={fade ? { WebkitMaskImage: fade, maskImage: fade } : undefined}
       className={`no-scrollbar relative flex w-fit max-w-full overflow-x-auto rounded-full bg-surface2 p-[3px] ${className}`}
     >
       {box && (
         <span
           aria-hidden="true"
-          className="absolute bottom-[3px] top-[3px] rounded-full bg-card shadow-[0_1px_3px_rgb(0_0_0/0.1),0_0_0_0.5px_rgb(0_0_0/0.04)] transition-[transform,width] duration-500 ease-spring"
-          style={{ width: box.w, transform: `translateX(${box.x - 3}px)`, left: 3 }}
+          className="absolute bottom-[3px] top-[3px] rounded-full shadow-[0_1px_3px_rgb(0_0_0/0.12),0_0_0_0.5px_rgb(0_0_0/0.04)] transition-[transform,width] duration-500 ease-spring"
+          style={{ width: box.w, transform: `translateX(${box.x - 3}px)`, left: 3, background: "rgb(var(--seg-thumb))" }}
         />
       )}
       {options.map(([key, text]) => {
@@ -132,7 +155,7 @@ export function ListRow({
   chevron?: boolean;
 }) {
   return (
-    <div className="group relative flex items-center pr-2 after:absolute after:bottom-0 after:left-[4.25rem] after:right-0 after:h-px after:bg-hair last:after:hidden">
+    <div className="cv-row group relative flex items-center pr-2 after:absolute after:bottom-0 after:left-[4.25rem] after:right-0 after:h-px after:bg-hair last:after:hidden">
       <Link href={href} className="flex min-h-[3.75rem] min-w-0 flex-1 items-center gap-3 py-2.5 pl-4 pr-2 transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]">
         {leading}
         <div className="min-w-0 flex-1">

@@ -9,7 +9,7 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { SkeletonList } from "@/components/Skeleton";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { fixTicker } from "@/lib/format";
+import { fixTicker, stockHref } from "@/lib/format";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 import { DetailTopBar } from "@/components/ui";
@@ -108,7 +108,7 @@ export default function CollectionPage() {
               const it = podium[rank];
               const tall = rank === 0;
               return (
-                <Link key={rank} href={it.ticker ? `/stock/${encodeURIComponent(it.ticker)}` : "#"} className={`card lcard-hover press flex flex-col items-center p-3 text-center ${tall ? "pb-6 pt-5" : "pb-4"}`}>
+                <Link key={rank} href={it.ticker ? stockHref(it.ticker) : "#"} className={`card lcard-hover press flex flex-col items-center p-3 text-center ${tall ? "pb-6 pt-5" : "pb-4"}`}>
                   <span className="mb-2 text-[13px] font-bold text-subtle">{rank + 1}</span>
                   <div className="rounded-[18px] shadow-[0_8px_22px_rgb(0_0_0/0.14)]">
                     <CompanyLogo ticker={it.ticker} company={it.company} size={tall ? 68 : 54} rounded="rounded-[18px]" />
@@ -139,7 +139,7 @@ export default function CollectionPage() {
               </div>
             );
             return it.ticker ? (
-              <Link key={`${it.ticker}-${i}`} href={`/stock/${encodeURIComponent(it.ticker)}`} className="block last:[&>div]:after:hidden">
+              <Link key={`${it.ticker}-${i}`} href={stockHref(it.ticker)} className="block last:[&>div]:after:hidden">
                 {inner}
               </Link>
             ) : (

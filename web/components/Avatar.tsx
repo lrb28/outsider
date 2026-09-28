@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { type AuraKind, initials, wikiTitleFor } from "@/lib/format";
-import { PORTRAITS } from "@/lib/portraits";
+import { FUND_LOGOS, PORTRAITS } from "@/lib/portraits";
 
 /** Deterministic 0..1 from a name, so each monogram keeps its own glow. */
 function seed(name: string): number {
@@ -14,7 +15,8 @@ function seed(name: string): number {
 
 /**
  * A person's picture: an explicit photo (official congressional portrait),
- * else a credited free portrait for known investors, else an aura monogram —
+ * else a credited free portrait for known investors, else their fund's logo,
+ * for insiders the logo of their company, and only then an aura monogram —
  * initials on a soft glow in the colour of the group (investors blue,
  * insiders orange, politicians magenta). No borders or rings.
  */
@@ -23,6 +25,8 @@ export function Avatar({
   size = 36,
   src,
   kind = "investor",
+  ticker,
+  company,
   className = "",
 }: {
   name: string;
@@ -30,14 +34,33 @@ export function Avatar({
   /** Photo URL that wins over everything else. */
   src?: string | null;
   kind?: AuraKind;
+  /** Company of an insider: its logo stands in for the person's photo. */
+  ticker?: string | null;
+  company?: string;
   className?: string;
 }) {
   const title = wikiTitleFor(name);
   const known = src || (title ? PORTRAITS[title]?.src ?? null : null);
+  const fund = !known && title ? FUND_LOGOS[title] ?? null : null;
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [known]);
 
   const style = { width: size, height: size, minWidth: size } as const;
+
+  if (!known && kind === "insider" && ticker) {
+    return (
+      <span className={`inline-flex shrink-0 ${className}`}>
+        <CompanyLogo ticker={ticker} company={company ?? name} size={size} rounded="rounded-full" />
+      </span>
+    );
+  }
+  if (fund && !failed) {
+    return (
+      <span style={style} className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ${className}`}>
+        <img src={fund.src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-[68%] w-[68%] object-contain" />
+      </span>
+    );
+  }
 
   if (known && !failed) {
     return (

@@ -201,9 +201,9 @@ console.log("\nSpalte „Seit Offenlegung“");
   const F = await import("../.tmp-format.mjs");
   const heute = "2026-08-07";
   let r = F.disclosureLabel(0.045, "2026-06-17", heute);
-  ok("Rendite wird gezeigt", r.text === "+4,5 %" && !r.muted, r.text, "+4,5 %");
+  ok("Rendite wird gezeigt", r.text === "+4,5\u00A0%" && !r.muted, r.text, "+4,5\u00A0%");
   r = F.disclosureLabel(-0.009, "2026-05-29", heute);
-  ok("negative Rendite", r.text === "-0,9 %" && !r.muted, r.text, "-0,9 %");
+  ok("negative Rendite", r.text === "-0,9\u00A0%" && !r.muted, r.text, "-0,9\u00A0%");
   r = F.disclosureLabel(null, "2026-08-07", heute);
   ok("heute gemeldet", r.text === "heute gemeldet" && r.muted, r.text, "heute gemeldet");
   r = F.disclosureLabel(null, "2026-05-01", heute);
@@ -211,7 +211,7 @@ console.log("\nSpalte „Seit Offenlegung“");
   r = F.disclosureLabel(null, null, heute);
   ok("ohne Datum", r.muted === true, r.text, "grauer Hinweis");
   r = F.disclosureLabel(0, "2026-05-01", heute);
-  ok("null Prozent ist eine Zahl", r.text === "+0,0 %" && !r.muted, r.text, "+0,0 %");
+  ok("null Prozent ist eine Zahl", r.text === "+0,0\u00A0%" && !r.muted, r.text, "+0,0\u00A0%");
 }
 
 // ── Feed: Meldeserien bündeln ──────────────────────────────────────────────

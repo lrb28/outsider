@@ -1,7 +1,22 @@
 import type { FeedRow } from "./types";
+
+// Numbers are always written the German way (1.234,5), and the percent sign
+// is joined with a no-break space so it never wraps onto a line of its own.
+export const NBSP = "\u00A0";
+
+/** 1.234,5 with a fixed number of decimals. */
+export function num(v: number, digits = 1): string {
+  return v.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/** A ratio as percent: 0.224 -> "+22,4 %" (signed) or "22,4 %". */
+export function pctOf(v: number | null | undefined, digits = 1, signed = true): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  return `${signed && v >= 0 ? "+" : ""}${num(v * 100, digits)}${NBSP}%`;
+}
+
 export function pct(v: number | null): string {
-  if (v === null || !Number.isFinite(v)) return "—";
-  return `${v >= 0 ? "+" : ""}${(v * 100).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+  return pctOf(v, 1, true);
 }
 
 export function money(v: number | null | undefined): string {
@@ -14,11 +29,11 @@ export function abbrevMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
-  if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(1)} Bio.`;
-  if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(1)} Mrd.`;
-  if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(1)} Mio.`;
-  if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(0)}K`;
-  return `${sign}$${a.toFixed(0)}`;
+  if (a >= 1e12) return `${sign}$${num(a / 1e12)}${NBSP}Bio.`;
+  if (a >= 1e9) return `${sign}$${num(a / 1e9)}${NBSP}Mrd.`;
+  if (a >= 1e6) return `${sign}$${num(a / 1e6)}${NBSP}Mio.`;
+  if (a >= 1e3) return `${sign}$${num(a / 1e3, 0)}K`;
+  return `${sign}$${num(a, 0)}`;
 }
 
 // Key figures on phones: three significant digits, so $263 Mrd., $26.3 Mrd.
@@ -26,15 +41,15 @@ export function shortMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
-  const units: [number, string][] = [[1e12, " Bio."], [1e9, " Mrd."], [1e6, " Mio."], [1e3, "K"]];
+  const units: [number, string][] = [[1e12, `${NBSP}Bio.`], [1e9, `${NBSP}Mrd.`], [1e6, `${NBSP}Mio.`], [1e3, "K"]];
   for (const [i, [size, unit]] of units.entries()) {
     const n = a / size;
     if (n < 1) continue;
-    // Number() drops a trailing ".0": $71 Mrd., not $71.0 Mrd.
+    // Number() drops a trailing ".0": $71 Mrd., not $71,0 Mrd.
     const r = Number(n.toFixed(n >= 99.95 ? 0 : 1));
     // 999.6 Mrd. would round to "1000 Mrd."; the next unit up reads better.
     if (i > 0 && r >= 1000) return `${sign}$1${units[i - 1][1]}`;
-    return `${sign}$${r}${unit}`;
+    return `${sign}$${r.toLocaleString("de-DE", { maximumFractionDigits: 1 })}${unit}`;
   }
   return `${sign}$${a.toFixed(0)}`;
 }
@@ -106,8 +121,7 @@ export function groupSeries<
 }
 
 export function weightPct(v: number | null): string {
-  if (v === null || !Number.isFinite(v)) return "—";
-  return `${(v * 100).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+  return pctOf(v, 1, false);
 }
 
 export function sizeDisplay(row: {
@@ -288,6 +302,9 @@ const INVESTOR_PEOPLE: [string, string, string][] = [
 function investorEntry(name: string): [string, string, string] | null {
   const n = name.toLowerCase();
   for (const entry of INVESTOR_PEOPLE) if (n.includes(entry[0])) return entry;
+  // Pages often pass the person ("David Tepper") rather than the fund
+  // ("Appaloosa LP"); both must find the same portrait.
+  for (const entry of INVESTOR_PEOPLE) if (n === entry[2].toLowerCase()) return entry;
   return null;
 }
 
@@ -500,12 +517,21 @@ const TICKER_FIX: Record<string, string> = {
 };
 
 export function fixTicker(ticker: string | null, name?: string | null): string | null {
-  if (ticker) return TICKER_FIX[ticker.toUpperCase()] ?? ticker;
+  if (ticker) {
+    // Share classes are written with a dot (BRK.B); OpenFIGI used a slash.
+    const t = ticker.trim().toUpperCase().replace("/", ".");
+    return TICKER_FIX[t] ?? t;
+  }
   if (name) {
     const n = name.toLowerCase();
     if (n.includes("chubb")) return "CB";
   }
   return ticker;
+}
+
+/** Link to a stock page; a share class never splits the path (BRK.B). */
+export function stockHref(ticker: string): string {
+  return `/stock/${encodeURIComponent(ticker.trim().toUpperCase().replace("/", "."))}`;
 }
 
 export function companyName(ticker: string | null, rawName: string | null): string {

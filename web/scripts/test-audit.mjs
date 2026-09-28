@@ -47,12 +47,14 @@ test('disclosure language distinguishes 13F, grants, tax withholding and P/S', (
   assert.equal(F.sourceLink('javascript:alert(1)'),null);
 });
 test('key figures use short money and dates that fit a phone column', () => {
-  assert.equal(F.shortMoney(263.1e9),'$263 Mrd.');
-  assert.equal(F.shortMoney(26.34e9),'$26.3 Mrd.');
-  assert.equal(F.shortMoney(99.96e6),'$100 Mio.');
-  assert.equal(F.shortMoney(999.7e9),'$1 Bio.');
-  assert.equal(F.shortMoney(71.02e9),'$71 Mrd.');
-  assert.equal(F.shortMoney(-4.2e6),'-$4.2 Mio.');
+  assert.equal(F.shortMoney(263.1e9),'$263\u00A0Mrd.');
+  assert.equal(F.shortMoney(26.34e9),'$26,3\u00A0Mrd.');
+  assert.equal(F.shortMoney(99.96e6),'$100\u00A0Mio.');
+  assert.equal(F.shortMoney(999.7e9),'$1\u00A0Bio.');
+  assert.equal(F.shortMoney(71.02e9),'$71\u00A0Mrd.');
+  assert.equal(F.shortMoney(-4.2e6),'-$4,2\u00A0Mio.');
+  assert.equal(F.abbrevMoney(299.25e9),'$299,3\u00A0Mrd.');
+  assert.equal(F.pct(0.224),'+22,4\u00A0%');
   assert.equal(F.shortMoney(980),'$980');
   assert.equal(F.shortMoney(null),'—');
   assert.equal(F.shortDate('2026-03-31'),'31.03.26');

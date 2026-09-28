@@ -11,7 +11,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SkeletonList } from "@/components/Skeleton";
 import { AuraCard, EmptyState, ListCard, ListRow, PageTitle, SegmentedControl, politicianLine } from "@/components/ui";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { abbrevMoney, formatDate } from "@/lib/format";
+import { abbrevMoney, formatDate, stockHref } from "@/lib/format";
 import type {
   CollectionInvestor,
   CollectionItem,
@@ -33,13 +33,14 @@ const TABS = [
   ["stocks", "Aktien"],
 ] as const;
 
+/** Three logos side by side: overlapping tiles cut each other's marks off. */
 function LogoTrio({ items }: { items: CollectionItem[] }) {
-  if (!items.length) return <div className="h-[52px]" />;
+  if (!items.length) return <div className="h-12" />;
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2">
       {items.slice(0, 3).map((it, i) => (
-        <div key={(it.ticker ?? it.company) + i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }} className="rounded-[14px] shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
-          <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-[14px]" />
+        <div key={(it.ticker ?? it.company) + i} className="rounded-[14px] shadow-[0_2px_8px_rgb(0_0_0/0.1)]">
+          <CompanyLogo ticker={it.ticker} company={it.company} size={48} rounded="rounded-[14px]" />
         </div>
       ))}
     </div>
@@ -192,7 +193,7 @@ function Discover() {
             {sortedStocks.map((s) => (
               <ListRow
                 key={s.ticker ?? s.company}
-                href={`/stock/${encodeURIComponent(s.ticker ?? "")}`}
+                href={stockHref(s.ticker ?? "")}
                 leading={<CompanyLogo ticker={s.ticker} company={s.company} size={44} />}
                 title={s.company}
                 subtitle={`${s.investors} ${s.investors === 1 ? "Investor" : "Investoren"} · ${abbrevMoney(s.value)}`}

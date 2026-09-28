@@ -27,8 +27,11 @@ light and dark values; Tailwind names map onto them (`web/tailwind.config.ts`).
 | `surface-2` | #F2F2F7 | #2C2C2E | fills, chips, tracks |
 | `ink` | #1D1D1F | #F5F5F7 | text, primary action |
 | `subtle` | #6C6C70 | #98989D | secondary text (≥ 4.5:1) |
-| `bull` / `bull-fill` | #248A3D / #34C759 | #30D158 | gains (text / marks) |
-| `bear` / `bear-fill` | #D70015 / #FF3B30 | #FF6961 / #FF453A | losses |
+| `bull` / `bull-fill` | #0A7F52 / #0FA36B | #3DDC97 / #2FD592 | gains (text / marks), emerald |
+| `bear` / `bear-fill` | #C8243B / #E8384F | #FF7D8B / #FF6B7D | losses (text / marks), rose |
+| `*-hi` / `*-deep` | lit / shaded steps of bull, bear, flat | | 3D chart shading only |
+| `flat-fill` | #9BA1AD | #7C8290 | "held", neutral marks |
+| `seg-thumb` | #FFFFFF | #636366 | selected segment |
 
 **The three auras** – identity colours for who disclosed. Validated for
 colour-vision deficiency in both modes with the dataviz validator (all pairs):
@@ -77,7 +80,25 @@ Follow the dataviz method: one axis, thin smooth lines (monotone, never
 invented extremes), recessive hairline grid, crosshair + tooltip on hover,
 touch and arrow keys, draw-in animation that respects reduced motion.
 Categorical colours come from `web/lib/palette.ts` in fixed order; past eight
-series, fold into "Übrige".
+series, fold into "Übrige". Groups (sectors, regions, asset classes) take the
+palette by size too — never fixed hex values, which vanished on dark cards.
+
+Volume, where it helps reading: ring charts are shaded discs with a visible
+side and a soft shadow (`Donut`), activity bars are lit cylinders
+(`ActivityBars`), stacked and yearly bars carry `.bar-3d`, legends use
+`.dot-3d`. Lines stay flat.
+
+Numbers are German everywhere (`num`, `pctOf` in `web/lib/format.ts`):
+"22,4 %", "$299,3 Mrd.", "$31,1K", with a no-break space before "%" and units.
+
+## Pictures
+
+People: official congressional portraits; credited Commons photos for
+investors (`web/lib/portraits.ts`, matched by fund or person name); else the
+fund's logo (`FUND_LOGOS`, files in `web/public/funds`); insiders show their
+company's logo. Company logos load through `/api/logo` (PNG only, cached a
+week) and get a soft edge when their own background matches the card. Logo
+groups sit side by side, never overlapped.
 
 ## Motion
 

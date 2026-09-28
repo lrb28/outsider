@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import { Donut } from "@/components/Donut";
+import { SegmentedControl } from "@/components/ui";
+import { num, pctOf } from "@/lib/format";
 import { cAbbrev as abbrevMoney } from "@/lib/money";
 import { Icon } from "./Icon";
 
@@ -77,7 +79,7 @@ export function AllocView({
     <div className="lcard p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-sm font-semibold">{title}</span>
-        <span className="text-xs text-subtle">{sorted.length} Gruppen</span>
+        <span className="text-xs text-subtle">{sorted.length} {sorted.length === 1 ? "Gruppe" : "Gruppen"}</span>
       </div>
 
       <div className="flex flex-col items-center gap-5 sm:flex-row">
@@ -86,7 +88,7 @@ export function AllocView({
             segments={shown}
             size={150}
             countTo={focusShare * 100}
-            countFormat={(v) => `${v.toFixed(0)} %`}
+            countFormat={(v) => pctOf(v / 100, 0, false)}
             centerBottom={focus.label.length > 15 ? focus.label.slice(0, 14) + "…" : focus.label}
             activeIndex={hover}
             onHover={setHover}
@@ -108,16 +110,13 @@ export function AllocView({
                 onMouseLeave={() => setHover(null)}
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: s.color }}
-                  />
+                  <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
                   <span className="truncate text-ink">{s.label}</span>
                   <span className="ml-auto shrink-0 tabular-nums text-subtle">
                     {abbrevMoney(s.value)}
                   </span>
-                  <span className="w-12 shrink-0 text-right font-semibold tabular-nums">
-                    {p.toFixed(1)} %
+                  <span className="w-14 shrink-0 whitespace-nowrap text-right font-semibold tabular-nums">
+                    {pctOf(p / 100, 1, false)}
                   </span>
                 </div>
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -156,13 +155,13 @@ export function Concentration({
   const effective = hhi > 0 ? 1 / hhi : 0;
 
   const rows: [string, string, string][] = [
-    ["Größte Position", `${(cum(1) * 100).toFixed(1)} %`, cum(1) > 0.25 ? "bear" : ""],
-    ["Top 3", `${(cum(3) * 100).toFixed(1)} %`, cum(3) > 0.6 ? "bear" : ""],
-    ["Top 5", `${(cum(5) * 100).toFixed(1)} %`, cum(5) > 0.8 ? "bear" : ""],
+    ["Größte Position", pctOf(cum(1), 1, false), cum(1) > 0.25 ? "bear" : ""],
+    ["Top 3", pctOf(cum(3), 1, false), cum(3) > 0.6 ? "bear" : ""],
+    ["Top 5", pctOf(cum(5), 1, false), cum(5) > 0.8 ? "bear" : ""],
     ["Positionen", String(count), ""],
     [
       "Effektive Diversifikation",
-      `${effective.toFixed(1)} Positionen`,
+      `${num(effective)} Positionen`,
       effective < 5 ? "bear" : effective > 12 ? "bull" : "",
     ],
   ];
@@ -225,30 +224,19 @@ export function Collapse({
 
 // ── Segmentierte Reiter (Pillen) ────────────────────────────────────────────
 
+/** The Depot's tab and filter rows: the same segmented control as elsewhere. */
 export function Pills<T extends string>({
   options,
   value,
   onChange,
   size = "md",
+  label = "Auswahl",
 }: {
   options: readonly (readonly [T, string])[];
   value: T;
   onChange: (v: T) => void;
   size?: "sm" | "md";
+  label?: string;
 }) {
-  return (
-    <div className="no-scrollbar inline-flex max-w-full overflow-x-auto rounded-full bg-slate-100 p-0.5 text-xs font-medium">
-      {options.map(([key, label]) => (
-        <button
-          key={key}
-          onClick={() => onChange(key)}
-          className={`press-sm shrink-0 rounded-full transition-colors ${
-            size === "sm" ? "px-2.5 py-1" : "px-3.5 py-1.5"
-          } ${value === key ? "bg-card text-ink shadow-card" : "text-subtle hover:text-ink"}`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+  return <SegmentedControl label={label} options={options} value={value} onChange={onChange} size={size} />;
 }

@@ -22,23 +22,22 @@ import type { StatsResponse } from "@/lib/stats";
 import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, MatchResponse, MatchRow, PoliticianRow, PoliticiansResponse, TradesResponse } from "@/lib/types";
 
 /* ── Floating logos for the entry cards ──────────────────────────────────── */
-const LOGO_SPOTS = [
-  { left: "0%", top: "14%", rot: -8, size: 56 },
-  { left: "34%", top: "0%", rot: 7, size: 64 },
-  { left: "30%", top: "46%", rot: -3, size: 50 },
-];
+// Three logos in a loose row, each tilted a little and bobbing on its own
+// beat. They never overlap: stacked tiles hid each other's marks.
+const LOGO_TILT = [-6, 4, -3];
 
 function FloatingLogos({ items }: { items: CollectionItem[] }) {
   return (
-    <div className="relative h-32 w-48">
-      {items.slice(0, 3).map((it, i) => {
-        const s = LOGO_SPOTS[i];
-        return (
-          <div key={`${it.ticker ?? it.company}-${i}`} className="animate-floaty absolute rounded-[16px] shadow-[0_6px_18px_rgb(0_0_0/0.14)]" style={{ left: s.left, top: s.top, "--rot": `${s.rot}deg`, animationDelay: `${i * 0.7}s` } as CSSProperties}>
-            <CompanyLogo ticker={it.ticker} company={it.company} size={s.size} rounded="rounded-[16px]" />
-          </div>
-        );
-      })}
+    <div className="flex h-28 items-center gap-3 pl-1">
+      {items.slice(0, 3).map((it, i) => (
+        <div
+          key={`${it.ticker ?? it.company}-${i}`}
+          className="animate-floaty rounded-[16px] shadow-[0_6px_18px_rgb(0_0_0/0.14)]"
+          style={{ "--rot": `${LOGO_TILT[i]}deg`, animationDelay: `${i * 0.7}s`, marginTop: i === 1 ? -18 : 12 } as CSSProperties}
+        >
+          <CompanyLogo ticker={it.ticker} company={it.company} size={60} rounded="rounded-[16px]" />
+        </div>
+      ))}
     </div>
   );
 }
@@ -48,15 +47,23 @@ function TradeCard({ row, onOpen }: { row: FeedRow; onOpen: () => void }) {
   const signal = tradeSignal(row);
   const company = companyName(row.ticker, row.securityName);
   const name = row.entityType === "institution" ? investorPerson(row.entityName) ?? row.entityName : row.entityName;
+  const insider = row.entityType === "corporate_insider";
   const perf = row.pctSinceDisclosure;
   const tone = signal.tone === "bull" ? "text-bull" : signal.tone === "bear" ? "text-bear" : "text-ink";
   return (
     <button onClick={onOpen} className="card lcard-hover press w-72 shrink-0 snap-start p-4 text-left">
       <div className="relative mb-3 h-12 w-16">
-        <Avatar name={row.entityName} src={row.entityPhoto} kind={auraOf(row.entityType)} size={46} />
-        <div className="absolute -bottom-1 left-8 rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.16)]">
-          <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-[10px]" />
-        </div>
+        {insider ? (
+          // An insider's picture is their company's logo, so no second badge.
+          <CompanyLogo ticker={row.ticker} company={company} size={46} rounded="rounded-[14px]" />
+        ) : (
+          <>
+            <Avatar name={name} src={row.entityPhoto} kind={auraOf(row.entityType)} size={46} />
+            <div className="absolute -bottom-1 left-8 rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.16)]">
+              <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-[10px]" />
+            </div>
+          </>
+        )}
       </div>
       <div className="text-[15px] leading-snug">
         <span className="font-semibold">{name}</span>
@@ -103,14 +110,14 @@ function varied(rows: FeedRow[], n = 8) {
 }
 
 /* ── The three auras: who discloses ───────────────────────────────────────── */
-function AuraTile({ href, kind, title, count, unit, faces }: { href: string; kind: "investor" | "insider" | "politician"; title: string; count: number | null; unit: string; faces: { name: string; src?: string | null }[] }) {
+function AuraTile({ href, kind, title, count, unit, faces }: { href: string; kind: "investor" | "insider" | "politician"; title: string; count: number | null; unit: string; faces: { name: string; src?: string | null; ticker?: string | null }[] }) {
   return (
     <Link href={href} className="card lcard-hover press relative flex min-h-[9rem] flex-col justify-between overflow-hidden p-3 sm:p-4">
       <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full blur-2xl" style={{ background: `rgb(var(--aura-${kind}) / 0.32)` }} />
       <div className="relative flex items-center">
         {faces.slice(0, 3).map((f, i) => (
           <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -9, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.14)]">
-            <Avatar name={f.name} src={f.src} kind={kind} size={30} />
+            <Avatar name={f.name} src={f.src} kind={kind} ticker={f.ticker} size={30} />
           </div>
         ))}
         {faces.length === 0 && <Skeleton className="h-[34px] w-20 rounded-full" />}
@@ -164,7 +171,8 @@ export default function HomePage() {
   const retry = () => setAttempt((n) => n + 1);
 
   const spotlight = investors.filter((i) => i.person).slice(0, 12);
-  const insiderFaces = (insiders ?? []).slice(0, 12).filter((r, i, all) => all.findIndex((x) => x.entityName === r.entityName) === i).map((r) => ({ name: r.entityName }));
+  // Insiders are shown by their companies' logos, three different ones.
+  const insiderFaces = (insiders ?? []).filter((r, i, all) => r.ticker && all.findIndex((x) => x.ticker === r.ticker) === i).slice(0, 3).map((r) => ({ name: r.entityName, ticker: r.ticker }));
   const gateways = [
     { href: "/discover/boughtq", aura: "investor" as const, title: "Häufigste Aufstockungen", blurb: "Diese Aktien stocken die verfolgten Investoren im letzten Quartal am häufigsten auf.", items: discover?.mostBoughtQ ?? [] },
     { href: "/discover/insiderbuys", aura: "insider" as const, title: "Insider greifen zu", blurb: "Vorstände und Direktoren, die mit eigenem Geld Aktien ihrer Firma kaufen.", items: discover?.insiderBuys ?? [] },
@@ -222,10 +230,10 @@ export default function HomePage() {
                 <div className="mt-1 num-lg">
                   {m.sharedCount} <span className="font-sans text-xs font-medium text-subtle">von {depotCount} deiner Werte</span>
                 </div>
-                <div className="mt-3 flex items-center">
-                  {m.sharedTickers.slice(0, 3).map((t, i) => (
-                    <div key={t} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }} className="rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.14)]">
-                      <CompanyLogo ticker={t} company={t} size={26} rounded="rounded-[10px]" />
+                <div className="mt-3 flex items-center gap-1.5">
+                  {m.sharedTickers.slice(0, 4).map((t) => (
+                    <div key={t} className="rounded-[9px] shadow-[0_2px_6px_rgb(0_0_0/0.1)]">
+                      <CompanyLogo ticker={t} company={t} size={28} rounded="rounded-[9px]" />
                     </div>
                   ))}
                 </div>

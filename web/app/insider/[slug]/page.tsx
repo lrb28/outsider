@@ -13,7 +13,7 @@ import { StatRow, DetailTopBar } from "@/components/ui";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { fixTicker } from "@/lib/format";
+import { fixTicker, stockHref } from "@/lib/format";
 import type { InsiderDetail, InsiderResponse } from "@/lib/types";
 
 export default function InsiderPage() {
@@ -79,7 +79,7 @@ export default function InsiderPage() {
             <div className="mt-1 text-[15px] text-subtle">{ins.role || "Insider"}{ins.ticker ? ` · ${company}` : ""}</div>
           </div>
           {ins.ticker && (
-            <Link href={`/stock/${encodeURIComponent(ins.ticker)}`} className="btn-capsule">
+            <Link href={stockHref(ins.ticker)} className="btn-capsule">
               <CompanyLogo ticker={ins.ticker} company={company} size={22} rounded="rounded-[7px]" />
               Aktie ansehen
             </Link>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { cAbbrev, cMoney } from "@/lib/money";
+import { pctOf } from "@/lib/format";
 
 const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
 
@@ -14,7 +15,7 @@ function heatColor(t: number): string {
   return `color-mix(in oklab, rgb(var(${hue})) ${Math.round(Math.abs(x) * 80)}%, rgb(var(--surface-2)))`;
 }
 
-const pctStr = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} %`;
+const pctStr = (v: number) => pctOf(v, 1);
 
 // ── Monats-Heatmap ──────────────────────────────────────────────────────────
 
@@ -59,47 +60,50 @@ export function MonthHeatmap({
 
   return (
     <div>
-      <div className="mb-2 flex items-baseline gap-3">
-        <span className="text-sm font-semibold">
-          {hover ? pctStr(hover.r) : "Monatsrenditen"}
-        </span>
-        <span className="text-[11px] text-subtle">
-          {hover
-            ? `${MONTHS[Number(hover.key.slice(5, 7)) - 1]} ${hover.key.slice(0, 4)}`
-            : "Fahr über eine Kachel für den genauen Wert"}
-        </span>
+      <div className="mb-2 flex min-h-5 items-baseline gap-2 text-[12px]">
+        {hover ? (
+          <>
+            <span className={`font-semibold tabular-nums ${hover.r >= 0 ? "text-bull" : "text-bear"}`}>{pctStr(hover.r)}</span>
+            <span className="text-subtle">{`${MONTHS[Number(hover.key.slice(5, 7)) - 1]} ${hover.key.slice(0, 4)}`}</span>
+          </>
+        ) : (
+          <span className="text-subtle">Tippe auf eine Kachel für den genauen Wert.</span>
+        )}
       </div>
 
-      <div className="overflow-x-auto" onMouseLeave={() => setHover(null)}>
-        <table className="w-full min-w-[34rem] border-separate border-spacing-[3px]">
+      {/* Fixed layout: all twelve months fit a phone instead of scrolling
+          sideways past August. */}
+      <div onMouseLeave={() => setHover(null)}>
+        <table className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]">
           <thead>
             <tr>
-              <th className="w-10" />
+              <th className="w-8 sm:w-10" />
               {MONTHS.map((m) => (
-                <th key={m} className="pb-1 text-[10px] font-medium text-subtle">
-                  {m}
+                <th key={m} className="pb-1 text-[9px] font-medium text-subtle sm:text-[10px]">
+                  {m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span>
                 </th>
               ))}
-              <th className="w-14 pb-1 text-[10px] font-medium text-subtle">Jahr</th>
+              <th className="w-9 pb-1 text-[9px] font-medium text-subtle sm:w-14 sm:text-[10px]">Jahr</th>
             </tr>
           </thead>
           <tbody>
             {grid.map((row) => (
               <tr key={row.year}>
-                <td className="pr-1 text-right text-[11px] font-medium text-subtle">{row.year}</td>
+                <td className="pr-1 text-right text-[10px] font-medium text-subtle sm:text-[11px]"><span aria-hidden="true">’{row.year.slice(2)}</span><span className="sr-only">{row.year}</span></td>
                 {row.cells.map((c) => (
                   <td key={c.key}>
                     {c.r === null ? (
-                      <div className="h-7 rounded-md bg-slate-50" />
+                      <div className="h-7 rounded-md bg-surface2/60" />
                     ) : (
                       <div
-                        className="flex h-7 cursor-default items-center justify-center rounded-md text-[10px] font-semibold tabular-nums transition-transform hover:scale-110"
+                        className="flex h-7 cursor-default items-center justify-center rounded-md text-[9px] font-semibold tabular-nums transition-transform hover:scale-110 sm:text-[10px]"
                         style={{
                           backgroundColor: heatColor(c.r / scale),
                           color: Math.abs(c.r) > scale * 0.6 ? "rgb(var(--ink))" : "rgb(var(--subtle))",
                           outline: hover?.key === c.key ? "2px solid rgb(var(--ink))" : undefined,
                         }}
                         onMouseEnter={() => setHover({ key: c.key, r: c.r as number })}
+                        onPointerDown={() => setHover({ key: c.key, r: c.r as number })}
                       >
                         {(c.r * 100).toFixed(0)}
                       </div>
@@ -108,7 +112,7 @@ export function MonthHeatmap({
                 ))}
                 <td>
                   <div
-                    className={`flex h-7 items-center justify-center rounded-md text-[11px] font-bold tabular-nums ${
+                    className={`flex h-7 items-center justify-center rounded-md text-[10px] font-bold tabular-nums sm:text-[11px] ${
                       (row.total ?? 0) >= 0
                         ? "bg-bull/10 text-bull"
                         : "bg-bear/10 text-bear"
@@ -307,7 +311,7 @@ export function ContributionBars({
         In Euro, nicht in Prozent. {sorted[0] && totalPos > 0 && (
           <>
             <span className="font-semibold text-ink">{sorted[0].label}</span> allein steuert{" "}
-            {((sorted[0].gain / totalPos) * 100).toFixed(0)} % aller Gewinne bei.
+            {pctOf(sorted[0].gain / totalPos, 0, false)} aller Gewinne bei.
           </>
         )}
       </div>

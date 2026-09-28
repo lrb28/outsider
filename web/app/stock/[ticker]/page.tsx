@@ -82,7 +82,7 @@ export default function StockPage() {
     [...lastAction.values()].filter((x) => x === v).length;
   const act = [
     { label: "Bestand erhöht", value: countBy("buy"), color: "rgb(var(--bull-fill))" },
-    { label: "Gehalten", value: countBy("hold"), color: "rgb(var(--n-400))" },
+    { label: "Gehalten", value: countBy("hold"), color: "rgb(var(--flat-fill))" },
     { label: "Bestand reduziert", value: countBy("sell"), color: "rgb(var(--bear-fill))" },
   ];
   const actTotal = act.reduce((a, s) => a + s.value, 0);
@@ -103,9 +103,15 @@ export default function StockPage() {
   const curTotal = actTab === "inv" ? actTotal : insTotal;
   const curTop = [...curSegs].sort((a, b) => b.value - a.value)[0];
 
-  const up = bars && bars.length > 1 ? bars[bars.length - 1].close >= bars[0].close : true;
-  const chg =
-    bars && bars.length > 1 ? (bars[bars.length - 1].close - bars[0].close) / bars[0].close : null;
+  // Stored closes end at the last import; the live quote extends the line to
+  // now, so the chart and the price above it tell the same story.
+  const liveDay = quote ? new Date(quote.t).toISOString().slice(0, 10) : null;
+  const series: PriceBar[] | null = bars && quote && liveDay && (!quote.currency || quote.currency === "USD")
+    ? bars.length && bars[bars.length - 1].date >= liveDay
+      ? [...bars.slice(0, -1), { ...bars[bars.length - 1], close: quote.price }]
+      : [...bars, { date: liveDay, close: quote.price }]
+    : bars;
+  const up = series && series.length > 1 ? series[series.length - 1].close >= series[0].close : true;
 
   const stats = [
     { label: "Investoren mit Bestand", value: stock.investors.toLocaleString("de-DE") },
@@ -149,13 +155,13 @@ export default function StockPage() {
             <span className="eyebrow">Kurs</span>
             <SegmentedControl label="Zeitraum" size="sm" options={[["1M", "1M"], ["3M", "3M"], ["6M", "6M"], ["1J", "1J"], ["Max", "Max"]] as const} value={range} onChange={setRange} />
           </div>
-          <PriceChart key={range} bars={bars.slice(-({ "1M": 21, "3M": 63, "6M": 126, "1J": 252, Max: bars.length }[range]))} height={220} />
+          <PriceChart key={range} bars={(series ?? bars).slice(-({ "1M": 22, "3M": 64, "6M": 127, "1J": 253, Max: (series ?? bars).length }[range]))} height={220} />
         </div>
       )}
       </div>
 
       {priceError && <ErrorRetry onRetry={() => setTick(t => t+1)}/>}
-      {bars?.length ? <p className="-mt-5 text-[13px] text-subtle">Historische Schlusskurse · Stand {formatDate(bars[bars.length-1].date)}{isStaleDate(bars[bars.length-1].date) ? " · veraltet" : ""}</p> : !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
+      {bars?.length ? <p className="-mt-5 text-[13px] text-subtle">Schlusskurse bis {formatDate(bars[bars.length-1].date)}{quote ? ` · aktueller Kurs von ${new Date(quote.t).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr` : isStaleDate(bars[bars.length-1].date) ? " · veraltet" : ""}</p> : !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
       <StatRow items={stats} />
 
       {(actTotal > 0 || insTotal > 0) && (
@@ -188,7 +194,7 @@ export default function StockPage() {
               <div className="w-full flex-1 space-y-2.5">
                 {curSegs.map((s) => (
                   <div key={s.label} className="flex items-center gap-2 text-sm">
-                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                    <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
                     <span className="text-ink">{s.label}</span>
                     <span className="text-xs text-subtle">
                       {s.value}{" "}
