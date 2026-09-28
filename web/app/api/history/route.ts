@@ -64,7 +64,7 @@ async function fromYahoo(ticker: string, range: string): Promise<HistoryEntry | 
         ticker,
       )}?range=${range}&interval=1d&events=div`,
       {
-        headers: { "User-Agent": "Mozilla/5.0 (outsider-tracker)" },
+        headers: { "User-Agent": "Mozilla/5.0 (aura-tracker)" },
         cache: "no-store",
         // Ein hängender Aufruf darf nicht den ganzen Stapel blockieren.
         signal: AbortSignal.timeout(6_000),

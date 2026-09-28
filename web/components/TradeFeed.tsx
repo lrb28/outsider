@@ -3,11 +3,13 @@
 import { useState } from "react";
 
 import {
+  auraOf,
   companyName,
   disclosureLabel,
   fixTicker,
   formatDate,
   groupSeries,
+  investorPerson,
   SERIES_MIN,
   tradeSignal,
   isStaleDate,
@@ -21,7 +23,7 @@ import { SkeletonList } from "./Skeleton";
 import { TradeDetailModal } from "./TradeDetailModal";
 
 const TYP: Record<string, string> = {
-  institution: "Institution",
+  institution: "Investor",
   corporate_insider: "Insider",
   politician: "Politiker",
 };
@@ -49,11 +51,9 @@ export function TradeFeed({
     ? "md:grid-cols-[1.7fr_1.5fr_1fr_1fr_0.8fr]"
     : "md:grid-cols-[2fr_1fr_1fr_0.8fr]";
 
-  const container = dark
-    ? "bg-slate-900/60 ring-1 ring-white/10"
-    : "lcard";
+  const container = dark ? "bg-slate-900/60" : "card";
   const headBorder = dark ? "border-white/10 text-slate-400" : "border-hair text-subtle";
-  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-black/5 hover:bg-white/70";
+  const rowBorder = dark ? "border-white/10 hover:bg-white/5" : "border-hair hover:bg-ink/[0.03] active:bg-ink/[0.06]";
   const nameCls = dark ? "text-slate-100" : "";
   const subCls = dark ? "text-slate-400" : "text-subtle";
   const emptyCls = dark ? "text-slate-400" : "text-subtle";
@@ -61,7 +61,7 @@ export function TradeFeed({
   return (
     <>
       {opened.size > 0 && <button className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-ink underline underline-offset-2" onClick={() => setOpened(new Set())}>Serien wieder zusammenfassen</button>}
-      <div className={`overflow-hidden rounded-3xl ${container}`}>
+      <div className={`overflow-hidden rounded-[22px] ${container}`}>
         <div
           className={`hidden ${grid} gap-3 border-b px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide md:grid ${headBorder}`}
         >
@@ -114,12 +114,12 @@ export function TradeFeed({
             const sig = tradeSignal(r);
             const badge =
               sig.tone === "bull"
-                ? "bg-emerald-50 text-bull"
+                ? "bg-bull/10 text-bull"
                 : sig.tone === "bear"
-                ? "bg-rose-50 text-bear"
+                ? "bg-bear/10 text-bear"
                 : dark
                 ? "bg-white/10 text-slate-300"
-                : "bg-zinc-100 text-zinc-700";
+                : "bg-surface2 text-subtle";
             const perf = r.priceAsOf && isStaleDate(r.priceAsOf) ? null : r.pctSinceDisclosure;
             const disc = disclosureLabel(perf, r.disclosedAt, today);
             const perfCls = disc.muted ? subCls : perf! >= 0 ? "text-bull" : "text-bear";
@@ -132,13 +132,13 @@ export function TradeFeed({
               >
                 {showActor && (
                   <div className="flex items-center gap-3">
-                    <Avatar name={r.entityName} size={36} />
+                    <Avatar name={r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName} src={r.entityPhoto} kind={auraOf(r.entityType)} size={38} />
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
-                        <span className="truncate">{r.entityName}</span>
-                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-amber-500 [&_path]:fill-current" aria-label="Hervorgehoben" />}
+                        <span className="truncate">{r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName}</span>
+                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
                       </div>
-                      <div className={`text-xs ${subCls}`}>{TYP[r.entityType]}</div>
+                      <div className={`flex items-center gap-1 text-xs ${subCls}`}><i className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(var(--aura-${auraOf(r.entityType)}))` }} />{TYP[r.entityType]}</div>
                     </div>
                   </div>
                 )}
@@ -147,7 +147,7 @@ export function TradeFeed({
                   <CompanyLogo ticker={r.ticker} company={company} size={34} />
                   <div className="min-w-0">
                     <div className={`truncate text-sm font-medium ${nameCls}`}>{company}</div>
-                    <div className={`font-mono text-xs ${subCls}`}>
+                    <div className={`text-xs ${subCls}`}>
                       {fixTicker(r.ticker, company) ?? "—"}
                     </div>
                   </div>

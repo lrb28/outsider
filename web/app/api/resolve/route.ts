@@ -71,7 +71,7 @@ async function lookup(id: string): Promise<string | null> {
         id,
       )}&quotesCount=10&newsCount=0&listsCount=0`,
       {
-        headers: { "User-Agent": "Mozilla/5.0 (outsider-tracker)" },
+        headers: { "User-Agent": "Mozilla/5.0 (aura-tracker)" },
         cache: "no-store",
         signal: AbortSignal.timeout(6_000),
       },

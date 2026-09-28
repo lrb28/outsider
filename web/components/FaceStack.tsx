@@ -11,7 +11,7 @@ export function FaceStack({ names, size = 26 }: { names: string[]; size?: number
         <div
           key={n + i}
           style={{ marginLeft: i === 0 ? 0 : -size * 0.32, zIndex: shown.length - i }}
-          className="rounded-full shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
+          className="rounded-full shadow-[0_2px_10px_rgb(0_0_0/0.16)]"
         >
           <Avatar name={n} size={size} />
         </div>

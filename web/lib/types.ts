@@ -17,6 +17,8 @@ export interface FeedRow {
   pctSinceTrade: number | null;
   pctSinceDisclosure: number | null;
   sourceUrl: string;
+  /** Official portrait (politicians). */
+  entityPhoto?: string | null;
   transactionCode?: string | null;
   isDerivative?: boolean;
   priceAsOf?: string | null;
@@ -137,6 +139,9 @@ export interface PoliticianRow {
   name: string;
   party: string | null;
   chamber: string | null;
+  /** "CA-11" */
+  seat?: string | null;
+  photo?: string | null;
   trades: number;
   lastTrade: string | null;
 }
@@ -146,6 +151,8 @@ export interface PoliticianDetail {
   name: string;
   party: string | null;
   chamber: string | null;
+  seat?: string | null;
+  photo?: string | null;
   trades: FeedRow[];
 }
 
@@ -201,6 +208,7 @@ export interface CollectionInvestor {
   fund: string;
   person: string | null;
   metric: string;
+  photo?: string | null;
 }
 
 export interface DiscoverData {

@@ -2,82 +2,69 @@
 
 import { useEffect, useState } from "react";
 
-import { avatarColor, initials, wikiTitleFor } from "@/lib/format";
+import { type AuraKind, initials, wikiTitleFor } from "@/lib/format";
 import { PORTRAITS } from "@/lib/portraits";
 
-// Module-level cache so a portrait is fetched from Wikipedia at most once per
-// session, no matter how many avatars reference the same person.
-const cache = new Map<string, string | null>();
-const inflight = new Map<string, Promise<string | null>>();
-
-function fetchPhoto(title: string): Promise<string | null> {
-  if (cache.has(title)) return Promise.resolve(cache.get(title) ?? null);
-  if (inflight.has(title)) return inflight.get(title)!;
-  const p = fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`)
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => {
-      const src: string | null = d?.thumbnail?.source ?? null;
-      cache.set(title, src);
-      inflight.delete(title);
-      return src;
-    })
-    .catch(() => {
-      cache.set(title, null);
-      inflight.delete(title);
-      return null;
-    });
-  inflight.set(title, p);
-  return p;
+/** Deterministic 0..1 from a name, so each monogram keeps its own glow. */
+function seed(name: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 16777619);
+  return ((h >>> 0) % 1000) / 1000;
 }
 
+/**
+ * A person's picture: an explicit photo (official congressional portrait),
+ * else a credited free portrait for known investors, else an aura monogram —
+ * initials on a soft glow in the colour of the group (investors blue,
+ * insiders orange, politicians magenta). No borders or rings.
+ */
 export function Avatar({
   name,
   size = 36,
+  src,
+  kind = "investor",
   className = "",
 }: {
   name: string;
   size?: number;
+  /** Photo URL that wins over everything else. */
+  src?: string | null;
+  kind?: AuraKind;
   className?: string;
 }) {
   const title = wikiTitleFor(name);
-  // Curated, credited portraits first; other known people via Wikipedia.
-  const known = title ? PORTRAITS[title]?.src ?? null : null;
-  const [photo, setPhoto] = useState<string | null>(known ?? (title ? cache.get(title) ?? null : null));
-
-  useEffect(() => {
-    let on = true;
-    if (known) setPhoto(known);
-    else if (title) fetchPhoto(title).then((s) => on && setPhoto(s));
-    return () => {
-      on = false;
-    };
-  }, [title, known]);
+  const known = src || (title ? PORTRAITS[title]?.src ?? null : null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [known]);
 
   const style = { width: size, height: size, minWidth: size } as const;
 
-  if (photo) {
+  if (known && !failed) {
     return (
       <img
-        src={photo}
+        src={known}
         alt=""
         loading="lazy"
+        decoding="async"
         style={style}
-        onError={() => {
-          if (title) cache.set(title, null);
-          setPhoto(null);
-        }}
-        className={`shrink-0 rounded-full bg-zinc-100 object-cover ${className}`}
+        onError={() => setFailed(true)}
+        className={`shrink-0 rounded-full bg-surface2 object-cover object-top ${className}`}
       />
     );
   }
+  const s = seed(name);
+  const x = 20 + Math.round(s * 60);
+  const y = 10 + Math.round(((s * 7) % 1) * 40);
   return (
     <div
-      style={style}
-      className={`flex shrink-0 items-center justify-center rounded-full font-display font-semibold ${avatarColor(
-        name,
-      )} ${className}`}
+      aria-hidden="true"
+      style={{
+        ...style,
+        background: `radial-gradient(90% 90% at ${x}% ${y}%, rgb(255 255 255 / 0.42), transparent 62%), linear-gradient(160deg, rgb(var(--aura-${kind}) / 0.82), rgb(var(--aura-${kind})))`,
+      }}
+      className={`flex shrink-0 items-center justify-center rounded-full font-display font-semibold text-white ${className}`}
     >
-      <span style={{ fontSize: Math.round(size * 0.36) }}>{initials(name)}</span>
+      <span style={{ fontSize: Math.round(size * 0.36), textShadow: "0 1px 6px rgb(0 0 0 / 0.18)" }}>{initials(name)}</span>
     </div>
   );
 }

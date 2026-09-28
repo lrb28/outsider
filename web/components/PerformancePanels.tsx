@@ -69,22 +69,22 @@ export function RiskReturnMap({ points }: { points: RiskPoint[] }) {
             x2={W}
             y1={H * f}
             y2={H * f}
-            stroke="#e2e8f0"
+            stroke="rgb(var(--hair))"
             strokeWidth={0.4}
             strokeDasharray="2 2"
           />
         ))}
-        <line x1={0} x2={W} y1={zeroY} y2={zeroY} stroke="#94a3b8" strokeWidth={0.7} />
-        <text x={W + 2} y={zeroY + 2} fontSize={4} fill="#94a3b8">
+        <line x1={0} x2={W} y1={zeroY} y2={zeroY} stroke="rgb(var(--n-400))" strokeWidth={0.7} />
+        <text x={W + 2} y={zeroY + 2} fontSize={4} fill="rgb(var(--n-400))">
           0 %
         </text>
-        <text x={W + 2} y={4} fontSize={4} fill="#94a3b8">
+        <text x={W + 2} y={4} fontSize={4} fill="rgb(var(--n-400))">
           {pctStr(maxRet)}
         </text>
-        <text x={0} y={H + 8} fontSize={4} fill="#94a3b8">
+        <text x={0} y={H + 8} fontSize={4} fill="rgb(var(--n-400))">
           ruhig
         </text>
-        <text x={W - 16} y={H + 8} fontSize={4} fill="#94a3b8">
+        <text x={W - 16} y={H + 8} fontSize={4} fill="rgb(var(--n-400))">
           schwankend
         </text>
 
@@ -107,7 +107,7 @@ export function RiskReturnMap({ points }: { points: RiskPoint[] }) {
                   y={y(p.ret) - r - 2}
                   fontSize={4}
                   textAnchor="middle"
-                  fill="#0f172a"
+                  fill="rgb(var(--ink))"
                   fontWeight={600}
                 >
                   {p.name.length > 16 ? p.name.slice(0, 15) + "…" : p.name}

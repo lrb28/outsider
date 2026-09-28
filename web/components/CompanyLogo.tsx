@@ -11,7 +11,7 @@ function tile(ticker: string | null, company: string, size: number, rounded: str
   return (
     <div
       style={{ width: size, height: size, minWidth: size }}
-      className={`flex shrink-0 items-center justify-center ${rounded} bg-white/75 font-display font-semibold text-zinc-500`}
+      className={`flex shrink-0 items-center justify-center ${rounded} bg-surface2 font-display font-semibold text-subtle`}
     >
       <span style={{ fontSize: Math.round(size * 0.42) }}>{letter}</span>
     </div>
