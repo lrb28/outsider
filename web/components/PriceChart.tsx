@@ -59,7 +59,7 @@ export function PriceChart({
     <div>
       {/* Value readout above the chart (updates on hover) */}
       <div className="mb-1 flex items-baseline gap-2">
-        <span className="text-xl font-semibold tracking-tight">{formatVal(cur.close)}</span>
+        <span className="num-xl">{formatVal(cur.close)}</span>
         <span className={`text-sm font-semibold ${chg >= 0 ? "text-bull" : "text-bear"}`}>
           {chg >= 0 ? "+" : ""}
           {(chg * 100).toFixed(2)} %

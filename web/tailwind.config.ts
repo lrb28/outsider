@@ -18,10 +18,15 @@ const config: Config = {
         "bull-fill": "#34c759",
         bear: "#d70015",
         "bear-fill": "#ff3b30",
+        // Neon lime, used sparingly for data highlights (chart dots, live marks).
+        accent: "#d4f24a",
       },
       boxShadow: {
         card: "inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(28 28 30 / 0.04), 0 8px 24px rgb(28 28 30 / 0.06)",
         cardhover: "inset 0 1px 0 rgb(255 255 255 / 0.95), 0 2px 6px rgb(28 28 30 / 0.06), 0 16px 40px rgb(28 28 30 / 0.1)",
+      },
+      fontFamily: {
+        display: ["var(--font-display)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       borderRadius: {
         "4xl": "2rem",

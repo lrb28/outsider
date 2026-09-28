@@ -12,8 +12,8 @@
     "check:repository": "node scripts/check-repository.mjs"
   },
   "dependencies": {
-    "@paper-design/shaders-react": "0.0.81",
     "@vercel/functions": "3.9.9",
+    "html2canvas": "1.4.1",
     "next": "15.5.25",
     "pg": "8.16.3",
     "react": "18.3.1",

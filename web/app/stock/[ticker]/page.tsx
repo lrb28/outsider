@@ -181,7 +181,7 @@ export default function StockPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
-            <div className={`text-lg font-semibold tracking-tight ${s.cls ?? ""}`}>{s.value}</div>
+            <div className={`num-lg ${s.cls ?? ""}`}>{s.value}</div>
             <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
           </div>
         ))}

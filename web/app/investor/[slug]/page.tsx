@@ -96,7 +96,7 @@ export default function InvestorPage() {
       <div className="grid grid-cols-3 gap-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
-            <div className="text-lg font-semibold tracking-tight">{s.value}</div>
+            <div className="num-lg">{s.value}</div>
             <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
           </div>
         ))}

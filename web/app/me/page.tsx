@@ -971,7 +971,7 @@ export default function MePage() {
               <LiveValue
                 value={total}
                 format={(v) => cMoney(v)}
-                className="text-3xl font-semibold tracking-tight"
+                className="num-xl sm:text-5xl"
               />
               {dayPctSum != null && (
                 <span
@@ -2533,7 +2533,7 @@ function BigStat({
     <div className="bg-card p-5">
       <div className="text-xs text-subtle">{label}</div>
       <div
-        className={`mt-1 text-3xl font-semibold tracking-tight tabular-nums ${
+        className={`num-xl mt-1 ${
           value === null ? "" : muted ? "text-ink" : value >= 0 ? "text-bull" : "text-bear"
         }`}
       >

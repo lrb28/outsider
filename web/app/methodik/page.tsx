@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { PORTRAITS } from "@/lib/portraits";
 export const metadata: Metadata = { title: "Quellen & Methodik" };
 export default function Methodik() {
-  return <article className="prose-copy mx-auto max-w-3xl rounded-3xl bg-white p-6 sm:p-10">
-    <span className="text-sm font-medium text-brand">Daten verstehen</span>
+  return <article className="prose-copy lcard mx-auto max-w-3xl p-6 sm:p-10">
+    <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-subtle">Daten verstehen</span>
     <h1 className="mt-3 text-3xl font-semibold tracking-tight">Was eine Meldung aussagt.</h1>
     <p>Outsider macht öffentliche Finanzmeldungen durchsuchbar. Jede Meldungsart hat andere Fristen und Grenzen. Ein gemeldeter Bestand oder eine Zuteilung ist keine automatische Kaufempfehlung.</p>
     <h2>Investoren: Quartalsbestände aus Form 13F</h2>
@@ -21,6 +23,11 @@ export default function Methodik() {
     <p>Der <Link href="/status">Datenstand</Link> zeigt die jeweils jüngste Offenlegung, die Kursabdeckung und Meldungen ohne Offenlegungsdatum. Ein technisch erfolgreicher Import garantiert nicht, dass alle Quellen aktuelle Daten liefern. Bei Datenbankfehlern zeigt die Anwendung einen Fehler mit Wiederholen-Aktion. Beispieldaten stehen ausschließlich im ausdrücklich aktivierten Demomodus zur Verfügung.</p>
     <h2>Primärquellen</h2>
     <p><a href="https://www.sec.gov/divisions/investment/13ffaq" target="_blank" rel="noopener noreferrer">SEC: Form 13F</a> · <a href="https://www.sec.gov/files/form4.pdf" target="_blank" rel="noopener noreferrer">SEC: Form 4 und Transaktionscodes</a> · <a href="https://disclosures-clerk.house.gov/" target="_blank" rel="noopener noreferrer">US-Repräsentantenhaus</a> · <a href="https://efdsearch.senate.gov/" target="_blank" rel="noopener noreferrer">US-Senat</a></p>
+    <h2 id="bildnachweise">Bildnachweise</h2>
+    <p>Porträts stammen von Wikimedia Commons und stehen unter den genannten freien Lizenzen. Für Personen ohne frei lizenziertes Foto zeigt Outsider Initialen. Firmenlogos: Parqet und Financial Modeling Prep; sie bleiben Marken der jeweiligen Unternehmen.</p>
+    <ul className="mt-3 space-y-1.5 text-sm text-zinc-700">
+      {Object.values(PORTRAITS).map(p => <li key={p.name}><a href={p.page} target="_blank" rel="noopener noreferrer">{p.name}</a>: {p.author || "unbekannt"}, {p.license}</li>)}
+    </ul>
     <p>Stand der Beschreibung: 13. September 2026. Die Originalmeldung ist maßgeblich. Outsider dient der Information und erteilt keine Anlageberatung.</p>
   </article>;
 }

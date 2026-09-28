@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { avatarColor, initials, wikiTitleFor } from "@/lib/format";
+import { PORTRAITS } from "@/lib/portraits";
 
 // Module-level cache so a portrait is fetched from Wikipedia at most once per
 // session, no matter how many avatars reference the same person.
@@ -39,15 +40,18 @@ export function Avatar({
   className?: string;
 }) {
   const title = wikiTitleFor(name);
-  const [photo, setPhoto] = useState<string | null>(title ? cache.get(title) ?? null : null);
+  // Curated, credited portraits first; other known people via Wikipedia.
+  const known = title ? PORTRAITS[title]?.src ?? null : null;
+  const [photo, setPhoto] = useState<string | null>(known ?? (title ? cache.get(title) ?? null : null));
 
   useEffect(() => {
     let on = true;
-    if (title) fetchPhoto(title).then((s) => on && setPhoto(s));
+    if (known) setPhoto(known);
+    else if (title) fetchPhoto(title).then((s) => on && setPhoto(s));
     return () => {
       on = false;
     };
-  }, [title]);
+  }, [title, known]);
 
   const style = { width: size, height: size, minWidth: size } as const;
 
@@ -62,14 +66,14 @@ export function Avatar({
           if (title) cache.set(title, null);
           setPhoto(null);
         }}
-        className={`shrink-0 rounded-full bg-white object-cover ring-1 ring-hair ${className}`}
+        className={`shrink-0 rounded-full bg-zinc-100 object-cover ${className}`}
       />
     );
   }
   return (
     <div
       style={style}
-      className={`flex shrink-0 items-center justify-center rounded-full font-semibold ring-1 ring-hair ${avatarColor(
+      className={`flex shrink-0 items-center justify-center rounded-full font-display font-semibold ${avatarColor(
         name,
       )} ${className}`}
     >

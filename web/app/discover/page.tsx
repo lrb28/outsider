@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
+import { LiquidGlass } from "@/components/LiquidGlass";
 import { SkeletonList } from "@/components/Skeleton";
 import { abbrevMoney, formatDate } from "@/lib/format";
 import {
@@ -41,7 +42,7 @@ function LogoTrio({ items }: { items: CollectionItem[] }) {
         <div
           key={(it.ticker ?? it.company) + i}
           style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }}
-          className="rounded-2xl ring-2 ring-white/70"
+          className="rounded-2xl shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
         >
           <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-2xl" />
         </div>
@@ -57,7 +58,7 @@ function FaceTrio({ people }: { people: CollectionInvestor[] }) {
         <div
           key={p.slug + i}
           style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }}
-          className="rounded-full ring-2 ring-white"
+          className="rounded-full shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
         >
           <Avatar name={p.person ?? p.fund} size={i === 0 ? 52 : 44} />
         </div>
@@ -128,22 +129,23 @@ function Discover() {
       </div>
 
       {/* Segments */}
-      <div className="glass fade-up no-scrollbar flex overflow-x-auto rounded-full p-1">
+      <LiquidGlass role="tablist" aria-label="Bereiche" radius={999} className="fade-up no-scrollbar flex w-fit max-w-full overflow-x-auto rounded-full p-1">
         {TABS.map(([key, label]) => (
           <button
             key={key}
-            aria-pressed={tab === key}
+            role="tab"
+            aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`press-sm shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ${
+            className={`press-sm shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm ${
               tab === key
-                ? "btn-primary !px-4 !py-1.5"
-                : "text-subtle hover:text-ink"
+                ? "bg-white/80 font-semibold text-ink shadow-[inset_0_1px_0_#fff,0_2px_10px_rgb(28_28_30/0.12)]"
+                : "font-medium text-subtle hover:text-ink"
             }`}
           >
             {label}
           </button>
         ))}
-      </div>
+      </LiquidGlass>
 
       {error && <ErrorRetry onRetry={() => setRetry(r => r+1)} />}
       {tab === "politicians" && <p className="text-sm text-amber-800">Historische Quelle mit Datenlücken. <Link href="/status" className="underline">Datenstand prüfen</Link></p>}

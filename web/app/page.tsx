@@ -12,6 +12,7 @@ import { Skeleton, SkeletonList } from "@/components/Skeleton";
 import { SwipeRow } from "@/components/SwipeRow";
 import { TradeDetailModal } from "@/components/TradeDetailModal";
 import { Watchlist } from "@/components/Watchlist";
+import { Wordmark } from "@/components/Wordmark";
 import { fetchCatalogue, fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, companyName, formatDate, investorPerson, pct, tradeSignal } from "@/lib/format";
 import { getTxns, positionsFrom } from "@/lib/portfolio";
@@ -37,12 +38,12 @@ function GatewayCard({ href, title, subtitle, gradient, items }: { href: string;
           );
         })}
       </div>
-      <div className="glass -mx-2 -mb-2 rounded-2xl px-4 py-3">
-        <div className="flex items-center justify-between gap-2 text-lg font-semibold leading-tight tracking-tight text-ink">
+      <div className="relative">
+        <div className="flex items-center justify-between gap-2 font-display text-xl font-semibold leading-tight tracking-tight text-ink">
           {title}
-          <Icon name="chevronRight" className="h-5 w-5 shrink-0 text-subtle" />
+          <span className="icon-ring h-8 w-8"><Icon name="chevronRight" className="h-4 w-4" /></span>
         </div>
-        <p className="mt-1 text-sm leading-snug text-subtle">{subtitle}</p>
+        <p className="mt-1.5 text-sm leading-snug text-ink/65">{subtitle}</p>
       </div>
     </Link>
   );
@@ -63,7 +64,7 @@ function TradeCard({ row, onOpen }: { row: FeedRow; onOpen: () => void }) {
     <button onClick={onOpen} className="lcard lcard-hover press w-72 shrink-0 snap-start p-4 text-left">
       <div className="relative mb-3 h-12 w-16">
         <Avatar name={row.entityName} size={46} />
-        <div className="absolute -bottom-1 left-8 rounded-lg ring-2 ring-white">
+        <div className="absolute -bottom-1 left-8 rounded-lg shadow-[0_2px_10px_rgb(28_28_30/0.18)]">
           <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-lg" />
         </div>
       </div>
@@ -160,9 +161,23 @@ export default function HomePage() {
 
   return (
     <div className="space-y-9">
-      {/* Gateway hero */}
-      <div>
+      {/* Wordmark hero: clear liquid glass over soft colour fields. */}
+      <section className="fade-up relative isolate">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-visible">
+          <div className="absolute -left-4 -top-2 h-24 w-[38%] rounded-full bg-sky-400/55 blur-2xl" />
+          <div className="absolute left-[30%] top-0 h-20 w-[36%] rounded-full bg-orange-300/55 blur-2xl" />
+          <div className="absolute right-0 -top-2 h-24 w-[36%] rounded-full bg-emerald-300/55 blur-2xl" />
+        </div>
         <h1 className="sr-only">Outsider – öffentliche Meldungen von Investoren, Insidern und US-Politikern</h1>
+        <Wordmark fluid variant="clear" />
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
+          <p className="max-w-md font-mono text-[11px] uppercase leading-relaxed tracking-[0.16em] text-ink/70">Was Investoren, Insider und US-Politiker offenlegen. Mit Quelle, zum Nachprüfen.</p>
+          <Link href="/feed" className="btn-glass min-h-10 font-mono !text-[11px] uppercase tracking-[0.14em]">Alle Meldungen <Icon name="arrowRight" className="h-4 w-4" /></Link>
+        </div>
+      </section>
+
+      {/* Gateway cards */}
+      <div>
         {errors.includes("discover") ? <ErrorRetry onRetry={retry} /> : (
           <SwipeRow className="fade-up gap-4">
             {discover ? gateways.map(g => <GatewayCard key={g.href} {...g} />) : [0, 1, 2].map(i => <GatewaySkeleton key={i} />)}
@@ -185,7 +200,7 @@ export default function HomePage() {
                 </div>
                 <div className="mt-2 flex items-center">
                   {m.sharedTickers.slice(0, 3).map((t, i) => (
-                    <div key={t} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }} className="rounded-lg ring-2 ring-white">
+                    <div key={t} style={{ marginLeft: i === 0 ? 0 : -8, zIndex: 3 - i }} className="rounded-lg shadow-[0_2px_10px_rgb(28_28_30/0.18)]">
                       <CompanyLogo ticker={t} company={t} size={26} rounded="rounded-lg" />
                     </div>
                   ))}
