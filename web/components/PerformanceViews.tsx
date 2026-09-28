@@ -404,7 +404,8 @@ export function CapitalFlow({
                 className="w-full rounded-t bg-bull-fill"
                 style={{
                   height: `${(f.in / max) * 100}%`,
-                  transition: `height 600ms cubic-bezier(0.22,1,0.36,1) ${i * 10}ms`,
+                  transformOrigin: "bottom",
+                  animation: `riseY 600ms cubic-bezier(0.32,0.72,0,1) ${i * 10}ms both`,
                 }}
               />
             </div>
@@ -414,7 +415,8 @@ export function CapitalFlow({
                 className="w-full rounded-b bg-bear-fill"
                 style={{
                   height: `${(f.out / max) * 100}%`,
-                  transition: `height 600ms cubic-bezier(0.22,1,0.36,1) ${i * 10}ms`,
+                  transformOrigin: "top",
+                  animation: `riseY 600ms cubic-bezier(0.32,0.72,0,1) ${i * 10}ms both`,
                 }}
               />
             </div>

@@ -126,7 +126,9 @@ export function AllocView({
                     style={{
                       width: `${Math.max(1, p)}%`,
                       backgroundColor: s.color,
-                      transition: "width 900ms cubic-bezier(0.22,1,0.36,1)",
+                      // Grow with transform, not width: no layout work per frame.
+                      transformOrigin: "left",
+                      animation: "growX 900ms cubic-bezier(0.32,0.72,0,1) both",
                     }}
                   />
                 </div>

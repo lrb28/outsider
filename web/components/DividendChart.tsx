@@ -178,7 +178,9 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
                 style={{
                   height: `${Math.max(t > 0 ? 3 : 1, (t / max) * 100)}%`,
                   opacity: hoverMonth === null || active ? 1 : 0.4,
-                  transition: `height 700ms cubic-bezier(0.22,1,0.36,1) ${mi * 12}ms, opacity 150ms`,
+                  transformOrigin: "bottom",
+                  animation: `riseY 700ms cubic-bezier(0.32,0.72,0,1) ${mi * 12}ms both`,
+                  transition: "opacity 150ms",
                 }}
               >
                 {parts.length === 0 ? (
