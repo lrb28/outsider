@@ -127,7 +127,9 @@ def main() -> None:
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
                 output.write(summary + "\n")
-        if attempted and (updated == 0 or failed > attempted * 0.6):
+        # A handful of delisted or stale symbols is normal once the queue is
+        # short; fail only when a real batch refreshes nothing or mostly errors.
+        if attempted and ((attempted >= 20 and updated == 0) or failed > attempted * 0.6):
             raise RuntimeError("Price refresh incomplete; see counters above")
 
 
