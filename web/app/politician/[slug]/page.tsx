@@ -11,6 +11,7 @@ import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { formatDate } from "@/lib/format";
 import { PoliticianDetail, PoliticianResponse } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 export default function PoliticianPage() {
   const params = useParams<{ slug: string }>();
@@ -48,8 +49,9 @@ export default function PoliticianPage() {
 
   return (
     <div className="space-y-6">
-      <Link href="/politicians" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Politiker
+      <Link href="/politicians" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
+        <Icon name="chevronLeft" className="h-4 w-4" />
+        Politiker
       </Link>
 
       <div className="flex items-center gap-4">

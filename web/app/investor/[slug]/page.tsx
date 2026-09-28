@@ -15,6 +15,7 @@ import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, companyName, fixTicker, formatDate, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 export default function InvestorPage() {
   const params = useParams<{ slug: string }>();
@@ -76,9 +77,10 @@ export default function InvestorPage() {
 
   return (
     <div className="space-y-6">
-      <p className="rounded-xl bg-indigo-50 p-3 text-sm leading-6 text-indigo-900">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
-      <Link href="/discover" className="inline-block text-sm text-subtle hover:text-ink">
-        ‹ Entdecken
+      <p className="rounded-xl bg-zinc-100/80 p-3 text-sm leading-6 text-zinc-800 ring-1 ring-black/5">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
+      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
+        <Icon name="chevronLeft" className="h-4 w-4" />
+        Entdecken
       </Link>
 
       <div className="flex items-start gap-4">
@@ -94,7 +96,7 @@ export default function InvestorPage() {
       <div className="grid grid-cols-3 gap-3">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
-            <div className="text-lg font-semibold tracking-tight">{s.value}</div>
+            <div className="num-lg">{s.value}</div>
             <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
           </div>
         ))}

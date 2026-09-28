@@ -13,7 +13,7 @@ export interface DivEntry {
 }
 
 const COLORS = [
-  "#4f46e5", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
+  "#1c1c1e", "#0ea5e9", "#16a34a", "#f59e0b", "#db2777",
   "#8b5cf6", "#14b8a6", "#ef4444", "#65a30d", "#0891b2",
   "#a16207", "#be123c",
 ];
@@ -248,7 +248,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
               key={p.ticker}
               onClick={() => setFocusTicker(on ? null : p.ticker)}
               className={`press-sm flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] transition-colors ${
-                on ? "bg-slate-900 text-white" : "bg-slate-100 text-subtle hover:text-ink"
+                on ? "bg-ink text-white" : "bg-white/70 text-subtle ring-1 ring-black/5 hover:text-ink"
               }`}
               title={`${p.name}: ${cMoney(p.amount)}`}
             >

@@ -10,6 +10,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
+import { LiquidGlass } from "@/components/LiquidGlass";
 import { SkeletonList } from "@/components/Skeleton";
 import { abbrevMoney, formatDate } from "@/lib/format";
 import {
@@ -23,6 +24,7 @@ import {
   StockRow,
   StocksResponse,
 } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 type Tab = "highlights" | "investors" | "stocks" | "politicians";
 
@@ -40,7 +42,7 @@ function LogoTrio({ items }: { items: CollectionItem[] }) {
         <div
           key={(it.ticker ?? it.company) + i}
           style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }}
-          className="rounded-2xl ring-2 ring-white/70"
+          className="rounded-2xl shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
         >
           <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-2xl" />
         </div>
@@ -56,7 +58,7 @@ function FaceTrio({ people }: { people: CollectionInvestor[] }) {
         <div
           key={p.slug + i}
           style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }}
-          className="rounded-full ring-2 ring-white"
+          className="rounded-full shadow-[0_2px_10px_rgb(28_28_30/0.18)]"
         >
           <Avatar name={p.person ?? p.fund} size={i === 0 ? 52 : 44} />
         </div>
@@ -86,7 +88,7 @@ function Hero({
       {visual}
       <div className="mt-6">
         <div className="flex items-center gap-1 text-lg font-semibold tracking-tight text-slate-900">
-          {title} <span className="text-slate-400">›</span>
+          {title} <Icon name="chevronRight" className="inline h-4 w-4 align-[-2px] text-subtle" />
         </div>
         <p className="mt-1 text-sm leading-snug text-slate-600">{blurb}</p>
       </div>
@@ -127,22 +129,23 @@ function Discover() {
       </div>
 
       {/* Segments */}
-      <div className="fade-up flex flex-wrap rounded-2xl bg-white/70 p-1 ring-1 ring-black/5 backdrop-blur">
+      <LiquidGlass role="tablist" aria-label="Bereiche" radius={999} className="fade-up no-scrollbar flex w-fit max-w-full overflow-x-auto rounded-full p-1">
         {TABS.map(([key, label]) => (
           <button
             key={key}
-            aria-pressed={tab === key}
+            role="tab"
+            aria-selected={tab === key}
             onClick={() => setTab(key)}
-            className={`press-sm rounded-full px-4 py-1.5 text-sm font-medium ${
+            className={`press-sm shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm ${
               tab === key
-                ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25"
-                : "text-subtle hover:text-ink"
+                ? "bg-white/80 font-semibold text-ink shadow-[inset_0_1px_0_#fff,0_2px_10px_rgb(28_28_30/0.12)]"
+                : "font-medium text-subtle hover:text-ink"
             }`}
           >
             {label}
           </button>
         ))}
-      </div>
+      </LiquidGlass>
 
       {error && <ErrorRetry onRetry={() => setRetry(r => r+1)} />}
       {tab === "politicians" && <p className="text-sm text-amber-800">Historische Quelle mit Datenlücken. <Link href="/status" className="underline">Datenstand prüfen</Link></p>}
@@ -173,7 +176,7 @@ function Discover() {
                   href="/discover/conviction"
                   title="Höchste Gewichtung"
                   blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände ohne Optionen."
-                  gradient="bg-gradient-to-b from-indigo-100 via-violet-50 to-white"
+                  gradient="bg-gradient-to-b from-zinc-200 via-zinc-50 to-white"
                   visual={<LogoTrio items={data.highestConviction} />}
                 />
                 <Hero
@@ -297,7 +300,7 @@ function Discover() {
                   <div className="text-sm font-medium">{p.trades} Trades</div>
                   <div className="text-xs text-subtle">{formatDate(p.lastTrade)}</div>
                 </div>
-                <span className="text-slate-300">›</span>
+                <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
               </Link>
             ))}
             {politicians.length === 0 && (

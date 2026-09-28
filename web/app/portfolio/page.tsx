@@ -12,6 +12,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SkeletonList } from "@/components/Skeleton";
 import { abbrevMoney } from "@/lib/format";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
+import { Icon } from "@/components/Icon";
 
 type IvSort = "value" | "positions" | "name";
 type StSort = "investors" | "value" | "buys" | "name";
@@ -158,7 +159,7 @@ export default function PortfolioPage() {
                 <div className="text-xs text-subtle">{abbrevMoney(iv.value)}</div>
               </div>
               <FollowButton kind="investor" id={iv.slug} variant="star" />
-              <span className="text-slate-300">›</span>
+              <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
             </Link>
           ))}
           {sortedInvestors.length === 0 && (
@@ -188,7 +189,7 @@ export default function PortfolioPage() {
               </div>
               <FaceStack names={s.holderNames} />
               {s.ticker && <FollowButton kind="stock" id={s.ticker} variant="star" />}
-              <span className="text-slate-300">›</span>
+              <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
             </Link>
           ))}
           {sortedStocks.length === 0 && (

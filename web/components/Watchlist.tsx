@@ -9,6 +9,7 @@ import { getFollowed } from "@/lib/watchlist";
 import { InvestorRow, InvestorsResponse, StockRow, StocksResponse } from "@/lib/types";
 
 import { Avatar } from "./Avatar";
+import { Icon } from "./Icon";
 import { CompanyLogo } from "./CompanyLogo";
 import { SwipeRow } from "./SwipeRow";
 
@@ -48,9 +49,13 @@ export function Watchlist() {
 
   if (followInv.length === 0 && followStk.length === 0) {
     return (
-      <section className="rounded-2xl border border-dashed border-hair bg-white/50 p-5 text-sm text-subtle">
-        <span className="font-medium text-ink">Deine Beobachtungsliste ist leer.</span>{" "}
-        Tippe auf das ☆ bei einem Investor oder einer Aktie, um ihn hier zu sammeln. <Link href="/discover?tab=investors" className="ml-1 text-brand underline">Investoren entdecken</Link>
+      <section className="lcard flex items-start gap-3 p-5 text-sm text-subtle">
+        <span className="glass flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-ink"><Icon name="star" className="h-5 w-5" /></span>
+        <p>
+          <span className="font-medium text-ink">Deine Beobachtungsliste ist leer.</span>{" "}
+          Tippe bei einem Investor oder einer Aktie auf „Folgen“, um sie hier zu sammeln.{" "}
+          <Link href="/discover?tab=investors" className="font-medium text-ink underline underline-offset-2">Investoren entdecken</Link>
+        </p>
       </section>
     );
   }
@@ -66,7 +71,7 @@ export function Watchlist() {
             <Link
               key={i.slug}
               href={`/investor/${i.slug}`}
-              className="flex w-32 shrink-0 flex-col items-center rounded-2xl bg-card p-3 text-center shadow-card ring-1 ring-hair transition hover:shadow-cardhover"
+              className="lcard lcard-hover press flex w-32 shrink-0 flex-col items-center p-3 text-center"
             >
               <Avatar name={i.person ?? i.fund} size={52} />
               <div className="mt-2 w-full truncate text-xs font-semibold">{i.person ?? i.fund}</div>
@@ -81,7 +86,7 @@ export function Watchlist() {
             <Link
               key={s.ticker}
               href={`/stock/${s.ticker}`}
-              className="flex items-center gap-3 rounded-2xl bg-card p-3 shadow-card transition hover:shadow-cardhover"
+              className="lcard lcard-hover press flex items-center gap-3 p-3"
             >
               <CompanyLogo ticker={s.ticker} company={s.company} size={38} />
               <div className="min-w-0">

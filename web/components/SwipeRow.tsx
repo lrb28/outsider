@@ -47,27 +47,18 @@ export function SwipeRow({
     };
   }, [update]);
 
+  // Fade only the side where more cards follow. A mask fades the cards
+  // themselves, so it works on any background, glass included.
+  const fade = 28;
+  const mask = `linear-gradient(to right, ${edges.left ? "transparent" : "#000"} 0, #000 ${fade}px, #000 calc(100% - ${fade}px), ${edges.right ? "transparent" : "#000"} 100%)`;
   return (
-    <div className="relative">
-      <div
-        ref={ref}
-        onScroll={update}
-        className={`no-scrollbar -mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-1 ${className}`}
-      >
-        {children}
-      </div>
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#f6f7fb] to-transparent transition-opacity duration-200 ${
-          edges.left ? "opacity-100" : "opacity-0"
-        }`}
-      />
-      <div
-        aria-hidden
-        className={`pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#f6f7fb] to-transparent transition-opacity duration-200 ${
-          edges.right ? "opacity-100" : "opacity-0"
-        }`}
-      />
+    <div
+      ref={ref}
+      onScroll={update}
+      style={{ WebkitMaskImage: mask, maskImage: mask }}
+      className={`no-scrollbar -mx-2 -my-2 flex snap-x gap-4 overflow-x-auto px-2 pb-4 pt-2 ${className}`}
+    >
+      {children}
     </div>
   );
 }

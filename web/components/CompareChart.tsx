@@ -155,7 +155,7 @@ export function CompareChart({
         </svg>
         {idx != null && (
           <div
-            className="pointer-events-none absolute -top-1 rounded-xl bg-slate-900/90 px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur"
+            className="pointer-events-none absolute -top-1 rounded-xl bg-ink/90 backdrop-blur px-2.5 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur"
             style={{ left: `${tipLeft}%` }}
           >
             {formatDate(a[idx].date)} · {abbrevMoney(a[idx].close)} ·{" "}

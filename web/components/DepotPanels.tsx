@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Donut } from "@/components/Donut";
 import { cAbbrev as abbrevMoney } from "@/lib/money";
+import { Icon } from "./Icon";
 
 // ── Kennzahlen-Kachel ───────────────────────────────────────────────────────
 
@@ -210,9 +211,9 @@ export function Collapse({
         <span className="text-sm font-semibold">{title}</span>
         {right}
         <span
-          className={`ml-auto text-slate-400 transition-transform ${open ? "rotate-90" : ""}`}
+          className={`ml-auto text-zinc-400 transition-transform ${open ? "rotate-90" : ""}`}
         >
-          ›
+          <Icon name="chevronRight" className="h-4 w-4" />
         </span>
       </button>
       {open && <div className="border-t border-hair px-5 py-4">{children}</div>}

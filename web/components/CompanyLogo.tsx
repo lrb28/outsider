@@ -11,7 +11,7 @@ function tile(ticker: string | null, company: string, size: number, rounded: str
   return (
     <div
       style={{ width: size, height: size, minWidth: size }}
-      className={`flex shrink-0 items-center justify-center ${rounded} bg-slate-100 font-semibold text-slate-500 ring-1 ring-hair`}
+      className={`flex shrink-0 items-center justify-center ${rounded} bg-white/75 font-display font-semibold text-zinc-500`}
     >
       <span style={{ fontSize: Math.round(size * 0.42) }}>{letter}</span>
     </div>
@@ -61,7 +61,7 @@ export function CompanyLogo({
           setStep((s) => s + 1);
         }}
         onLoad={() => setLoaded(true)}
-        className={`absolute inset-0 shrink-0 ${rounded} bg-white object-contain p-0.5 ring-1 ring-hair transition-opacity duration-300`}
+        className={`absolute inset-0 shrink-0 ${rounded} object-cover transition-opacity duration-300`}
       />
     </span>
   );
