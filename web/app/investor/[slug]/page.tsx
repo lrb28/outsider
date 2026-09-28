@@ -15,7 +15,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, companyName, fixTicker, formatDate, weightPct } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, formatDate, shortDate, shortMoney, weightPct } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 
@@ -64,9 +64,9 @@ export default function InvestorPage() {
     );
 
   const stats = [
-    { label: "Portfolio-Wert", value: abbrevMoney(inv.value) },
+    { label: "Portfolio-Wert", value: shortMoney(inv.value) },
     { label: "Positionen", value: inv.positions.toLocaleString("de-DE") },
-    { label: "Stand", value: formatDate(inv.asOf) },
+    { label: "Stand", value: shortDate(inv.asOf) },
   ];
 
   const buys = inv.trades.filter((t) => t.txnType === "buy").length;

@@ -14,7 +14,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { politicianLine, StatRow, DetailTopBar } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
-import { companyName, formatDate } from "@/lib/format";
+import { companyName, formatDate, shortDate } from "@/lib/format";
 import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
 
 export default function PoliticianPage() {
@@ -66,7 +66,7 @@ export default function PoliticianPage() {
   const stats = [
     { label: "Gemeldete Trades", value: pol.trades.length.toLocaleString("de-DE") },
     { label: "Käufe / Verkäufe", value: `${summary.buys} / ${summary.sells}` },
-    { label: "Letzte Meldung", value: formatDate(pol.trades[0]?.disclosedAt) },
+    { label: "Letzte Meldung", value: shortDate(pol.trades[0]?.disclosedAt) },
   ];
 
   return (

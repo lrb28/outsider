@@ -21,12 +21,36 @@ export function abbrevMoney(v: number | null | undefined): string {
   return `${sign}$${a.toFixed(0)}`;
 }
 
+// Key figures on phones: three significant digits, so $263 Mrd., $26.3 Mrd.
+export function shortMoney(v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "—";
+  const a = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  const units: [number, string][] = [[1e12, " Bio."], [1e9, " Mrd."], [1e6, " Mio."], [1e3, "K"]];
+  for (const [i, [size, unit]] of units.entries()) {
+    const n = a / size;
+    if (n < 1) continue;
+    // Number() drops a trailing ".0": $71 Mrd., not $71.0 Mrd.
+    const r = Number(n.toFixed(n >= 99.95 ? 0 : 1));
+    // 999.6 Mrd. would round to "1000 Mrd."; the next unit up reads better.
+    if (i > 0 && r >= 1000) return `${sign}$1${units[i - 1][1]}`;
+    return `${sign}$${r}${unit}`;
+  }
+  return `${sign}$${a.toFixed(0)}`;
+}
+
 // ISO date (2026-01-27) -> deutsches Format (27.01.2026)
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");
   if (!y || !m || !d) return iso;
   return `${d}.${m}.${y}`;
+}
+
+// ISO date (2026-01-27) -> 27.01.26, for key figures.
+export function shortDate(iso: string | null | undefined): string {
+  const long = formatDate(iso);
+  return /^\d\d\.\d\d\.\d{4}$/.test(long) ? long.slice(0, 6) + long.slice(8) : long;
 }
 
 /**

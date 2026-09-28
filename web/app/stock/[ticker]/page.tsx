@@ -14,7 +14,7 @@ import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
 import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate } from "@/lib/format";
+import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate, shortMoney } from "@/lib/format";
 import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
@@ -109,7 +109,7 @@ export default function StockPage() {
 
   const stats = [
     { label: "Investoren mit Bestand", value: stock.investors.toLocaleString("de-DE") },
-    { label: "Gehaltener Wert", value: abbrevMoney(stock.value) },
+    { label: "Gehaltener Wert", value: shortMoney(stock.value) },
     { label: "Zugänge (geladen)", value: String(buys), cls: "text-bull" },
     { label: "Abgänge (geladen)", value: String(sells), cls: "text-bear" },
   ];
