@@ -226,6 +226,19 @@ class Repository:
             (filing_id,),
         )
 
+    def claim_filing(self, filing_id: int, entity_id: int) -> None:
+        """Make entity_id the only filer of a filing.
+
+        A House PTR belongs to one member. If an earlier import stored it under
+        another entity (e.g. the raw index name before members were matched),
+        that entity's rows for this filing are superseded, not deleted.
+        """
+        self.conn.execute("UPDATE filings SET entity_id = %s WHERE id = %s", (entity_id, filing_id))
+        self.conn.execute(
+            "UPDATE transactions SET superseded = true WHERE filing_id = %s AND entity_id <> %s",
+            (filing_id, entity_id),
+        )
+
     def insert_transaction(
         self, filing_id: int, entity_id: int, security_id: int, txn_type: str,
         txn_date: Optional[date], disclosed_at: Optional[date],

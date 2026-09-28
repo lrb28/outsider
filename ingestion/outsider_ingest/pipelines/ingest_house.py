@@ -98,6 +98,7 @@ def ingest_house(year: int | None = None, max_ptrs: int = 500, dry_run: bool = F
             skipped += 1
             continue
         repo.supersede_legacy_transactions(filing_id)
+        repo.claim_filing(filing_id, entity_id)
         for ordinal, r in enumerate(rows):
             if not r.get("ticker"):
                 continue
