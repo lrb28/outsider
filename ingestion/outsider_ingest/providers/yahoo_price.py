@@ -23,10 +23,12 @@ from outsider_ingest.providers.stooq_price import PriceUnavailable
 class YahooPriceProvider(PriceProvider):
     name = "yahoo"
 
-    def __init__(self, default_range: str = "1y", timeout_s: float = 12):
+    def __init__(self, default_range: str = "1y", timeout_s: float = 8):
         self.timeout_s = timeout_s
         self.default_range = default_range
         self.session = requests.Session()
+        # Keep this short UA: a full browser string makes Yahoo demand a
+        # cookie consent and answer 429, a bare library UA is blocked too.
         self.session.headers.update(
             {"User-Agent": "Mozilla/5.0 (compatible; Outsider/0.1)"}
         )
@@ -39,10 +41,18 @@ class YahooPriceProvider(PriceProvider):
         resp = None
         # Share classes: SEC writes BRK.B, Yahoo expects BRK-B.
         symbol = ticker.strip().upper().replace(".", "-")
+        # An explicit window keeps daily top-ups small: a symbol that already
+        # has history only needs its last few sessions, not a whole year.
+        if start:
+            period1 = int(datetime(start.year, start.month, start.day, tzinfo=timezone.utc).timestamp())
+            period2 = int(datetime.now(timezone.utc).timestamp()) + 86400
+            window = f"period1={period1}&period2={period2}"
+        else:
+            window = f"range={self.default_range}"
         for attempt, host in enumerate(("query1", "query2", "query1")):
             url = (
                 f"https://{host}.finance.yahoo.com/v8/finance/chart/{symbol}"
-                f"?range={self.default_range}&interval=1d"
+                f"?{window}&interval=1d"
             )
             resp = self.session.get(url, timeout=self.timeout_s)
             if resp.status_code != 429:

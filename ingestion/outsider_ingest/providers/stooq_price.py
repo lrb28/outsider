@@ -48,7 +48,7 @@ class StooqPriceProvider(PriceProvider):
         if gap < self.min_interval_s:
             time.sleep(self.min_interval_s - gap)
         url = f"https://stooq.com/q/d/l/?s={self._symbol(ticker)}&i=d"
-        resp = self.session.get(url, timeout=30)
+        resp = self.session.get(url, timeout=10)
         self._last = time.monotonic()
         resp.raise_for_status()
         text = resp.text.strip()

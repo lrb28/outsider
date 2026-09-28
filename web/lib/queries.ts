@@ -52,8 +52,7 @@ const SQL = (whereSql: string, limIdx: number, offIdx: number) => `
          t.txn_type, nullif(t.put_call, '') as put_call,
          t.txn_date, t.disclosed_at, t.shares, t.amount_min, t.amount_max,
          f.source_url, f.period_of_report,
-         to_jsonb(t)->>'transaction_code' as transaction_code,
-         to_jsonb(t)->>'is_derivative' as is_derivative,
+         t.transaction_code, t.is_derivative,
          et.close as entry_trade_close,
          ed.close as entry_disc_close,
          cur.close as current_close, cur.date as price_as_of
@@ -118,7 +117,7 @@ function toFeedRow(r: Record<string, unknown>): FeedRow {
     pctSinceTrade: r.entity_type === "institution" || !fresh ? null : pctChange(num(r.entry_trade_close), num(r.current_close)),
     pctSinceDisclosure: fresh ? pctChange(num(r.entry_disc_close), num(r.current_close)) : null,
     transactionCode: r.transaction_code as string | null,
-    isDerivative: r.is_derivative === "true",
+    isDerivative: r.is_derivative === true || r.is_derivative === "true",
     priceAsOf,
     reportingDate: r.period_of_report ? new Date(r.period_of_report as string).toISOString().slice(0, 10) : null,
     sourceUrl: r.source_url as string,
@@ -130,7 +129,7 @@ export async function getTrades(f: TradeFilters): Promise<FeedRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
-  const where: string[] = ["coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'", NOT_SENATE];
+  const where: string[] = ["not t.superseded", NOT_SENATE];
   const params: unknown[] = [];
   if (f.type) {
     params.push(f.type);
@@ -284,8 +283,8 @@ export async function getPoliticians(): Promise<PoliticianRow[]> {
            e.external_ids->>'portrait' as photo,
            count(t.id) as trades, max(t.disclosed_at) as last
     from entities e
-    left join transactions t on t.entity_id = e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
-    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    join transactions t on t.entity_id = e.id and not t.superseded
+    where e.type = 'politician' and ${NOT_SENATE}
     group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
     order by max(t.disclosed_at) desc nulls last, trades desc, e.full_name
   `);
@@ -358,7 +357,7 @@ export async function getStocks(): Promise<StockRow[]> {
            sum(c.market_value) as value,
            (array_agg(distinct e.full_name))[1:3] as holder_names,
            (select count(*) from transactions t
-            where t.security_id = s.id and t.txn_type = 'buy' and coalesce(to_jsonb(t)->>'superseded','false') = 'false') as buys
+            where t.security_id = s.id and t.txn_type = 'buy' and not t.superseded) as buys
     from cur c
     join securities s on s.id = c.security_id
     join entities e on e.id = c.entity_id
@@ -579,7 +578,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     join securities s on s.id = t.security_id
     join filings f on f.id = t.filing_id
     where t.txn_type = 'buy' and s.ticker is not null and nullif(t.put_call,'') is null
-      and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+      and not t.superseded
       and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
     group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
   `);
@@ -590,9 +589,8 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     from transactions t
     join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
     join securities s on s.id = t.security_id
-    where t.txn_type = 'buy' and s.ticker is not null and to_jsonb(t)->>'transaction_code' = 'P'
-      and coalesce(to_jsonb(t)->>'is_derivative', 'false') = 'false'
-      and coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'
+    where t.txn_type = 'buy' and s.ticker is not null and t.transaction_code = 'P'
+      and not t.is_derivative and not t.superseded
       and t.disclosed_at >= current_date - 90
     group by s.id, s.ticker, s.name order by insiders desc, value desc nulls last, s.ticker limit 12
   `);
@@ -624,7 +622,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   const polQ = pool.query(`
     select e.slug, e.full_name as name, e.party, e.chamber, e.role, e.external_ids->>'portrait' as photo, count(t.id) as n
     from entities e join transactions t on t.entity_id = e.id
-    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    where e.type = 'politician' and ${NOT_SENATE} and not t.superseded
       and t.disclosed_at >= current_date - 365
     group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
     order by n desc

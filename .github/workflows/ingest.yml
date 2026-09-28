@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only this source key (form4, insider-buys, house, 13f, names, prices); empty = all"
+        description: "Run only this source key (form4, insider-buys, house, 13f, names, tickers, prices); empty = all"
         required: false
         default: ""
       args:
@@ -42,6 +42,9 @@ jobs:
           - source: Company names
             key: names
             command: python -m outsider_ingest.pipelines.refresh_company_names
+          - source: US tickers for CUSIPs
+            key: tickers
+            command: python -m outsider_ingest.pipelines.repair_tickers
           - source: EOD prices
             key: prices
             command: python -m outsider_ingest.pipelines.backfill_prices
@@ -63,9 +66,10 @@ jobs:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
-          # Stooq answers datacenter IPs with an HTML page; Yahoo leads.
+          # Stooq answers datacenter IPs with an HTML page or not at all, which
+          # cost up to 30 s per unknown symbol; Yahoo alone is faster and enough.
           PRICE_PROVIDER: yahoo
-          PRICE_FALLBACKS: stooq
+          PRICE_FALLBACKS: ""
           PYTHONUNBUFFERED: "1"
           EXTRA_ARGS: ${{ inputs.args }}
         run: ${{ matrix.command }} $EXTRA_ARGS
