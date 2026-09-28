@@ -367,19 +367,23 @@ function isCusipLike(s: string | null | undefined): boolean {
 }
 
 const SUFFIX_RE =
-  /\b(incorporated|inc|corporation|corp|company|co|plc|ltd|limited|llc|l\.?p|lp|sa|n\.?v|a\.?g|holdings?|group|the|com|new|sponsored|adr|ads)\b\.?/gi;
+  /(?:^|\s)(incorporated|inc|corporation|corp|company|co|plc|ltd|limited|llc|l\.?p|lp|sa|s\.a|n\.?\s?v|a\.?g|a\/s|se|oyj|asa|holdings?|group|the|com|new|sponsored|adr|ads)\.?(?=\s|$)/gi;
 
 function prettifyCompany(raw: string): string {
-  let s = (raw || "").toLowerCase();
-  s = s.replace(/\b(class [a-c]|cl\.? [a-c]|series [a-c]|common stock|ordinary shares?|shares?)\b/gi, " ");
-  s = s.replace(/[/].*$/, " "); // drop trailing /DE/ etc.
-  s = s.replace(/\s+/g, " ").trim();
-  // Title-case each word
-  s = s
-    .split(" ")
-    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(" ");
-  s = s.replace(SUFFIX_RE, " ").replace(/[.,]+/g, " ").replace(/\s+/g, " ").trim();
+  // SEC registrant names are often already in proper case ("STMicroelectronics
+  // N.V."); keep that. Only ALL-CAPS 13F abbreviations are title-cased.
+  const shouting = raw === raw.toUpperCase();
+  let s = (raw || "").replace(/\b(class [a-c]|cl\.? [a-c]|series [a-c]|common stock|ordinary shares?|shares?)\b/gi, " ");
+  s = s.replace(/\s\/[a-z]{2}\/?\s*$/i, " "); // drop trailing /DE/ etc.
+  s = s.replace(/[,]+/g, " ").replace(/\s+/g, " ").trim();
+  if (shouting) s = s.toLowerCase().replace(/(^|[\s\-&(])([a-z])/g, (_, lead: string, c: string) => lead + c.toUpperCase());
+  let prev = "";
+  while (prev !== s) {
+    prev = s;
+    s = s.replace(SUFFIX_RE, " ").replace(/\s+/g, " ").trim();
+  }
+  // Registrant tails: state of incorporation ("DEL"), trust ("TR"), dangling "&".
+  s = s.replace(/\s(del|tr|&)$/i, "").replace(/[\s.&]+$/, "");
   return s || raw;
 }
 

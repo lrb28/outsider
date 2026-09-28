@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only this source key (form4, insider-buys, senate, house, 13f, prices); empty = all"
+        description: "Run only this source key (form4, insider-buys, senate, house, 13f, names, prices); empty = all"
         required: false
         default: ""
       args:
@@ -41,6 +41,9 @@ jobs:
           - source: SEC 13F
             key: 13f
             command: python -m outsider_ingest.pipelines.ingest_13f --all
+          - source: Company names
+            key: names
+            command: python -m outsider_ingest.pipelines.refresh_company_names
           - source: EOD prices
             key: prices
             command: python -m outsider_ingest.pipelines.backfill_prices
