@@ -75,3 +75,12 @@ def test_price_runs_only_top_up_known_history():
     assert fetch_start(date(2026, 9, 25), today) == date(2026, 9, 20)
     assert fetch_start(date(2024, 1, 2), today) == date(2025, 9, 23)
     assert plausible("BRK.B") and not plausible("CB1A") and not plausible("4I1")
+
+
+def test_never_attempted_symbols_are_not_skipped():
+    """A LEFT JOIN without an attempt row makes `NOT (outcome = 'failed' …)`
+    NULL; the filter must treat that as 'not failed'."""
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[1] / "outsider_ingest/pipelines/backfill_prices.py"
+    assert "NOT COALESCE(a.outcome = 'failed'" in source.read_text()

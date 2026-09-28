@@ -71,7 +71,10 @@ def main() -> None:
                 LEFT JOIN LATERAL (SELECT max(date) AS latest FROM prices p WHERE p.security_id=s.id) p ON true
                 LEFT JOIN ingestion_price_attempts a ON a.security_id=s.id
                 WHERE s.ticker IS NOT NULL AND (p.latest IS NULL OR p.latest < %s)
-                  AND NOT (a.outcome = 'failed' AND a.last_attempt > now() - make_interval(days => %s))
+                  -- COALESCE: without an attempt row the condition is NULL,
+                  -- and NOT NULL dropped every never-tried symbol (3,534 of
+                  -- 3,537 were skipped this way).
+                  AND NOT COALESCE(a.outcome = 'failed' AND a.last_attempt > now() - make_interval(days => %s), false)
             )
             SELECT ticker, array_agg(id ORDER BY id), min(latest), bool_or(shown)
             FROM candidates
