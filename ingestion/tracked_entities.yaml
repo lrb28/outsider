@@ -54,6 +54,86 @@ institutions:
     full_name: Baupost Group LLC                    # Seth Klarman
     cik: "0001061768"
     highlight: true
+  - slug: icahn-capital
+    full_name: Icahn Capital                         # Carl Icahn (files as "Icahn Carl C")
+    cik: "0000921669"
+    highlight: true
+  - slug: gates-foundation-trust
+    full_name: Gates Foundation Trust               # Bill Gates
+    cik: "0001166559"
+    highlight: true
+  - slug: ark-invest
+    full_name: ARK Investment Management LLC        # Cathie Wood
+    cik: "0001697748"
+    highlight: true
+  - slug: appaloosa
+    full_name: Appaloosa LP                         # David Tepper
+    cik: "0001656456"
+    highlight: true
+  - slug: himalaya-capital
+    full_name: Himalaya Capital Management LLC      # Li Lu
+    cik: "0001709323"
+    highlight: true
+  - slug: third-point
+    full_name: Third Point LLC                      # Daniel Loeb
+    cik: "0001040273"
+    highlight: true
+  - slug: fundsmith
+    full_name: Fundsmith LLP                        # Terry Smith
+    cik: "0001569205"
+    highlight: true
+  - slug: trian-fund-management
+    full_name: Trian Fund Management, L.P.          # Nelson Peltz
+    cik: "0001345471"
+    highlight: true
+  - slug: akre-capital
+    full_name: Akre Capital Management LLC          # Chuck Akre
+    cik: "0001112520"
+    highlight: true
+  - slug: gardner-russo-quinn
+    full_name: Gardner Russo & Quinn LLC            # Thomas Russo
+    cik: "0000860643"
+    highlight: true
+  - slug: oaktree-capital
+    full_name: Oaktree Capital Management LP        # Howard Marks
+    cik: "0000949509"
+    highlight: true
+  - slug: coatue-management
+    full_name: Coatue Management LLC                # Philippe Laffont
+    cik: "0001135730"
+    highlight: true
+  - slug: viking-global
+    full_name: Viking Global Investors LP           # Andreas Halvorsen
+    cik: "0001103804"
+    highlight: true
+  - slug: lone-pine-capital
+    full_name: Lone Pine Capital LLC                # Stephen Mandel
+    cik: "0001061165"
+    highlight: true
+  - slug: altimeter-capital
+    full_name: Altimeter Capital Management, LP     # Brad Gerstner
+    cik: "0001541617"
+    highlight: true
+  - slug: d1-capital
+    full_name: D1 Capital Partners L.P.             # Dan Sundheim
+    cik: "0001747057"
+    highlight: true
+  - slug: fairfax-financial
+    full_name: Fairfax Financial Holdings Ltd       # Prem Watsa
+    cik: "0000915191"
+    highlight: true
+  - slug: markel-group
+    full_name: Markel Group Inc.                    # Tom Gayner
+    cik: "0001096343"
+    highlight: true
+  - slug: starboard-value
+    full_name: Starboard Value LP                   # Jeff Smith
+    cik: "0001517137"
+    highlight: true
+  - slug: glenview-capital
+    full_name: Glenview Capital Management, LLC     # Larry Robbins
+    cik: "0001138995"
+    highlight: true
 
 politicians:
   - slug: nancy-pelosi

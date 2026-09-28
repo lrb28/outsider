@@ -51,6 +51,9 @@ class Repository:
             ON CONFLICT (slug) DO UPDATE SET
                 full_name = EXCLUDED.full_name,
                 org_name  = EXCLUDED.org_name,
+                role      = COALESCE(EXCLUDED.role, entities.role),
+                party     = COALESCE(EXCLUDED.party, entities.party),
+                chamber   = COALESCE(EXCLUDED.chamber, entities.chamber),
                 highlight = entities.highlight OR EXCLUDED.highlight,
                 external_ids = entities.external_ids || EXCLUDED.external_ids
             RETURNING id
