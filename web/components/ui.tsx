@@ -201,3 +201,27 @@ const PARTY: Record<string, string> = { D: "Demokraten", R: "Republikaner", I: "
 export function politicianLine(party: string | null | undefined, seat: string | null | undefined): string {
   return [party ? PARTY[party] ?? party : null, seat].filter(Boolean).join(" · ") || "US-Repräsentantenhaus";
 }
+
+/** Round glass back button (iOS 26 navigation bar), label for assistive tech. */
+export function BackButton({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} aria-label={`Zurück zu ${label}`} title={label} className="btn-capsule !h-11 !w-11 !min-h-0 !p-0">
+      <Icon name="chevronLeft" className="h-5 w-5" />
+    </Link>
+  );
+}
+
+/** Key figures in one card, separated by hairlines; scales down on phones. */
+export function StatRow({ items }: { items: { label: string; value: ReactNode; cls?: string }[] }) {
+  const cols = items.length === 4 ? "grid-cols-2 sm:grid-cols-4" : items.length === 2 ? "grid-cols-2" : "grid-cols-3";
+  return (
+    <div className={`card grid ${cols} overflow-hidden`}>
+      {items.map((s, i) => (
+        <div key={s.label} className={`min-w-0 px-3 py-3.5 sm:px-5 sm:py-4 ${i > 0 ? "border-l border-hair" : ""} ${items.length === 4 && i === 2 ? "max-sm:border-l-0 max-sm:border-t" : ""} ${items.length === 4 && i === 3 ? "max-sm:border-t" : ""}`}>
+          <div className={`truncate font-display text-[19px] font-bold leading-tight tracking-[-0.02em] tabular-nums sm:text-[24px] ${s.cls ?? ""}`}>{s.value}</div>
+          <div className="mt-1 truncate text-[12px] text-subtle sm:text-[13px]">{s.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}

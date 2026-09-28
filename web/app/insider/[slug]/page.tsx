@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { Icon } from "@/components/Icon";
+import { BackButton, StatRow } from "@/components/ui";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
@@ -57,10 +58,7 @@ export default function InsiderPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-insider)" }}>
-        <Link href="/feed?type=corporate_insider" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-subtle hover:text-ink">
-          <Icon name="chevronLeft" className="h-4 w-4" />
-          Insider
-        </Link>
+        <BackButton href="/feed?type=corporate_insider" label="Insider" />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           {/* An executive's picture is the company they report for. */}
@@ -88,14 +86,7 @@ export default function InsiderPage() {
           )}
         </div>
 
-        <div className="fade-up grid grid-cols-3 gap-3">
-          {stats.map((s) => (
-            <div key={s.label} className="card p-4">
-              <div className={`num-lg ${s.cls}`}>{s.value}</div>
-              <div className="mt-1 text-[13px] text-subtle">{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <div className="fade-up"><StatRow items={stats} /></div>
       </div>
 
       {ins.trades.length > 0 && (

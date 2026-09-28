@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { useWidth } from "@/lib/chart";
 import type { FeedRow } from "@/lib/types";
@@ -15,6 +15,7 @@ const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", 
 export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRow[]; months?: number; height?: number }) {
   const { ref, width } = useWidth<HTMLDivElement>();
   const [hover, setHover] = useState<number | null>(null);
+  const gid = useId().replace(/:/g, "");
 
   const data = useMemo(() => {
     const now = new Date();
@@ -55,6 +56,17 @@ export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRo
         onPointerLeave={() => setHover(null)}
       >
         <svg width={width} height={height} className="block overflow-visible">
+          {/* Bars glow at the tip and fade into the baseline. */}
+          <defs>
+            <linearGradient id={`${gid}-up`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(var(--bull-fill))" />
+              <stop offset="100%" stopColor="rgb(var(--bull-fill))" stopOpacity="0.35" />
+            </linearGradient>
+            <linearGradient id={`${gid}-down`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgb(var(--bear-fill))" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="rgb(var(--bear-fill))" />
+            </linearGradient>
+          </defs>
           <line x1={0} x2={width} y1={mid} y2={mid} className="stroke-ink/20" strokeWidth="1" />
           {data.map((d, i) => {
             const cx = slot * i + slot / 2;
@@ -63,10 +75,10 @@ export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRo
               <g key={d.key} opacity={dim ? 0.35 : 1} style={{ transition: "opacity 200ms" }} onPointerEnter={() => setHover(i)} onPointerDown={() => setHover(i)}>
                 <rect x={slot * i} y={0} width={slot} height={height} fill="transparent" />
                 {d.buys > 0 && (
-                  <rect x={cx - barW / 2} y={mid - 1 - h(d.buys)} width={barW} height={h(d.buys)} rx={Math.min(4, barW / 2)} fill="rgb(var(--bull-fill))" className="rise-y" style={{ animationDelay: `${i * 35}ms` }} />
+                  <rect x={cx - barW / 2} y={mid - 1 - h(d.buys)} width={barW} height={h(d.buys)} rx={Math.min(4, barW / 2)} fill={`url(#${gid}-up)`} className="rise-y" style={{ animationDelay: `${i * 35}ms` }} />
                 )}
                 {d.sells > 0 && (
-                  <rect x={cx - barW / 2} y={mid + 1} width={barW} height={h(d.sells)} rx={Math.min(4, barW / 2)} fill="rgb(var(--bear-fill))" className="rise-y" style={{ animationDelay: `${i * 35}ms`, transformOrigin: "top" }} />
+                  <rect x={cx - barW / 2} y={mid + 1} width={barW} height={h(d.sells)} rx={Math.min(4, barW / 2)} fill={`url(#${gid}-down)`} className="rise-y" style={{ animationDelay: `${i * 35}ms`, transformOrigin: "top" }} />
                 )}
                 <text x={cx} y={height - 1} textAnchor="middle" className="fill-subtle text-[10px]">{d.label}</text>
               </g>

@@ -48,7 +48,7 @@ export function FollowButton({
 
   return (
     <button onClick={handle} aria-pressed={on} className={on ? "btn-capsule !min-h-10 !px-4 !text-[14px]" : "btn-primary !min-h-10 !px-4 !text-[14px]"}>
-      <Icon name={on ? "tick" : "plus"} className="h-4 w-4" />
+      {on ? <Icon name="tick" className="h-4 w-4" /> : <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>}
       {on ? "Folge ich" : "Folgen"}
     </button>
   );

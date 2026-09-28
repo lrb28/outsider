@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { ActionMenu } from "@/components/ActionMenu";
 import { Icon, type IconName } from "@/components/Icon";
 import { LiquidGlass } from "@/components/LiquidGlass";
 
@@ -115,7 +116,9 @@ export function BottomNav() {
   return (
     <>
       <div aria-hidden="true" className="scroll-edge-bottom pointer-events-none fixed inset-x-0 bottom-0 z-20 h-28 md:hidden" />
-      <nav aria-label="Mobile Hauptnavigation" style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }} className="fixed inset-x-0 bottom-4 z-30 flex justify-center md:hidden">
+      {/* Tab capsule on the left, the round action button on the right. */}
+      <div style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }} className="fixed inset-x-0 bottom-4 z-30 flex items-end justify-between gap-3 px-4 md:hidden">
+      <nav aria-label="Mobile Hauptnavigation" className="min-w-0">
         <LiquidGlass radius={999} className={`rounded-full transition-[padding] duration-500 ease-spring ${compact ? "p-1" : "p-1.5"}`}>
           <div ref={bar} onTransitionEnd={measure} className="relative flex items-center gap-0.5">
             {box && (
@@ -130,7 +133,7 @@ export function BottomNav() {
                   href={t.href}
                   aria-current={on ? "page" : undefined}
                   aria-label={t.label}
-                  className={`press-sm relative flex flex-col items-center rounded-full transition-[padding,min-width,color] duration-500 ease-spring ${compact ? "min-w-[3rem] gap-0 px-2.5 py-2" : "min-w-[4.4rem] gap-0.5 px-3 py-1.5"} ${on ? "text-ink" : "text-subtle"}`}
+                  className={`press-sm relative flex flex-col items-center rounded-full transition-[padding,min-width,color] duration-500 ease-spring ${compact ? "min-w-[2.9rem] gap-0 px-2.5 py-2" : "min-w-[3.9rem] gap-0.5 px-2.5 py-1.5"} ${on ? "text-ink" : "text-subtle"}`}
                 >
                   <Icon name={t.icon} className="h-[22px] w-[22px]" />
                   <span aria-hidden="true" className={`overflow-hidden text-[10px] leading-none transition-all duration-300 ${compact ? "max-h-0 opacity-0" : "max-h-4 opacity-100"} ${on ? "font-semibold" : "font-medium"}`}>{t.label}</span>
@@ -140,6 +143,8 @@ export function BottomNav() {
           </div>
         </LiquidGlass>
       </nav>
+      <ActionMenu compact={compact} />
+      </div>
     </>
   );
 }

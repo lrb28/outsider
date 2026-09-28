@@ -12,6 +12,7 @@ import { fetchCatalogue } from "@/lib/fetchJson";
 import { fixTicker } from "@/lib/format";
 import { CollectionInvestor, CollectionItem, DiscoverData } from "@/lib/types";
 import { Icon } from "@/components/Icon";
+import { BackButton } from "@/components/ui";
 
 const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: DiscoverData) => CollectionItem[] }> = {
   boughtq: {
@@ -95,10 +96,7 @@ export default function CollectionPage() {
   return (
     <div className="space-y-6">
       <div className="aura-header space-y-4" style={{ ["--aura" as string]: `var(--aura-${aura})` }}>
-        <Link href="/discover" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-subtle hover:text-ink">
-          <Icon name="chevronLeft" className="h-4 w-4" />
-          Entdecken
-        </Link>
+        <BackButton href="/discover" label="Entdecken" />
         <div className="fade-up">
           <h1 className="large-title">{meta.title}</h1>
           <p className="mt-1.5 max-w-2xl text-[15px] leading-snug text-subtle">{meta.blurb}</p>

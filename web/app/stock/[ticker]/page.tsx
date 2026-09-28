@@ -11,7 +11,7 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
 import { PriceChart } from "@/components/PriceChart";
 import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
-import { SegmentedControl } from "@/components/ui";
+import { BackButton, SegmentedControl, StatRow } from "@/components/ui";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate } from "@/lib/format";
@@ -117,10 +117,7 @@ export default function StockPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: up ? "var(--bull-fill)" : "var(--bear-fill)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-      <Link href="/discover?tab=stocks" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-subtle hover:text-ink">
-        <Icon name="chevronLeft" className="h-4 w-4" />
-        Aktien
-      </Link>
+      <BackButton href="/discover?tab=stocks" label="Aktien" />
 
       <div className="fade-up flex items-center gap-4">
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={72} rounded="rounded-[20px]" />
@@ -171,14 +168,7 @@ export default function StockPage() {
 
       {priceError && <ErrorRetry onRetry={() => setTick(t => t+1)}/>}
       {bars?.length ? <p className="-mt-5 text-[13px] text-subtle">Historische Schlusskurse · Stand {formatDate(bars[bars.length-1].date)}{isStaleDate(bars[bars.length-1].date) ? " · veraltet" : ""}</p> : !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="card p-4">
-            <div className={`num-lg ${s.cls ?? ""}`}>{s.value}</div>
-            <div className="mt-1 text-[13px] text-subtle">{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <StatRow items={stats} />
 
       {(actTotal > 0 || insTotal > 0) && (
         <section className="space-y-3">

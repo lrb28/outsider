@@ -12,7 +12,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { Icon } from "@/components/Icon";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
-import { politicianLine } from "@/components/ui";
+import { BackButton, politicianLine, StatRow } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
 import { companyName, formatDate } from "@/lib/format";
 import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
@@ -72,10 +72,7 @@ export default function PoliticianPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-        <Link href="/discover?tab=politicians" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-subtle hover:text-ink">
-          <Icon name="chevronLeft" className="h-4 w-4" />
-          Politiker
-        </Link>
+        <BackButton href="/discover?tab=politicians" label="Politiker" />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
@@ -89,14 +86,7 @@ export default function PoliticianPage() {
           <FollowButton kind="politician" id={pol.slug} />
         </div>
 
-        <div className="fade-up grid grid-cols-3 gap-3">
-          {stats.map((s) => (
-            <div key={s.label} className="card p-4">
-              <div className="num-lg">{s.value}</div>
-              <div className="mt-1 text-[13px] text-subtle">{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <div className="fade-up"><StatRow items={stats} /></div>
       </div>
 
       {pol.trades.length > 0 && (

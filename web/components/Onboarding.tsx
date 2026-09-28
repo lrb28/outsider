@@ -210,7 +210,9 @@ function OnboardingInner() {
     } catch {
       /* private mode: show once per visit */
     }
-    if (params.get("willkommen") === "1" || (path === "/" && !seen)) setPhase("welcome");
+    const ask = params.get("willkommen");
+    if (ask === "folgen") setPhase("setup");
+    else if (ask === "1" || (path === "/" && !seen)) setPhase("welcome");
   }, [path, params]);
 
   const close = useCallback(() => {

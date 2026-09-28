@@ -37,8 +37,8 @@ export function AllocationBar({ holdings, title = "Verteilung" }: { holdings: Ho
           {segs.map((s, i) => (
             <div key={i} className="flex items-center gap-2 text-[13px]">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-              <span className="truncate text-ink">{s.label}</span>
-              <span className="ml-auto font-medium tabular-nums text-subtle">{weightPct(s.weight)}</span>
+              <span className="min-w-0 truncate text-ink">{s.label}</span>
+              <span className="ml-auto whitespace-nowrap font-medium tabular-nums text-subtle">{weightPct(s.weight)}</span>
             </div>
           ))}
         </div>
