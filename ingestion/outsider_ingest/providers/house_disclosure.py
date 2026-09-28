@@ -9,7 +9,7 @@ PDFs (the hard part):
         Periodic Transaction Report (the trades). Fields incl. DocID, Name,
         StateDst, Year, FilingDate.
   2. Each PTR PDF:
-     https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{DocID}.pdf
+     https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{YEAR}/{DocID}.pdf
      -> parse with pdfplumber; OCR fallback for scanned ones.
 
 This is the most labor-intensive source, so it is sequenced AFTER 13F + Form 4
@@ -30,7 +30,8 @@ from lxml import etree
 from outsider_ingest.providers.base import FilingRef, FilingsProvider
 
 YEAR_ZIP = "https://disclosures-clerk.house.gov/public_disc/financial-pdfs/{year}FD.zip"
-PTR_PDF = "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{doc_id}.pdf"
+# The PDF path includes the index year; without it every request answers 404.
+PTR_PDF = "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/{year}/{doc_id}.pdf"
 
 
 class HouseDisclosureProvider(FilingsProvider):
@@ -78,7 +79,7 @@ class HouseDisclosureProvider(FilingsProvider):
                     accession=doc_id,
                     filed_at=filed_at,
                     period_of_report=None,
-                    source_url=PTR_PDF.format(doc_id=doc_id),
+                    source_url=PTR_PDF.format(year=year, doc_id=doc_id),
                     primary_document=f"{doc_id}.pdf",
                 )
             )

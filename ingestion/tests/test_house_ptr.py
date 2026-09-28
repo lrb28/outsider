@@ -29,6 +29,42 @@ def test_extracts_ticker_rows_only():
     assert nvda["amount_min"] == 15001 and nvda["amount_max"] == 50000
 
 
+# Layout of the current electronic PTRs (pdfplumber text): the ticker and the
+# asset code follow on the next line, long amounts wrap, field lines end a row.
+REAL_LAYOUT = """
+ID Owner Asset Transaction Date Notification Amount Cap.
+Type Date Gains >
+SP Broadcom Inc. - Common Stock P 08/12/2026 09/15/2026 $1,001 - $15,000
+(AVGO) [ST]
+F      S     : New
+S          O : R.W. Allen & Associates, Inc. > RWA&A - Securities
+SP Rollins, Inc. Common Stock (ROL) S 08/12/2026 09/15/2026 $15,001 -
+[ST] $50,000
+F      S     : New
+Microsoft Corporation (MSFT) [OP] P 08/14/2026 09/10/2026 $250,001 -
+$500,000
+D          : Purchased 50 call options
+JT Howmet Aerospace Inc. (HWM) S (partial) 08/11/2026 09/02/2026 $1,001 - $15,000
+[ST]
+United States Treasury Bill P 08/20/2026 09/01/2026 $15,001 - $50,000
+[GS]
+* For the complete list of asset type abbreviations, please visit https://fd.house.gov/reference/asset-type-codes.aspx.
+"""
+
+
+def test_current_ptr_layout():
+    rows = parse_ptr_text(REAL_LAYOUT)
+    assert [r["ticker"] for r in rows] == ["AVGO", "ROL", "MSFT", "HWM", None]
+    avgo, rol, msft, hwm, bill = rows
+    assert (avgo["owner"], avgo["txn_type"], avgo["asset_code"]) == ("SP", "buy", "ST")
+    assert avgo["asset"] == "Broadcom Inc. - Common Stock"
+    assert (rol["amount_min"], rol["amount_max"]) == (15001, 50000), "wrapped range is completed"
+    assert rol["txn_date"] == "2026-08-12" and rol["notification_date"] == "2026-09-15"
+    assert msft["asset_code"] == "OP" and (msft["amount_min"], msft["amount_max"]) == (250001, 500000)
+    assert (hwm["owner"], hwm["txn_type"], hwm["raw_type"]) == ("JT", "sell", "S (partial)")
+    assert bill["asset_code"] == "GS", "rows without ticker are returned but skipped by the pipeline"
+
+
 if __name__ == "__main__":
     rows = parse_ptr_text(SAMPLE)
     test_extracts_ticker_rows_only()
