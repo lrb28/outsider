@@ -35,6 +35,9 @@ ARCHIVE_DIR = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/"
 # "4   ACME CORP   1234567   20260925   edgar/data/1234567/0001234567-26-000123.txt"
 INDEX_ROW = re.compile(r"^(4|4/A)\s+(.+?)\s+(\d+)\s+(\d{8})\s+(edgar/data/\d+/([\d-]+)\.txt)\s*$")
 XML_BLOCK = re.compile(rb"<XML>\s*(.*?)\s*</XML>", re.S | re.I)
+# Unlisted issuers file placeholders such as "NONE" or "N/A".
+TICKER = re.compile(r"^[A-Z][A-Z0-9.\-]{0,6}$")
+NOT_A_TICKER = {"NONE", "NA", "N/A", "NULL", "TBD"}
 
 
 @dataclass(frozen=True)
@@ -83,7 +86,8 @@ def purchases(txns: Iterable[Form4Transaction], min_value: float) -> list[Form4T
     for t in txns:
         if (t.code or "").upper() != "P" or t.is_derivative or (t.acquired_disposed or "A") != "A":
             continue
-        if not t.ticker or not t.shares or not t.price:
+        ticker = (t.ticker or "").strip().upper()
+        if not TICKER.match(ticker) or ticker in NOT_A_TICKER or not t.shares or not t.price:
             continue
         if t.shares * t.price < min_value:
             continue
