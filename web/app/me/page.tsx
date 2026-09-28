@@ -942,7 +942,7 @@ export default function MePage() {
     const blob = new Blob([toCsv(txns)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "outsider-depot.csv";
+    a.download = "aura-depot.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };

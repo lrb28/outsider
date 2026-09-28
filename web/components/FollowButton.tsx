@@ -47,16 +47,8 @@ export function FollowButton({
   }
 
   return (
-    <button
-      onClick={handle}
-        aria-pressed={on}
-      className={`press-sm inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold ${
-        on
-          ? "bg-warn/15 text-warn ring-1 ring-warn/25 hover:bg-warn/25"
-          : "btn-primary !px-4 !py-1.5"
-      }`}
-    >
-      <Icon name="star" className={`h-4 w-4 ${on ? "[&_path]:fill-current" : ""}`} />
+    <button onClick={handle} aria-pressed={on} className={on ? "btn-capsule !min-h-10 !px-4 !text-[14px]" : "btn-primary !min-h-10 !px-4 !text-[14px]"}>
+      <Icon name={on ? "tick" : "plus"} className="h-4 w-4" />
       {on ? "Folge ich" : "Folgen"}
     </button>
   );

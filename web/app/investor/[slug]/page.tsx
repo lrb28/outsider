@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
+import { DepotSkyline } from "@/components/DepotSkyline";
+import { SegmentedControl } from "@/components/ui";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
@@ -53,9 +55,9 @@ export default function InvestorPage() {
   if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!inv)
     return (
-      <div className="py-16 text-center text-sm text-subtle">
+      <div className="py-16 text-center text-[15px] text-subtle">
         Investor nicht gefunden.{" "}
-        <Link href="/discover" className="text-brand underline">
+        <Link href="/discover" className="text-ink underline">
           Zurück zu Entdecken
         </Link>
       </div>
@@ -76,85 +78,71 @@ export default function InvestorPage() {
   const moveTotal = buys + sells;
 
   return (
-    <div className="space-y-6">
-      <p className="rounded-xl bg-zinc-100/80 p-3 text-sm leading-6 text-zinc-800">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
-      <Link href="/discover" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink">
-        <Icon name="chevronLeft" className="h-4 w-4" />
-        Entdecken
-      </Link>
+    <div className="space-y-8">
+      <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
+        <Link href="/discover?tab=investors" className="-ml-1 inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-subtle hover:text-ink">
+          <Icon name="chevronLeft" className="h-4 w-4" />
+          Investoren
+        </Link>
 
-      <div className="flex items-start gap-4">
-        <Avatar name={inv.person ?? inv.fund} size={72} />
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{inv.person ?? inv.fund}</h1>
-          <div className="text-sm text-subtle">{inv.fund}</div>
-          {inv.bio && <p className="mt-1 max-w-xl text-sm text-slate-600">{inv.bio}</p>}
-        </div>
-        <FollowButton kind="investor" id={inv.slug} />
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl bg-card p-4 shadow-card">
-            <div className="num-lg">{s.value}</div>
-            <div className="mt-0.5 text-xs text-subtle">{s.label}</div>
+        <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+          <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
+          <div className="min-w-0 flex-1">
+            <h1 className="large-title">{inv.person ?? inv.fund}</h1>
+            <div className="mt-1 text-[15px] text-subtle">{inv.fund} · 13F-Bericht vom {formatDate(inv.asOf)}</div>
           </div>
-        ))}
+          <FollowButton kind="investor" id={inv.slug} />
+        </div>
+        {inv.bio && <p className="fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
+
+        <div className="fade-up grid grid-cols-3 gap-3">
+          {stats.map((s) => (
+            <div key={s.label} className="card p-4">
+              <div className="num-lg">{s.value}</div>
+              <div className="mt-1 text-[13px] text-subtle">{s.label}</div>
+            </div>
+          ))}
+        </div>
       </div>
+
+      <DepotSkyline holdings={inv.holdings} />
 
       <AllocationBar holdings={inv.holdings} />
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">Portfolio</h2>
-          <div className="inline-flex rounded-full bg-slate-100 p-0.5 text-xs font-medium">
-            {(
-              [
-                ["value", "Wert"],
-                ["name", "Name"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setSort(key)}
-                className={`press-sm rounded-full px-3 py-1 ${
-                  sort === key ? "bg-card text-ink shadow-card" : "text-subtle"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Positionen</h2>
+          <SegmentedControl label="Sortierung" size="sm" options={[["value", "Wert"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
         </div>
 
-        <div className="overflow-hidden rounded-2xl bg-card shadow-card">
+        <div className="card overflow-hidden">
           {holdings.map((h, i) => {
             const company = companyName(h.ticker, h.securityName);
             return (
               <div
                 key={`${h.ticker ?? h.securityName}-${i}`}
-                className="flex items-center gap-3 border-b border-hair px-4 py-3 last:border-0"
+                className="relative flex items-center gap-3 px-4 py-3 after:absolute after:bottom-0 after:left-[4.25rem] after:right-0 after:h-px after:bg-hair last:after:hidden"
               >
-                <CompanyLogo ticker={h.ticker} company={company} size={38} />
+                <CompanyLogo ticker={h.ticker} company={company} size={40} />
                 <div className="min-w-0 flex-1">
                   {h.ticker ? (
                     <Link
                       href={`/stock/${h.ticker}`}
-                      className="block truncate text-sm font-medium hover:text-brand"
+                      className="block truncate text-[15px] font-semibold hover:underline"
                     >
                       {company}
                     </Link>
                   ) : (
-                    <div className="truncate text-sm font-medium">{company}</div>
+                    <div className="truncate text-[15px] font-semibold">{company}</div>
                   )}
-                  <div className="font-mono text-xs text-subtle">
+                  <div className="text-[13px] text-subtle">
                     {fixTicker(h.ticker, company) ?? "—"}
                     {h.putCall ? ` · ${h.putCall}` : ""}
                   </div>
                 </div>
                 <div className="w-28 text-right">
-                  <div className="text-sm font-semibold">{weightPct(h.weight)}</div>
-                  <div className="text-xs text-subtle">{abbrevMoney(h.value)}</div>
+                  <div className="text-[15px] font-semibold tabular-nums">{weightPct(h.weight)}</div>
+                  <div className="text-[13px] tabular-nums text-subtle">{abbrevMoney(h.value)}</div>
                 </div>
               </div>
             );
@@ -170,8 +158,8 @@ export default function InvestorPage() {
 
       {moveTotal > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight">Bewegungen (Quartal)</h2>
-          <div className="flex flex-col items-center gap-6 rounded-2xl bg-card p-5 shadow-card sm:flex-row">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Bewegungen im Quartal</h2>
+          <div className="card flex flex-col items-center gap-6 p-5 sm:flex-row">
             <Donut
               segments={moves}
               centerTop={`${Math.round((buys / moveTotal) * 100)} %`}
@@ -194,13 +182,15 @@ export default function InvestorPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Letzte Meldungen</h2>
         <TradeFeed
           rows={inv.trades}
           showActor={false}
           empty="Noch keine gemeldeten Umschichtungen."
         />
       </section>
+
+      <p className="text-[13px] leading-relaxed text-subtle">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
     </div>
   );
 }

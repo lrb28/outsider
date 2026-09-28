@@ -1,5 +1,5 @@
 // Iconly Light icon set (react-iconly, MIT, © Junior García). Home, Discovery,
-// Graph and Notification are the exact SVGs supplied for Outsider.
+// Graph and Notification are the exact SVGs supplied for the app.
 import type { SVGProps } from "react";
 
 const ICONS = {

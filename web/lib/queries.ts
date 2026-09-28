@@ -313,7 +313,7 @@ export async function getPolitician(slug: string): Promise<PoliticianDetail | nu
   );
   if (ent.rows.length === 0) return null;
   const e = ent.rows[0];
-  const trades = await getTrades({ entitySlug: slug, limit: 50 });
+  const trades = await getTrades({ entitySlug: slug, limit: 200 });
   return {
     slug: e.slug as string,
     name: e.name as string,

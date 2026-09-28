@@ -105,23 +105,23 @@ function varied(rows: FeedRow[], n = 8) {
 /* ── The three auras: who discloses ───────────────────────────────────────── */
 function AuraTile({ href, kind, title, count, unit, faces }: { href: string; kind: "investor" | "insider" | "politician"; title: string; count: number | null; unit: string; faces: { name: string; src?: string | null }[] }) {
   return (
-    <Link href={href} className="card lcard-hover press relative flex min-h-[9.5rem] flex-col justify-between overflow-hidden p-4">
-      <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full blur-2xl" style={{ background: `rgb(var(--aura-${kind}) / 0.32)` }} />
+    <Link href={href} className="card lcard-hover press relative flex min-h-[9rem] flex-col justify-between overflow-hidden p-3 sm:p-4">
+      <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full blur-2xl" style={{ background: `rgb(var(--aura-${kind}) / 0.32)` }} />
       <div className="relative flex items-center">
         {faces.slice(0, 3).map((f, i) => (
-          <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.14)]">
-            <Avatar name={f.name} src={f.src} kind={kind} size={34} />
+          <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -9, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.14)]">
+            <Avatar name={f.name} src={f.src} kind={kind} size={30} />
           </div>
         ))}
         {faces.length === 0 && <Skeleton className="h-[34px] w-20 rounded-full" />}
       </div>
       <div className="relative">
         <div className="num-lg">{count == null ? "–" : <CountUp value={count} />}</div>
-        <div className="mt-1 flex items-center gap-1 text-[14px] font-semibold">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: `rgb(var(--aura-${kind}))` }} />
+        <div className="mt-1.5 flex items-center gap-1.5 text-[14px] font-semibold leading-tight">
+          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: `rgb(var(--aura-${kind}))` }} />
           {title}
-          <span className="font-normal text-subtle">{unit}</span>
         </div>
+        <div className="mt-0.5 text-[12px] leading-tight text-subtle">{unit}</div>
       </div>
     </Link>
   );
@@ -175,9 +175,9 @@ export default function HomePage() {
   return (
     <div className="space-y-10">
       {/* Hero: the aura behind plain, large type. */}
-      <section className="fade-up relative isolate -mx-4 overflow-hidden px-4 pb-2 pt-6 sm:pt-10">
-        <AuraField className="pointer-events-none absolute -right-24 -top-24 -z-10 h-[30rem] w-[44rem] max-w-none [mask-image:radial-gradient(closest-side,#000_45%,transparent)] sm:-right-10" />
-        <p className="eyebrow">Öffentliche Meldungen · live aus den Originalquellen</p>
+      <section className="fade-up relative isolate -mx-4 px-4 pb-2 pt-6 sm:pt-10">
+        <AuraField className="pointer-events-none absolute -right-40 -top-28 -z-10 h-[34rem] w-[48rem] max-w-none [mask-image:radial-gradient(closest-side,#000_35%,transparent)] sm:-right-16" />
+        <p className="eyebrow">Live aus den Originalquellen</p>
         <h1 className="mt-3 max-w-2xl font-display text-[44px] font-bold leading-[0.98] tracking-[-0.045em] sm:text-[64px]">
           Sieh, was die Mächtigen kaufen.
         </h1>
@@ -191,10 +191,10 @@ export default function HomePage() {
       </section>
 
       {/* The three auras */}
-      <section className="fade-up grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Wer offenlegt">
+      <section className="fade-up grid grid-cols-3 gap-2.5 sm:gap-3" aria-label="Wer offenlegt">
         <AuraTile href="/discover?tab=investors" kind="investor" title="Investoren" unit="13F-Depots" count={stats?.institutions ?? (investors.length || null)} faces={spotlight.map((i) => ({ name: i.person ?? i.fund }))} />
         <AuraTile href="/feed?type=corporate_insider" kind="insider" title="Insider" unit="mit Form 4" count={stats?.insiders ?? null} faces={insiderFaces} />
-        <AuraTile href="/discover?tab=politicians" kind="politician" title="Politiker" unit="im Repräsentantenhaus" count={stats?.politicians ?? (politicians.length || null)} faces={politicians.slice(0, 3).map((p) => ({ name: p.name, src: p.photo }))} />
+        <AuraTile href="/discover?tab=politicians" kind="politician" title="Politiker" unit="im US-Kongress" count={stats?.politicians ?? (politicians.length || null)} faces={politicians.slice(0, 3).map((p) => ({ name: p.name, src: p.photo }))} />
       </section>
 
       {/* Entry cards */}
