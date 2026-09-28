@@ -211,6 +211,15 @@ class Repository:
         ).fetchone()
         return bool(row and row[0])
 
+    def filing_has_transactions(self, source_url: str) -> bool:
+        """A PTR is stored once it has current rows (they commit together)."""
+        row = self.conn.execute(
+            """SELECT EXISTS (SELECT 1 FROM filings f JOIN transactions t ON t.filing_id = f.id
+               WHERE f.source_url = %s AND NOT coalesce(t.superseded, false))""",
+            (source_url,),
+        ).fetchone()
+        return bool(row and row[0])
+
     def known_securities_by_cusip(self) -> tuple[dict[str, int], dict[str, int]]:
         """(resolved via the symbol cache, any security with that CUSIP) — one
         query each instead of several round trips per holding."""
