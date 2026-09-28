@@ -61,30 +61,84 @@ def extract_transactions(pdf_bytes: bytes) -> list[dict]:
     return parse_ptr_text(text)
 
 
+# A transaction starts on the line that carries its type and both dates:
+#   "SP Broadcom Inc. - Common Stock P 08/12/2026 09/15/2026 $1,001 - $15,000"
+# The ticker "(AVGO)", the asset code "[ST]" and the rest of a wrapped amount
+# follow on the next lines, until the next transaction or a field line such as
+# "F      S     : New" (filing status) or "S          O : ..." (subholding).
+ROW_RE = re.compile(
+    r"^(?:(?P<owner>SP|JT|DC)\s+)?(?P<asset>.*?)\s+"
+    r"(?P<type>P|S(?:\s*\((?:partial|Partial|full|Full)\))?|E)\s+"
+    r"(?P<date>\d{2}/\d{2}/\d{4})\s+(?P<notif>\d{2}/\d{2}/\d{4})\s*"
+    r"(?P<amount>.*)$"
+)
+FIELD_RE = re.compile(r"^[A-Z](?:\s{2,}[A-Z]?)+\s*:")
+BLOCK_END = ("* For the complete list", "I CERTIFY", "Digitally Signed", "I          V", "Filing ID #")
+PAREN_TICKER_RE = re.compile(r"\(([A-Z][A-Z0-9.\-]{0,6})\)")
+ASSET_CODE_RE = re.compile(r"\[([A-Z]{2})\]")
+MONEY_RE = re.compile(r"\$[\d,]+")
+
+
+def _amount(text: str) -> tuple[str, Optional[int], Optional[int]]:
+    """Normalise "$1,001 - $15,000", "$15,001 -" + "$50,000", "Over $50,000,000"."""
+    values = [int(v[1:].replace(",", "")) for v in MONEY_RE.findall(text)]
+    if not values:
+        return text.strip(), None, None
+    if text.strip().lower().startswith("over") or (len(values) == 1 and "-" not in text):
+        return text.strip(), values[0], None
+    lo, hi = values[0], values[1] if len(values) > 1 else None
+    return f"${lo:,} - ${hi:,}" if hi else f"${lo:,} -", lo, hi
+
+
 def parse_ptr_text(text: str) -> list[dict]:
     """Pure text -> rows (unit-testable without a PDF)."""
-    rows: list[dict] = []
-    for line in text.splitlines():
-        amt = AMOUNT_RE.search(line)
-        tkr = TICKER_RE.search(line)
-        if not amt or not tkr:
+    blocks: list[tuple[re.Match, list[str]]] = []
+    current: Optional[tuple[re.Match, list[str]]] = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
             continue
-        typ = TYPE_RE.search(line)
-        dates = DATE_RE.findall(line)
-        raw_type = typ.group(1) if typ else None
-        amin, amax = parse_amount_range(amt.group(0))
+        match = ROW_RE.match(line)
+        if match:
+            current = (match, [])
+            blocks.append(current)
+            continue
+        if current is None:
+            continue
+        if FIELD_RE.match(line) or line.startswith(BLOCK_END):
+            current = None  # details of this transaction are complete
+            continue
+        current[1].append(line)
+
+    rows: list[dict] = []
+    for match, extra in blocks:
+        tail = " ".join(extra)
+        amount_text = match.group("amount")
+        # A wrapped range ends on a following line: "$15,001 -" ... "[ST] $50,000".
+        if amount_text.rstrip().endswith("-"):
+            more = MONEY_RE.search(tail)
+            if more:
+                amount_text = f"{amount_text} {more.group(0)}"
+        amount, amin, amax = _amount(amount_text)
+        asset_text = f"{match.group('asset')} {tail}"
+        ticker = PAREN_TICKER_RE.search(asset_text)
+        code = ASSET_CODE_RE.search(asset_text)
+        raw_type = match.group("type")
+        asset = PAREN_TICKER_RE.split(match.group("asset") + " " + tail)[0]
+        asset = ASSET_CODE_RE.sub("", asset).strip(" -")
         rows.append(
             {
-                "ticker": tkr.group(1),
-                "asset": line.split("(")[0].strip()[:120],
+                "ticker": ticker.group(1) if ticker else None,
+                "asset": asset[:120],
+                "asset_code": code.group(1) if code else None,
                 "raw_type": raw_type,
-                "txn_type": TYPE_MAP.get((raw_type or "").strip().lower(), "exchange"),
-                "txn_date": _iso(dates[0]) if dates else None,
-                "notification_date": _iso(dates[1]) if len(dates) > 1 else None,
-                "amount": amt.group(0),
+                "txn_type": TYPE_MAP.get(raw_type.split("(")[0].strip().lower(), "exchange"),
+                "txn_date": _iso(match.group("date")),
+                "notification_date": _iso(match.group("notif")),
+                "amount": amount,
                 "amount_min": amin,
                 "amount_max": amax,
-                "owner": None,
+                "owner": match.group("owner"),
             }
         )
     return rows

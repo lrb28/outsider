@@ -2,7 +2,16 @@ name: refresh-data
 on:
   schedule:
     - cron: "0 6 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Run only this source key (form4, insider-buys, senate, house, 13f, names, prices); empty = all"
+        required: false
+        default: ""
+      args:
+        description: "Extra arguments for that source, e.g. --days 30 --dry-run"
+        required: false
+        default: ""
 permissions:
   contents: read
 concurrency:
@@ -18,14 +27,25 @@ jobs:
       matrix:
         include:
           - source: SEC Form 4
+            key: form4
             command: python -m outsider_ingest.pipelines.ingest_form4 --all
+          - source: SEC Form 4 market-wide purchases
+            key: insider-buys
+            command: python -m outsider_ingest.pipelines.ingest_insider_buys --days 4
           - source: US Senate
+            key: senate
             command: python -m outsider_ingest.pipelines.ingest_senate
           - source: US House
+            key: house
             command: python -m outsider_ingest.pipelines.ingest_house --year "$(date +%Y)"
           - source: SEC 13F
+            key: 13f
             command: python -m outsider_ingest.pipelines.ingest_13f --all
+          - source: Company names
+            key: names
+            command: python -m outsider_ingest.pipelines.refresh_company_names
           - source: EOD prices
+            key: prices
             command: python -m outsider_ingest.pipelines.backfill_prices
     steps:
       - uses: actions/checkout@v4
@@ -35,8 +55,10 @@ jobs:
           cache: pip
           cache-dependency-path: ingestion/requirements.txt
       - name: Install dependencies
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.only == '' || inputs.only == matrix.key }}
         run: pip install -r ingestion/requirements.txt
       - name: Import source
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.only == '' || inputs.only == matrix.key }}
         working-directory: ingestion
         env:
           PYTHONPATH: .
@@ -45,7 +67,8 @@ jobs:
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
           PRICE_PROVIDER: stooq
           PRICE_FALLBACKS: yahoo
-        run: ${{ matrix.command }}
+          EXTRA_ARGS: ${{ inputs.args }}
+        run: ${{ matrix.command }} $EXTRA_ARGS
       - name: Record outcome
         if: ${{ always() }}
         env:

@@ -34,7 +34,7 @@ def _d(iso):
         return None
 
 
-def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
+def ingest_house(year: int | None = None, max_ptrs: int = 500) -> int:
     provider = config.get_filings_provider("house")
     refs = provider.list_filings("", ["P"], year=year)
     refs.sort(key=lambda r: (r.filed_at or date.min), reverse=True)  # newest first
@@ -75,6 +75,7 @@ def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
                 filing_id, entity_id, sid, r["txn_type"],
                 txn_date=_d(r.get("txn_date")), disclosed_at=ref.filed_at,
                 amount_min=r.get("amount_min"), amount_max=r.get("amount_max"),
+                owner=r.get("owner"), is_derivative=r.get("asset_code") == "OP",
                 source_line=f"house:{ordinal}",
             )
             n += 1
@@ -88,10 +89,11 @@ def ingest_house(year: int | None = None, max_ptrs: int = 120) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--year", type=int)
-    ap.add_argument("--max-ptrs", type=int, default=120)
+    ap.add_argument("--year", type=int, action="append", help="repeat for several years, e.g. a one-off backfill")
+    ap.add_argument("--max-ptrs", type=int, default=500)
     args = ap.parse_args()
-    ingest_house(year=args.year, max_ptrs=args.max_ptrs)
+    for year in args.year or [None]:
+        ingest_house(year=year, max_ptrs=args.max_ptrs)
 
 
 if __name__ == "__main__":

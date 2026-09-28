@@ -109,7 +109,7 @@ test('PostgreSQL: additive migration preserves old rows and supports multiple so
   assert.equal(rows.find(r=>r.ticker==='OLD').pctSinceDisclosure,null);
   assert.equal(rows.find(r=>r.entityType==='institution').txnDate,null);
   assert.equal((await Q.getDiscover()).mostBoughtQ[0].ticker,'TEST');
-  const discover=await Q.getDiscover();assert.ok(!discover.mostBoughtQ.some(r=>r.ticker==='OLD'));assert.match(discover.insiderBuys.find(r=>r.ticker==='TEST').metric,/2/);
+  const discover=await Q.getDiscover();assert.ok(!discover.mostBoughtQ.some(r=>r.ticker==='OLD'));assert.equal(discover.insiderBuys.find(r=>r.ticker==='TEST').metric,'1 Insider','two purchases by one insider count once');
   assert.equal((await Q.getTrades({q:'%'})).length,0,'search percent is literal');
   const stats=await S.getStats();assert.equal(stats.trades,6);assert.equal(stats.freshPriceSymbols,1);assert.equal(stats.groups.find(g=>g.type==='politician').missingDates,0);
 });
