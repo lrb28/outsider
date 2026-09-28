@@ -22,7 +22,8 @@ from outsider_ingest.providers.stooq_price import PriceUnavailable
 class YahooPriceProvider(PriceProvider):
     name = "yahoo"
 
-    def __init__(self, default_range: str = "2y"):
+    def __init__(self, default_range: str = "1y", timeout_s: float = 12):
+        self.timeout_s = timeout_s
         self.default_range = default_range
         self.session = requests.Session()
         self.session.headers.update(
@@ -36,7 +37,7 @@ class YahooPriceProvider(PriceProvider):
             f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
             f"?range={self.default_range}&interval=1d"
         )
-        resp = self.session.get(url, timeout=30)
+        resp = self.session.get(url, timeout=self.timeout_s)
         resp.raise_for_status()
         try:
             result = resp.json()["chart"]["result"][0]

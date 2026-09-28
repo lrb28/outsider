@@ -35,6 +35,9 @@ ARCHIVE_DIR = "https://www.sec.gov/Archives/edgar/data/{cik}/{acc}/"
 # "4   ACME CORP   1234567   20260925   edgar/data/1234567/0001234567-26-000123.txt"
 INDEX_ROW = re.compile(r"^(4|4/A)\s+(.+?)\s+(\d+)\s+(\d{8})\s+(edgar/data/\d+/([\d-]+)\.txt)\s*$")
 XML_BLOCK = re.compile(rb"<XML>\s*(.*?)\s*</XML>", re.S | re.I)
+# Unlisted issuers file placeholders such as "NONE" or "N/A".
+TICKER = re.compile(r"^[A-Z][A-Z0-9.\-]{0,6}$")
+NOT_A_TICKER = {"NONE", "NA", "N/A", "NULL", "TBD"}
 
 
 @dataclass(frozen=True)
@@ -83,7 +86,8 @@ def purchases(txns: Iterable[Form4Transaction], min_value: float) -> list[Form4T
     for t in txns:
         if (t.code or "").upper() != "P" or t.is_derivative or (t.acquired_disposed or "A") != "A":
             continue
-        if not t.ticker or not t.shares or not t.price:
+        ticker = (t.ticker or "").strip().upper()
+        if not TICKER.match(ticker) or ticker in NOT_A_TICKER or not t.shares or not t.price:
             continue
         if t.shares * t.price < min_value:
             continue
@@ -113,15 +117,15 @@ class _Sec:
         self.min_interval_s = min_interval_s
         self._last = 0.0
 
-    def get(self, url: str) -> Optional[bytes]:
+    def get(self, url: str, missing: tuple[int, ...] = (404,)) -> Optional[bytes]:
         for attempt in range(4):
             gap = time.monotonic() - self._last
             if gap < self.min_interval_s:
                 time.sleep(self.min_interval_s - gap)
             resp = self.session.get(url, timeout=30)
             self._last = time.monotonic()
-            if resp.status_code == 404:
-                return None  # holidays have no daily index
+            if resp.status_code in missing:
+                return None
             if resp.status_code == 429 or resp.status_code >= 500:
                 time.sleep(min(2 ** attempt, 8))
                 continue
@@ -133,12 +137,18 @@ class _Sec:
 def ingest_insider_buys(days: int = 4, end: Optional[date] = None, min_value: float = 10_000,
                         max_filings: int = 12_000, dry_run: bool = False) -> int:
     sec = _Sec(config.SEC_USER_AGENT)
-    end = end or date.today()
+    # The daily index appears in the evening; start with the previous day.
+    end = end or date.today() - timedelta(days=1)
     entries: list[IndexEntry] = []
+    indexes = 0
     for d in trading_days(end, days):
-        raw = sec.get(DAILY_INDEX.format(y=d.year, q=(d.month - 1) // 3 + 1, ymd=d.strftime("%Y%m%d")))
+        # Holidays and not-yet-published days answer 404 or 403.
+        raw = sec.get(DAILY_INDEX.format(y=d.year, q=(d.month - 1) // 3 + 1, ymd=d.strftime("%Y%m%d")), missing=(403, 404))
         if raw:
+            indexes += 1
             entries += parse_daily_index(raw.decode("latin-1"))
+    if not indexes:
+        raise RuntimeError("No EDGAR daily index could be read; check SEC_USER_AGENT and EDGAR access")
     entries = entries[:max_filings]
 
     repo = conn = None

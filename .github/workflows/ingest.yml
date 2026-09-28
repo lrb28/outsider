@@ -65,8 +65,10 @@ jobs:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
-          PRICE_PROVIDER: stooq
-          PRICE_FALLBACKS: yahoo
+          # Stooq answers datacenter IPs with an HTML page; Yahoo leads.
+          PRICE_PROVIDER: yahoo
+          PRICE_FALLBACKS: stooq
+          PYTHONUNBUFFERED: "1"
           EXTRA_ARGS: ${{ inputs.args }}
         run: ${{ matrix.command }} $EXTRA_ARGS
       - name: Record outcome

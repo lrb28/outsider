@@ -185,6 +185,36 @@ class Repository:
             (filing_id, entity_id, security_id, as_of_date, shares, market_value, put_call or ""),
         )
 
+    def upsert_holdings_bulk(self, rows: Sequence[tuple]) -> None:
+        """Many holdings in one pipelined round trip: (filing_id, entity_id,
+        security_id, as_of_date, shares, market_value, put_call) per row."""
+        with self.conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO holdings (filing_id, entity_id, security_id, as_of_date, shares, market_value, put_call)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (filing_id, security_id, put_call) DO UPDATE SET
+                    shares = EXCLUDED.shares, market_value = EXCLUDED.market_value
+                """,
+                [(*row[:6], row[6] or "") for row in rows],
+            )
+
+    def filing_has_holdings(self, source_url: str) -> bool:
+        """A 13F filing is stored completely once its holdings exist (holdings
+        and QoQ changes are committed together)."""
+        row = self.conn.execute(
+            "SELECT EXISTS (SELECT 1 FROM filings f JOIN holdings h ON h.filing_id = f.id WHERE f.source_url = %s)",
+            (source_url,),
+        ).fetchone()
+        return bool(row and row[0])
+
+    def known_securities_by_cusip(self) -> tuple[dict[str, int], dict[str, int]]:
+        """(resolved via the symbol cache, any security with that CUSIP) — one
+        query each instead of several round trips per holding."""
+        resolved = dict(self.conn.execute("SELECT raw_identifier, security_id FROM symbols_cache").fetchall())
+        by_cusip = dict(self.conn.execute("SELECT cusip, id FROM securities WHERE cusip IS NOT NULL").fetchall())
+        return resolved, by_cusip
+
     def supersede_legacy_transactions(self, filing_id: int) -> None:
         # Called only after a source was parsed successfully. It shares the same
         # transaction as the replacement inserts, so a failed import rolls back.
