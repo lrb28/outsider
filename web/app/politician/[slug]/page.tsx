@@ -12,7 +12,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { Icon } from "@/components/Icon";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
-import { BackButton, politicianLine, StatRow } from "@/components/ui";
+import { politicianLine, StatRow, DetailTopBar } from "@/components/ui";
 import { fetchJson } from "@/lib/fetchJson";
 import { companyName, formatDate } from "@/lib/format";
 import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
@@ -72,7 +72,7 @@ export default function PoliticianPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-        <BackButton href="/discover?tab=politicians" label="Politiker" />
+        <DetailTopBar back="/discover?tab=politicians" label="Politiker" action={<FollowButton kind="politician" id={pol.slug} />} />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
@@ -83,7 +83,6 @@ export default function PoliticianPage() {
               <span>US-Repräsentantenhaus</span>
             </div>
           </div>
-          <FollowButton kind="politician" id={pol.slug} />
         </div>
 
         <div className="fade-up"><StatRow items={stats} /></div>

@@ -225,3 +225,13 @@ export function StatRow({ items }: { items: { label: string; value: ReactNode; c
     </div>
   );
 }
+
+/** Navigation row of a detail page: round back button left, action right. */
+export function DetailTopBar({ back, label, action }: { back: string; label: string; action?: ReactNode }) {
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-3">
+      <BackButton href={back} label={label} />
+      {action}
+    </div>
+  );
+}

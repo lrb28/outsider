@@ -9,7 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { Icon } from "@/components/Icon";
-import { BackButton, StatRow } from "@/components/ui";
+import { StatRow, DetailTopBar } from "@/components/ui";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
@@ -58,7 +58,7 @@ export default function InsiderPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-insider)" }}>
-        <BackButton href="/feed?type=corporate_insider" label="Insider" />
+        <DetailTopBar back="/feed?type=corporate_insider" label="Insider" />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           {/* An executive's picture is the company they report for. */}

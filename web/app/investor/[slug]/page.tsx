@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { DepotSkyline } from "@/components/DepotSkyline";
-import { BackButton, SegmentedControl, StatRow } from "@/components/ui";
+import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
@@ -80,7 +80,7 @@ export default function InvestorPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
-        <BackButton href="/discover?tab=investors" label="Investoren" />
+        <DetailTopBar back="/discover?tab=investors" label="Investoren" action={<FollowButton kind="investor" id={inv.slug} />} />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
@@ -88,7 +88,6 @@ export default function InvestorPage() {
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
             <div className="mt-1 text-[15px] text-subtle">{inv.fund} · 13F-Bericht vom {formatDate(inv.asOf)}</div>
           </div>
-          <FollowButton kind="investor" id={inv.slug} />
         </div>
         {inv.bio && <p className="fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
 

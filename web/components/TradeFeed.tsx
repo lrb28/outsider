@@ -9,6 +9,7 @@ import {
   fixTicker,
   formatDate,
   groupSeries,
+  investorPerson,
   SERIES_MIN,
   tradeSignal,
   isStaleDate,
@@ -131,10 +132,10 @@ export function TradeFeed({
               >
                 {showActor && (
                   <div className="flex items-center gap-3">
-                    <Avatar name={r.entityName} src={r.entityPhoto} kind={auraOf(r.entityType)} size={38} />
+                    <Avatar name={r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName} src={r.entityPhoto} kind={auraOf(r.entityType)} size={38} />
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
-                        <span className="truncate">{r.entityName}</span>
+                        <span className="truncate">{r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName}</span>
                         {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
                       </div>
                       <div className={`flex items-center gap-1 text-xs ${subCls}`}><i className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(var(--aura-${auraOf(r.entityType)}))` }} />{TYP[r.entityType]}</div>

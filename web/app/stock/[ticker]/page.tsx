@@ -11,7 +11,7 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
 import { PriceChart } from "@/components/PriceChart";
 import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
-import { BackButton, SegmentedControl, StatRow } from "@/components/ui";
+import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate } from "@/lib/format";
@@ -117,41 +117,29 @@ export default function StockPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: up ? "var(--bull-fill)" : "var(--bear-fill)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-      <BackButton href="/discover?tab=stocks" label="Aktien" />
+      <DetailTopBar back="/discover?tab=stocks" label="Aktien" action={stock.ticker ? <FollowButton kind="stock" id={stock.ticker} /> : undefined} />
 
       <div className="fade-up flex items-center gap-4">
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={72} rounded="rounded-[20px]" />
         <div className="min-w-0 flex-1">
           <h1 className="large-title truncate">{stock.company}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="text-[15px] font-medium text-subtle">
-              {fixTicker(stock.ticker, stock.company) ?? "—"}
-            </span>
-            {quote && (
-              <span className="flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[13px] font-semibold shadow-card">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    quote.marketState === "REGULAR" ? "animate-live bg-bull-fill" : "bg-slate-300"
-                  }`}
-                />
-                {quote.currency || "Kurs"}{" "}
-                {quote.price.toLocaleString("de-DE", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-                <span className="text-[11px] font-normal text-subtle">{new Date(quote.t).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</span>
-                {quote.changePct != null && (
-                  <span className={quote.changePct >= 0 ? "text-bull" : "text-bear"}>
-                    {quote.changePct >= 0 ? "▲" : "▼"}{" "}
-                    {Math.abs(quote.changePct * 100).toLocaleString("de-DE",{maximumFractionDigits:2})} %
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
+          <div className="mt-1 text-[15px] font-medium text-subtle">{fixTicker(stock.ticker, stock.company) ?? "—"}</div>
         </div>
-        {stock.ticker && <FollowButton kind="stock" id={stock.ticker} />}
       </div>
+      {quote && (
+        <div className="fade-up flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="num-xl">{quote.price.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[17px] font-semibold text-subtle">{quote.currency || ""}</span></span>
+          {quote.changePct != null && (
+            <span className={`text-[15px] font-semibold tabular-nums ${quote.changePct >= 0 ? "text-bull" : "text-bear"}`}>
+              {quote.changePct >= 0 ? "▲" : "▼"} {Math.abs(quote.changePct * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 })} % heute
+            </span>
+          )}
+          <span className="flex items-center gap-1.5 text-[13px] text-subtle">
+            <span className={`h-1.5 w-1.5 rounded-full ${quote.marketState === "REGULAR" ? "animate-live bg-bull-fill" : "bg-slate-300"}`} />
+            {quote.marketState === "REGULAR" ? "Live" : "Letzter Kurs"} · {new Date(quote.t).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+      )}
 
       {bars === null ? (
         <div className="card p-4 sm:p-5"><SkeletonChart height={260} /></div>
@@ -172,8 +160,8 @@ export default function StockPage() {
 
       {(actTotal > 0 || insTotal > 0) && (
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-[14rem] flex-1">
               <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Aktivität</h2>
               {/* Hinweis, weil diese Summe größer sein darf als „Investoren mit
                   Bestand“: wer komplett verkauft hat, taucht hier noch auf. */}
