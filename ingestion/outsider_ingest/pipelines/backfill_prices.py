@@ -6,12 +6,15 @@ A source returning only old prices is not counted as a successful refresh.
 from __future__ import annotations
 import math
 import os
+import time
 from datetime import date, timedelta
 from outsider_ingest import config
 from outsider_ingest.db import Repository, connect
 HISTORY_DAYS = int(os.environ.get("PRICE_HISTORY_DAYS", "370"))
 FRESH_DAYS = int(os.environ.get("PRICE_FRESH_DAYS", "3"))
-MAX_TICKERS = int(os.environ.get("PRICE_MAX_TICKERS", "250"))
+MAX_TICKERS = int(os.environ.get("PRICE_MAX_TICKERS", "600"))
+# Finish cleanly before the CI job limit instead of being cancelled mid-run.
+TIME_BUDGET_S = int(os.environ.get("PRICE_TIME_BUDGET_S", str(45 * 60)))
 
 
 def valid_prices(points, today: date):
@@ -33,7 +36,15 @@ def main() -> None:
             LIMIT %s
         """, (today - timedelta(days=FRESH_DAYS), MAX_TICKERS)).fetchall()
         updated = stale = empty = failed = 0
+        started = time.monotonic()
+        attempted = 0
         for sid, ticker in rows:
+            if time.monotonic() - started > TIME_BUDGET_S:
+                print(f"Time budget reached after {attempted} symbols; the rest follows next run.")
+                break
+            attempted += 1
+            if attempted % 50 == 0:
+                print(f"  {attempted}/{len(rows)} symbols, {updated} fresh, {failed} failed")
             outcome = "failed"
             try:
                 points = valid_prices(price.get_daily_prices(ticker, start=start), today)
@@ -59,12 +70,12 @@ def main() -> None:
                 SET last_attempt=EXCLUDED.last_attempt, outcome=EXCLUDED.outcome
             """, (sid,outcome))
             repo.commit()
-        summary = f"Prices: {len(rows)} attempted; {updated} fresh; {stale} stale; {empty} empty; {failed} failed."
+        summary = f"Prices: {attempted} of {len(rows)} attempted; {updated} fresh; {stale} stale; {empty} empty; {failed} failed."
         print(summary)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
                 output.write(summary + "\n")
-        if rows and (updated == 0 or failed > len(rows) / 2):
+        if attempted and (updated == 0 or failed > attempted / 2):
             raise RuntimeError("Price refresh incomplete; see counters above")
 
 

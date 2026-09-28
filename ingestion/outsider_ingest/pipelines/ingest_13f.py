@@ -80,33 +80,50 @@ def ingest_institution(
     )
     filings = sec.list_filings(cik, ["13F-HR"], since)
     filings.sort(key=lambda f: (f.period_of_report or date.min))
+    refs = filings[-max_filings:]
+    # A 13F filing never changes (amendments are new filings), so a daily run
+    # only has work when a new quarter arrives. Re-importing unchanged filings
+    # cost ~6 round trips per position and pushed the job past its limit.
+    stored = [repo.filing_has_holdings(ref.source_url) for ref in refs]
+    if all(stored):
+        print(f"  up to date ({len(refs)} filings stored)")
+        conn.close()
+        return
+    resolved, by_cusip = repo.known_securities_by_cusip()
 
     prev: list[Holding13F] | None = None
-    for ref in filings[-max_filings:]:
+    for ref, done in zip(refs, stored):
         # A 13F splits one position into several rows (one per sub-manager);
         # sum them so a position's stored value is the FULL stake, not a slice.
         holdings = aggregate_holdings(sec.get_13f_holdings(ref))
         if not holdings:
             raise RuntimeError(f"Empty 13F holdings: {ref.source_url}")
-        _prewarm_securities(repo, symbols, holdings)
+        if done:
+            prev = holdings  # only needed to diff the next, new filing
+            continue
+        _prewarm_securities(repo, symbols, [h for h in holdings if h.cusip not in resolved])
+        resolved, by_cusip = repo.known_securities_by_cusip()
         as_of = ref.period_of_report or ref.filed_at
         filing_id = repo.insert_filing(
             ref.source, ref.form_type, entity_id, ref.filed_at,
             ref.period_of_report, ref.source_url,
         )
+        rows = []
         for h in holdings:
-            sid = _resolve_security_id(repo, symbols, h)
-            # upgrade a placeholder/CUSIP security name to the clean issuer name
-            repo.ensure_security_name(sid, h.name_of_issuer)
-            repo.upsert_holding(filing_id, entity_id, sid, as_of,
-                                h.shares_or_prn, h.value_usd, h.put_call)
-
+            sid = resolved.get(h.cusip) or by_cusip.get(h.cusip)
+            if sid is None:
+                sid = _resolve_security_id(repo, symbols, h)
+                # upgrade a placeholder/CUSIP security name to the clean issuer name
+                repo.ensure_security_name(sid, h.name_of_issuer)
+                by_cusip[h.cusip] = sid
+            rows.append((filing_id, entity_id, sid, as_of, h.shares_or_prn, h.value_usd, h.put_call))
+        repo.upsert_holdings_bulk(rows)
         if prev is not None:
             repo.supersede_legacy_transactions(filing_id)
             for ch in compute_position_changes(prev, holdings):
                 if ch.change_type == "unchanged":
                     continue
-                sid = repo.upsert_security_by_cusip(ch.cusip, ch.name)
+                sid = by_cusip.get(ch.cusip) or repo.upsert_security_by_cusip(ch.cusip, ch.name)
                 repo.insert_transaction(
                     filing_id, entity_id, sid, ch.txn_type,
                     txn_date=None, disclosed_at=ref.filed_at,
@@ -116,6 +133,7 @@ def ingest_institution(
         prev = holdings
         repo.commit()
         print(f"  {ref.period_of_report}: {len(holdings)} positions")
+    conn.close()
 
 
 def ingest_from_config() -> None:
