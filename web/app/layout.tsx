@@ -12,7 +12,9 @@ import { BottomNav, Nav } from "@/components/Nav";
 import { Onboarding } from "@/components/Onboarding";
 import { SampleBanner } from "@/components/SampleBanner";
 import { SearchBox } from "@/components/SearchBox";
+import { SwipeNav } from "@/components/SwipeNav";
 import { Wordmark } from "@/components/Wordmark";
+import { THEME_BOOT } from "@/lib/theme";
 
 const DESC =
   "Was Investoren, Unternehmensinsider und US-Abgeordnete offenlegen – verständlich, mit Quelle und transparentem Datenstand.";
@@ -26,6 +28,14 @@ export const metadata: Metadata = {
   description: DESC,
   applicationName: "AURA",
   manifest: "/manifest.webmanifest",
+  // The Ā in black on white, or white on black in dark mode (app/icon.svg
+  // switches by itself; the PNGs are chosen by media query where supported).
+  icons: {
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180" },
+      { url: "/apple-touch-icon-dark.png", sizes: "180x180", media: "(prefers-color-scheme: dark)" },
+    ],
+  },
   appleWebApp: { capable: true, title: "AURA", statusBarStyle: "default" },
   openGraph: {
     title: "ĀURA — öffentliche Meldungen verstehen",
@@ -51,8 +61,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="de">
+    // The theme script may set data-theme before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen text-ink">
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <a href="#main" className="skip-link">Zum Inhalt springen</a>
         {/* Floating navigation layer (HIG): separate glass elements over a
             soft scroll-edge fade, no full-width bar. */}
@@ -75,6 +87,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-6 pt-4 md:pb-10">{children}</main>
 
         <BottomNav />
+        <SwipeNav />
         <Onboarding />
 
         <footer className="mt-12">

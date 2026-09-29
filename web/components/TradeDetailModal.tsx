@@ -97,8 +97,8 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
       }}
       className="sheet mx-auto mb-2 mt-auto flex max-h-[90dvh] w-[calc(100%-1rem)] max-w-md flex-col overflow-hidden rounded-[2.25rem] border-0 bg-card p-0 text-ink shadow-float sm:m-auto sm:w-[calc(100%-2rem)]"
     >
-      <div className="shrink-0 touch-none select-none">
-        <div aria-hidden="true" className="mx-auto mt-2.5 h-[5px] w-9 rounded-full bg-ink/15 sm:hidden" />
+      <div className="shrink-0 cursor-grab touch-none select-none active:cursor-grabbing" data-sheet-grip="">
+        <div aria-hidden="true" className="mx-auto mt-2.5 h-[5px] w-9 rounded-full bg-ink/15" />
         <div className="flex items-start gap-3 p-5 pb-3">
           <div className="relative shrink-0">
             <CompanyLogo ticker={row.ticker} company={company} size={48} />
@@ -110,12 +110,8 @@ export function TradeDetailModal({ row, onClose }: { row: FeedRow; onClose: () =
             <h2 id={titleId} className="truncate font-display text-[22px] font-bold leading-tight tracking-[-0.01em]">{company}</h2>
             <p className="mt-1 truncate text-sm text-subtle">{row.entityName}</p>
           </div>
-          <button type="button" onClick={close} aria-label="Meldungsdetails schließen" className="group -mr-2 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface2 text-subtle transition-colors group-hover:text-ink">
-              <Icon name="xmark" className="h-[15px] w-[15px]" />
-            </span>
-          </button>
         </div>
+        <button type="button" onClick={close} className="sr-only focus:not-sr-only">Close</button>
         <div className="flex flex-wrap items-center gap-2 px-5">
           <span className={`rounded-full px-3 py-1 text-xs font-medium ${sig.tone === "bull" ? "bg-bull/10 text-bull" : sig.tone === "bear" ? "bg-bear/10 text-bear" : "bg-surface2 text-subtle"}`}>{sig.text}</span>
           {perf !== null && (

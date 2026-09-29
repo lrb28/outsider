@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { DepotSkyline } from "@/components/DepotSkyline";
 import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
@@ -89,7 +88,6 @@ export default function InvestorPage() {
           <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
-            <div className="mt-1 text-[15px] text-subtle">{inv.fund} · 13F-Bericht vom {formatDate(inv.asOf)}</div>
           </div>
         </div>
         {inv.bio && <p className="fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
@@ -97,9 +95,7 @@ export default function InvestorPage() {
         <div className="fade-up"><StatRow items={stats} /></div>
       </div>
 
-      <DepotSkyline holdings={inv.holdings} />
-
-      <AllocationBar holdings={inv.holdings} />
+      <DepotSkyline holdings={inv.holdings} trades={inv.trades} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">

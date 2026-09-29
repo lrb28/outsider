@@ -48,7 +48,8 @@ export function useScrollLock(active = true) {
 /**
  * Swipe down to dismiss. The sheet follows the finger when the swipe starts
  * on its header or while its content is scrolled to the top; a far or quick
- * swipe closes it, a short one springs back. Touches inside
+ * swipe closes it, a short one springs back. With a mouse, the header
+ * (`[data-sheet-grip]`) can be dragged the same way. Touches inside
  * `[data-sheet-nodrag]` (charts that follow the finger) are left alone.
  * `onDismiss` gets the distance already travelled and runs the exit.
  */
@@ -66,39 +67,35 @@ export function useDragDismiss(sheet: RefObject<HTMLElement>, scroller: RefObjec
     let tracking = false;
     let dragging = false;
 
-    const onStart = (e: TouchEvent) => {
-      if (e.touches.length !== 1) return;
-      const target = e.target as Element | null;
-      if (target?.closest("[data-sheet-nodrag]")) return;
-      const sc = scroller.current;
-      if (sc && target && sc.contains(target) && sc.scrollTop > 0) return;
-      startY = e.touches[0].clientY;
-      startX = e.touches[0].clientX;
+    const begin = (x: number, y: number) => {
+      startY = y;
+      startX = x;
       t0 = performance.now();
       dy = 0;
       tracking = true;
       dragging = false;
     };
-    const onMove = (e: TouchEvent) => {
-      if (!tracking) return;
-      const d = e.touches[0].clientY - startY;
-      const dx = e.touches[0].clientX - startX;
+    /** Returns true while the sheet follows the pointer. */
+    const follow = (x: number, y: number) => {
+      if (!tracking) return false;
+      const d = y - startY;
+      const dx = x - startX;
       if (!dragging) {
-        if (Math.abs(d) < 6 && Math.abs(dx) < 6) return;
+        if (Math.abs(d) < 6 && Math.abs(dx) < 6) return false;
         // Upwards or sideways: an ordinary scroll, not a dismiss.
         if (d <= 0 || Math.abs(dx) > Math.abs(d) || (scroller.current?.scrollTop ?? 0) > 0) {
           tracking = false;
-          return;
+          return false;
         }
         dragging = true;
         el.style.transition = "none";
       }
-      e.preventDefault();
       // A little resistance, like a rubber band.
       dy = Math.max(0, d) * 0.92;
       el.style.transform = `translateY(${dy}px)`;
+      return true;
     };
-    const onEnd = () => {
+    const release = () => {
       if (!tracking) return;
       tracking = false;
       if (!dragging) return;
@@ -115,15 +112,48 @@ export function useDragDismiss(sheet: RefObject<HTMLElement>, scroller: RefObjec
       }
     };
 
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const target = e.target as Element | null;
+      if (target?.closest("[data-sheet-nodrag]")) return;
+      const sc = scroller.current;
+      if (sc && target && sc.contains(target) && sc.scrollTop > 0) return;
+      begin(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (follow(e.touches[0].clientX, e.touches[0].clientY)) e.preventDefault();
+    };
+
+    // Mouse: only the header is a handle, so text in the sheet stays selectable.
+    const onMouseMove = (e: PointerEvent) => {
+      if (follow(e.clientX, e.clientY)) e.preventDefault();
+    };
+    const onMouseUp = () => {
+      window.removeEventListener("pointermove", onMouseMove);
+      window.removeEventListener("pointerup", onMouseUp);
+      release();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType !== "mouse" || e.button !== 0) return;
+      if (!(e.target as Element | null)?.closest("[data-sheet-grip]")) return;
+      begin(e.clientX, e.clientY);
+      window.addEventListener("pointermove", onMouseMove);
+      window.addEventListener("pointerup", onMouseUp);
+    };
+
     el.addEventListener("touchstart", onStart, { passive: true });
     el.addEventListener("touchmove", onMove, { passive: false });
-    el.addEventListener("touchend", onEnd);
-    el.addEventListener("touchcancel", onEnd);
+    el.addEventListener("touchend", release);
+    el.addEventListener("touchcancel", release);
+    el.addEventListener("pointerdown", onPointerDown);
     return () => {
       el.removeEventListener("touchstart", onStart);
       el.removeEventListener("touchmove", onMove);
-      el.removeEventListener("touchend", onEnd);
-      el.removeEventListener("touchcancel", onEnd);
+      el.removeEventListener("touchend", release);
+      el.removeEventListener("touchcancel", release);
+      el.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onMouseMove);
+      window.removeEventListener("pointerup", onMouseUp);
     };
   }, [sheet, scroller]);
 }

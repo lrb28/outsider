@@ -114,6 +114,9 @@ export function PriceChart({
         onPointerMove={(e) => move(e.clientX, e.currentTarget.getBoundingClientRect())}
         onPointerDown={(e) => move(e.clientX, e.currentTarget.getBoundingClientRect())}
         onPointerLeave={() => setIdx(null)}
+        // A finger lifted ends the reading; a mouse keeps it while hovering.
+        onPointerUp={(e) => e.pointerType !== "mouse" && setIdx(null)}
+        onPointerCancel={() => setIdx(null)}
         style={{ height, color: `rgb(${colour})` }}
       >
         <svg width={width} height={height} className="block overflow-visible">
@@ -140,11 +143,12 @@ export function PriceChart({
           <path d={line} fill="none" stroke="currentColor" strokeWidth="6" strokeOpacity="0.28" filter={`url(#${gid}-glow)`} className="fade-in" />
           <path d={line} pathLength={1} fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" className="draw-line" />
 
+          {/* The disclosure: a quiet band from that day on, no line or dot
+              that could pass for a stuck crosshair. */}
           {markIdx >= 0 && (
-            <g>
-              <line x1={x(markIdx)} x2={x(markIdx)} y1={padTop - 6} y2={height} className="stroke-subtle/40" strokeWidth="1" />
-              <circle cx={x(markIdx)} cy={y(data[markIdx].close)} r="5" className="fill-ink stroke-card" strokeWidth="2" />
-              <text x={Math.min(x(markIdx) + 6, plotW - 40)} y={padTop - 2} className="fill-subtle text-[11px] font-medium">{markLabel}</text>
+            <g aria-hidden="true">
+              <rect x={x(markIdx)} y={padTop - 8} width={Math.max(0, plotW - x(markIdx))} height={height - padTop + 8} className="fill-ink/[0.04]" />
+              <text x={x(markIdx) + 6} y={padTop - 12} className={`fill-subtle text-[11px] font-medium transition-opacity duration-150 ${idx != null ? "opacity-0" : "opacity-100"}`}>{markLabel}</text>
             </g>
           )}
 
