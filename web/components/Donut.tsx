@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export interface DonutSeg {
   label: string;
@@ -22,11 +22,12 @@ const reducedMotion = () =>
  * beim Wechsel eines Unterreiters wird die Komponente neu eingehängt, also
  * zeichnet sich das Diagramm jedes Mal frisch auf.
  */
-function useGrow(to: number, duration = 900, delay = 0, ease = easeOut): number {
+function useGrow(to: number, duration = 900, delay = 0, ease = easeOut, enabled = true): number {
   const [v, setV] = useState(0);
   const raf = useRef<number>();
 
   useEffect(() => {
+    if (!enabled) return;
     // Wer Bewegung im System abgeschaltet hat, bekommt sofort den Endwert.
     if (reducedMotion()) {
       setV(to);
@@ -43,9 +44,27 @@ function useGrow(to: number, duration = 900, delay = 0, ease = easeOut): number 
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
-  }, [to, duration, delay, ease]);
+  }, [to, duration, delay, ease, enabled]);
 
   return v;
+}
+
+/** True once the element has scrolled into view (and stays true). */
+function useSeen<T extends Element>(): [RefObject<T>, boolean] {
+  const ref = useRef<T>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") return setSeen(true);
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      setSeen(true);
+    }, { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return [ref, seen];
 }
 
 /** Zahl, die beim Erscheinen hochzählt. Auch einzeln verwendbar. */
@@ -60,8 +79,9 @@ export function CountUp({
   duration?: number;
   className?: string;
 }) {
-  const v = useGrow(to, duration);
-  return <span className={className}>{format(v)}</span>;
+  const [ref, seen] = useSeen<HTMLSpanElement>();
+  const v = useGrow(to, duration, 0, easeOut, seen);
+  return <span ref={ref} className={className}>{format(v)}</span>;
 }
 
 type Span = { a0: number; a1: number };
@@ -83,7 +103,7 @@ function spans(segments: DonutSeg[]): Span[] {
  * show, and when the data changes (another tab, a filter) every segment
  * glides from its old arc to its new one instead of the ring redrawing.
  */
-function useSpans(segments: DonutSeg[]): { spans: Span[]; sweep: number } {
+function useSpans(segments: DonutSeg[], seen: boolean): { spans: Span[]; sweep: number } {
   const target = spans(segments);
   const key = segments.map((s) => `${s.label}:${s.value}`).join("|");
   const [state, setState] = useState<{ spans: Span[]; sweep: number }>({ spans: target, sweep: 0 });
@@ -92,6 +112,7 @@ function useSpans(segments: DonutSeg[]): { spans: Span[]; sweep: number } {
   const raf = useRef<number>();
 
   useIsoLayoutEffect(() => {
+    if (!seen) return;
     const labels = segments.map((s) => s.label);
     if (raf.current) cancelAnimationFrame(raf.current);
     if (reducedMotion()) {
@@ -124,16 +145,19 @@ function useSpans(segments: DonutSeg[]): { spans: Span[]; sweep: number } {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, seen]);
 
   return state;
 }
 
 /**
- * Ring chart. Each share is an arc with round ends and a small gap, lit
- * along its length (lighter where it starts, full colour where it ends) and
- * lifted by a soft glow in its own colour. It sweeps in clockwise, glides to
- * new values, and the segment under the finger or pointer grows and steps out.
+ * Ring chart. The shares meet edge to edge, one closed band with square
+ * joins; each is lit along its length (lighter where it starts, full colour
+ * where it ends, so the joins read without gaps) and across the band (a
+ * highlight on the outer rim, shade inside), and the ring is lifted by a soft
+ * glow in its own colours. It sweeps in clockwise when it scrolls into view,
+ * glides to new values, and the segment under the finger or pointer grows
+ * and steps out.
  */
 export function Donut({
   segments,
@@ -166,12 +190,13 @@ export function Donut({
   const W = size + PAD * 2;
   const c = W / 2;
   const r = (size - thickness - 6) / 2;
-  const { spans: drawn, sweep } = useSpans(segments);
-  const count = useGrow(countTo ?? 0, 1000);
-  const multi = segments.filter((s) => s.value > 0).length > 1;
-  const cap = multi ? thickness / 2 / r : 0; // a round cap reaches this far past the end
-  const gap = multi ? 3.5 / r : 0;
+  const [host, seen] = useSeen<HTMLDivElement>();
+  const { spans: drawn, sweep } = useSpans(segments, seen);
+  const count = useGrow(countTo ?? 0, 1000, 0, easeOut, seen);
   const sweepAngle = sweep * Math.PI * 2;
+  // Each segment reaches a hair under the next one, so no seam of the card
+  // shows through the antialiased joins.
+  const overlap = 0.6 / r;
 
   const pt = (a: number, rad = r) => [c + rad * Math.sin(a), c - rad * Math.cos(a)] as const;
   const arc = (a0: number, a1: number) => {
@@ -185,17 +210,14 @@ export function Donut({
     return `M${x0} ${y0}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`;
   };
 
-  // Visible part of each segment: shortened by the caps and the gap, clipped
-  // by the entry sweep. A sliver still shows as a dot.
+  // Visible part of each segment, clipped by the entry sweep.
   const visible = segments.map((s, i) => {
     const sp = drawn[i] ?? { a0: 0, a1: 0 };
     if (s.value <= 0 || sp.a1 - sp.a0 <= 1e-4) return null;
-    let a0 = sp.a0 + cap + gap / 2;
-    let a1 = sp.a1 - cap - gap / 2;
-    if (a1 < a0) a0 = a1 = (sp.a0 + sp.a1) / 2;
+    const a0 = sp.a0;
     if (a0 > sweepAngle) return null;
-    a1 = Math.min(a1, sweepAngle);
-    return { a0, a1, mid: (a0 + a1) / 2 };
+    const a1 = Math.min(sp.a1 + (sp.a1 < Math.PI * 2 - 1e-3 ? overlap : 0), sweepAngle);
+    return { a0, a1, mid: (sp.a0 + Math.min(sp.a1, sweepAngle)) / 2 };
   });
 
   const total = segments.reduce((a, s) => a + s.value, 0);
@@ -203,7 +225,7 @@ export function Donut({
   const top = countTo !== undefined && countFormat ? countFormat(count) : centerTop;
 
   return (
-    <div className="relative shrink-0" style={{ width: W, height: W, margin: -PAD }}>
+    <div ref={host} className="relative shrink-0" style={{ width: W, height: W, margin: -PAD }}>
       <svg width={W} height={W} viewBox={`0 0 ${W} ${W}`} role="img" aria-label={summary} onMouseLeave={() => onHover?.(null)} className="overflow-visible">
         <defs>
           {visible.map((v, i) => {
@@ -212,9 +234,9 @@ export function Donut({
             const [x1, y1] = pt(v.a1 + 1e-3);
             return (
               <linearGradient key={i} id={`${gid}-g${i}`} gradientUnits="userSpaceOnUse" x1={x0} y1={y0} x2={x1} y2={y1}>
-                <stop offset="0" stopColor="#fff" stopOpacity="0.38" />
-                <stop offset="0.55" stopColor="#fff" stopOpacity="0.08" />
-                <stop offset="1" stopColor="#000" stopOpacity="0.1" />
+                <stop offset="0" stopColor="#fff" stopOpacity="0.3" />
+                <stop offset="0.5" stopColor="#fff" stopOpacity="0.06" />
+                <stop offset="1" stopColor="#000" stopOpacity="0.14" />
               </linearGradient>
             );
           })}
@@ -235,7 +257,7 @@ export function Donut({
 
         {/* Coloured glow under the ring: it seems to float above the card. */}
         <g filter={`url(#${gid}-glow)`} opacity="0.42" transform={`translate(0 ${thickness * 0.28})`} aria-hidden="true">
-          {visible.map((v, i) => v && <path key={i} d={arc(v.a0, v.a1)} fill="none" stroke={segments[i].color} strokeWidth={thickness * 0.8} strokeLinecap="round" opacity={activeIndex === null || activeIndex === i ? 1 : 0.3} />)}
+          {visible.map((v, i) => v && <path key={i} d={arc(v.a0, v.a1)} fill="none" stroke={segments[i].color} strokeWidth={thickness * 0.8} opacity={activeIndex === null || activeIndex === i ? 1 : 0.3} />)}
         </g>
 
         {visible.map((v, i) => {
@@ -257,9 +279,9 @@ export function Donut({
               onMouseEnter={() => onHover?.(i)}
               onPointerDown={() => onHover?.(active ? null : i)}
             >
-              <path d={d} fill="none" stroke={segments[i].color} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
-              <path d={d} fill="none" stroke={`url(#${gid}-g${i})`} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
-              <path d={d} fill="none" stroke={`url(#${gid}-rim)`} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+              <path d={d} fill="none" stroke={segments[i].color} strokeWidth={w} style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+              <path d={d} fill="none" stroke={`url(#${gid}-g${i})`} strokeWidth={w} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+              <path d={d} fill="none" stroke={`url(#${gid}-rim)`} strokeWidth={w} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
             </g>
           );
         })}

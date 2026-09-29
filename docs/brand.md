@@ -78,9 +78,22 @@ change is always spelled out with ▲/▼ and a number, never colour alone.
   solid ink, aura dot for people categories. Same look on every tab.
 - Anything that answers "who/what is behind this?" opens a `Sheet` instead of
   a new page: key figures (Investoren mit Bestand, Zugänge, Abgänge), legend
-  rows, the "So liest du die Daten" explainer. The page stays visible behind
-  it as frosted glass (blurred, milky tint, `dialog::backdrop`); swipe down,
-  tap outside or Escape closes it.
+  rows, the "So liest du die Daten" explainer; a trade opens the trade card
+  (`TradeDetailModal`) with the same interactive price chart as the stock
+  page. The page stays visible behind it as frosted glass (blurred, milky
+  tint, `dialog::backdrop`) and does not scroll (`useScrollLock` pins the
+  body, which iOS needs). A downward swipe on the header, or anywhere while
+  the content is at its top, drags the sheet and dismisses it
+  (`useDragDismiss`); a tap outside or Escape closes it too. Touches inside
+  `[data-sheet-nodrag]` (charts) never drag the sheet.
+- Mobile tab bar: icons only, solid glyphs (`homeFill`, `discoveryFill` with
+  the needle cut out, `notificationFill`, `graphFill`), the current tab in
+  full ink, the others at 30 % ink, a short pop on change. The round "+"
+  beside it blurs the page first and lets its actions rise once the page has
+  gone soft (`.menu-scrim`, `.action-item`).
+- Lists of positions (Depot, dividends per position) are plain grouped rows
+  like getquin/Parqet: logo, name, one grey detail line; value and result on
+  the right. Destructive actions hide behind "Bearbeiten".
 - Key figures that can be opened carry a chevron (`StatRow` with `onClick`).
 
 ## Liquid Glass
@@ -99,17 +112,30 @@ Categorical colours come from `web/lib/palette.ts` in fixed order; past eight
 series, fold into "Übrige". Groups (sectors, regions, asset classes) take the
 palette by size too — never fixed hex values, which vanished on dark cards.
 
-Volume, where it helps reading: ring charts (`Donut`) are arcs with round
-ends and small gaps, lit along their length and lifted by a soft glow in their
-own colour; they sweep in clockwise, glide to new values when the data
-changes and the touched segment grows and steps out. Activity bars are lit
-cylinders (`ActivityBars`), stacked and yearly bars carry `.bar-3d`, legends
-use `.dot-3d`. Lines stay flat; price and Depot lines take emerald or rose by
-the result of the shown range.
+Volume, where it helps reading: ring charts (`Donut`) are one closed band,
+segments edge to edge with square joins (no gaps, no round ends), each lit
+along its length and across the band and the ring lifted by a soft glow in
+its own colours; they sweep in clockwise once they scroll into view, glide
+to new values when the data changes and the touched segment grows and steps
+out. Allocation cards (`AllocView`) show eight groups and fold the rest into
+a grey "Übrige (n)", so the ring always adds up to the whole. Stacked and
+yearly bars carry `.bar-3d`, legends use `.dot-3d`. Lines stay flat; price
+and Depot lines take emerald or rose by the result of the shown range.
 
-Investor activity on a stock is a diverging ramp, deep to light emerald,
-grey, light to deep rose: neu eingestiegen · aufgestockt · unverändert ·
-reduziert · ausgestiegen (each fund's latest 13F against the quarter before).
+Price chart (`PriceChart`): the price and change above it roll to the
+touched day while scrubbing, and the day's date rides on top of the
+crosshair; nothing else in the header moves and there is no footer line.
+
+Depot groups (sector, region, asset class) come from `classify` in
+`lib/sectors.ts`: the curated list, then funds recognised by name (region
+and sector from "S&P 500", "MSCI World", "Health Care" …), the ISIN's
+country or the listing for regions, and Yahoo's sector via `/api/meta` for
+all other shares. What no source knows is "Sonstige", never "Unbekannt".
+
+Investor activity on a stock is a diverging ramp (`--move-*` tokens), deep to
+light emerald, grey, light to deep rose: neu eingestiegen · aufgestockt ·
+unverändert · reduziert · ausgestiegen (each fund's latest 13F against the
+quarter before).
 
 Numbers are German everywhere (`num`, `pctOf` in `web/lib/format.ts`):
 "22,4 %", "$299,3 Mrd.", "$31,1K", with a no-break space before "%" and units.
@@ -134,3 +160,16 @@ overlapped.
 `AuraField` (WebGL) is decoration only: it pauses off screen and in hidden
 tabs and holds still for reduced motion. Entrance animations are short
 (≤ 0.9 s) and never block reading.
+
+Numbers roll like an odometer (`RollingNumber`, after the reference wallet
+apps): each digit is a 0–9 column that slides with a short motion blur,
+digits that appear or go grow and shrink in width. The Depot value and the
+start page counts roll up from zero once they are on screen; values that
+follow a finger (the chart price) roll in about 0.28 s.
+
+Welcome screen (first visit, or `/?willkommen=1`): after the reference wallet
+app, a band of iridescent silk (`SilkRibbon`, WebGL, six-second loop) flows
+through a white page, the mark (the Ā without its crossbar: a bar over a Λ)
+sits in the upper middle, "Money / leaves / clues" one word per line bottom
+left, two equal frosted capsules below. Dark mode shows the negative of the
+light picture on black, as the reference does.

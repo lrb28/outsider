@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { Donut } from "@/components/Donut";
+import { AllocView } from "@/components/DepotPanels";
 import { SegmentedControl } from "@/components/ui";
 import { CAT, OTHER } from "@/lib/palette";
 import { cAbbrev, cMoney } from "@/lib/money";
@@ -272,60 +272,15 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
 
 /** Woraus sich die Ausschüttungen zusammensetzen — als Ring. */
 export function DividendSplit({ entries }: { entries: DivEntry[] }) {
-  const [hover, setHover] = useState<number | null>(null);
   const segs = useMemo(() => {
     const m = new Map<string, { name: string; amount: number }>();
     for (const e of entries) {
       const cur = m.get(e.ticker);
       m.set(e.ticker, { name: e.name, amount: (cur?.amount ?? 0) + e.amount });
     }
-    const ranked = [...m.values()].sort((a, b) => b.amount - a.amount);
-    const top = ranked.slice(0, 8).map((v, i) => ({ label: v.name, value: v.amount, color: colorAt(i) }));
-    const tail = ranked.slice(8).reduce((a, v) => a + v.amount, 0);
-    return tail > 0 ? [...top, { label: `Übrige (${ranked.length - 8})`, value: tail, color: OTHER }] : top;
+    return [...m.values()].sort((a, b) => b.amount - a.amount).map((v, i) => ({ label: v.name, value: v.amount, color: colorAt(i) }));
   }, [entries]);
-
   const total = segs.reduce((a, s) => a + s.value, 0);
   if (segs.length === 0) return null;
-  const focus = hover !== null && segs[hover] ? segs[hover] : segs[0];
-
-  return (
-    <div className="lcard p-5">
-      <div className="mb-3 text-sm font-semibold">Woher die Dividenden kommen</div>
-      <div className="flex flex-col items-center gap-5 sm:flex-row">
-        <div className="shrink-0">
-          <Donut
-            segments={segs}
-            size={150}
-            countTo={total > 0 ? (focus.value / total) * 100 : 0}
-            countFormat={(v) => pctOf(v / 100, 0, false)}
-            centerBottom={focus.label.length > 15 ? focus.label.slice(0, 14) + "…" : focus.label}
-            activeIndex={hover}
-            onHover={setHover}
-          />
-          <div className="mt-1 text-center text-xs font-semibold tabular-nums">
-            {cMoney(focus.value)}
-          </div>
-        </div>
-        <div className="w-full flex-1 space-y-1.5">
-          {segs.map((s, i) => (
-            <div
-              key={s.label + i}
-              className="flex items-center gap-2 rounded-lg px-1 py-0.5 text-xs transition-colors hover:bg-slate-50"
-              style={{ opacity: hover !== null && hover !== i ? 0.45 : 1 }}
-              onMouseEnter={() => setHover(i)}
-              onMouseLeave={() => setHover(null)}
-            >
-              <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
-              <span className="min-w-0 flex-1 truncate">{s.label}</span>
-              <span className="tabular-nums text-subtle">{cMoney(s.value)}</span>
-              <span className="w-14 whitespace-nowrap text-right font-semibold tabular-nums">
-                {pctOf(total > 0 ? s.value / total : 0, 1, false)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <AllocView segments={segs} total={total} title="Woher die Dividenden kommen" format={cAbbrev} />;
 }

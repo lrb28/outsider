@@ -1,4 +1,6 @@
-export const SYMBOL_RE = /^\^?[A-Z0-9][A-Z0-9.\-=]{0,11}$/;
+// Yahoo symbols run up to 20 characters: some funds only list as ISIN plus
+// exchange (IE00BK5BQT80.SG). A shorter cap rejected the whole Depot request.
+export const SYMBOL_RE = /^\^?[A-Z0-9][A-Z0-9.\-=]{0,19}$/;
 export class InputError extends Error {}
 export function integerParam(p: URLSearchParams, key: string, fallback: number, min: number, max: number): number {
   const raw = p.get(key);

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Donut } from "@/components/Donut";
+import { OTHER } from "@/lib/palette";
 import { SegmentedControl } from "@/components/ui";
 import { num, pctOf } from "@/lib/format";
 import { cAbbrev as abbrevMoney } from "@/lib/money";
@@ -88,89 +89,102 @@ export function AllocView({
   /** Ab diesem Anteil wird eine Klumpenrisiko-Warnung gezeigt. */
   warnAbove,
   emptyNote,
+  format = abbrevMoney,
+  max = 8,
 }: {
   segments: Segment[];
   total: number;
   title: string;
   warnAbove?: number;
   emptyNote?: string;
+  /** Betrag je Zeile, Standard „24,7 Mio. €“. */
+  format?: (v: number) => string;
+  /** So viele Gruppen einzeln, der Rest wird zu „Übrige“. */
+  max?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const sorted = [...segments].filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
   if (sorted.length === 0 || total <= 0) {
     return (
       <div className="lcard p-5">
-        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-[15px] font-semibold">{title}</div>
         <p className="mt-2 text-sm text-subtle">{emptyNote ?? "Keine Daten."}</p>
       </div>
     );
   }
-  const shown = sorted.slice(0, 8);
-  // Beim Überfahren zeigt die Mitte das ausgewählte Segment, sonst das größte.
-  const focus = hover !== null && shown[hover] ? shown[hover] : sorted[0];
+  // Everything past the first `max` folds into one grey "Übrige" share, so
+  // the ring always adds up to the whole Depot.
+  const head = sorted.slice(0, max);
+  const tail = sorted.slice(max);
+  const shown: Segment[] = tail.length
+    ? [...head, { label: `Übrige (${tail.length})`, value: tail.reduce((a, s) => a + s.value, 0), color: OTHER }]
+    : head;
+  // Beim Antippen zeigt die Mitte das gewählte Segment, sonst das größte.
+  const focus = hover !== null && shown[hover] ? shown[hover] : shown[0];
   const focusShare = focus.value / total;
+  const warn = warnAbove !== undefined && sorted[0].value / total > warnAbove;
 
   return (
-    <div className="lcard p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="text-xs text-subtle">{sorted.length} {sorted.length === 1 ? "Gruppe" : "Gruppen"}</span>
+    <div className="lcard min-w-0 overflow-hidden p-5">
+      <div className="mb-4 flex items-baseline justify-between gap-2">
+        <h3 className="text-[17px] font-semibold tracking-[-0.01em]">{title}</h3>
+        <span className="shrink-0 text-[13px] text-subtle">
+          {sorted.length} {sorted.length === 1 ? "Gruppe" : "Gruppen"}
+        </span>
       </div>
 
-      <div className="flex flex-col items-center gap-5 sm:flex-row">
-        <div className="shrink-0">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+        <div className="flex shrink-0 flex-col items-center">
           <Donut
             segments={shown}
-            size={150}
+            size={168}
+            thickness={22}
             countTo={focusShare * 100}
             countFormat={(v) => pctOf(v / 100, 0, false)}
-            centerBottom={focus.label.length > 15 ? focus.label.slice(0, 14) + "…" : focus.label}
+            centerBottom={focus.label}
             activeIndex={hover}
             onHover={setHover}
           />
-          <div className="mt-1 text-center text-xs font-semibold tabular-nums">
-            {abbrevMoney(focus.value)}
-          </div>
+          <div className="mt-2 text-[13px] font-semibold tabular-nums text-subtle">{format(focus.value)}</div>
         </div>
-        <div className="w-full flex-1 space-y-1.5">
+        <ul className="w-full min-w-0 flex-1">
           {shown.map((s, i) => {
-            const p = (s.value / total) * 100;
+            const p = s.value / total;
             const dim = hover !== null && hover !== i;
             return (
-              <div
-                key={s.label}
-                className="cursor-default rounded-lg px-1 py-0.5 text-xs transition-colors hover:bg-slate-50"
-                style={{ opacity: dim ? 0.45 : 1 }}
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover(null)}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
-                  <span className="truncate text-ink">{s.label}</span>
-                  <span className="ml-auto shrink-0 tabular-nums text-subtle">
-                    {abbrevMoney(s.value)}
+              <li key={s.label} className="min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setHover(hover === i ? null : i)}
+                  onMouseEnter={() => setHover(i)}
+                  onMouseLeave={() => setHover(null)}
+                  aria-pressed={hover === i}
+                  className="block w-full min-w-0 rounded-xl px-1.5 py-2 text-left transition-opacity duration-200 !min-h-0"
+                  style={{ opacity: dim ? 0.4 : 1 }}
+                >
+                  <span className="flex min-w-0 items-center gap-2.5 text-[14px]">
+                    <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
+                    <span className="min-w-0 flex-1 truncate text-ink">{s.label}</span>
+                    <span className="shrink-0 tabular-nums text-subtle">{format(s.value)}</span>
+                    <span className="w-[3.25rem] shrink-0 text-right font-semibold tabular-nums">{pctOf(p, 1, false)}</span>
                   </span>
-                  <span className="w-14 shrink-0 whitespace-nowrap text-right font-semibold tabular-nums">
-                    {pctOf(p / 100, 1, false)}
+                  <span className="mt-1.5 block h-[3px] overflow-hidden rounded-full bg-surface2">
+                    <span
+                      className="block h-full origin-left rounded-full"
+                      style={{ width: `${Math.max(0.8, p * 100)}%`, backgroundColor: s.color, animation: `growX 900ms cubic-bezier(0.32,0.72,0,1) ${120 + i * 50}ms both` }}
+                    />
                   </span>
-                </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.max(1, p)}%`,
-                      backgroundColor: s.color,
-                      // Grow with transform, not width: no layout work per frame.
-                      transformOrigin: "left",
-                      animation: "growX 900ms cubic-bezier(0.32,0.72,0,1) both",
-                    }}
-                  />
-                </div>
-              </div>
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
+      {warn && (
+        <p className="mt-3 text-[13px] leading-snug text-subtle">
+          Die größte Gruppe macht über {pctOf(warnAbove!, 0, false)} aus.
+        </p>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { type KeyboardEvent, useId, useMemo, useState } from "react";
 
+import { RollingNumber } from "@/components/RollingNumber";
 import { downsample, monotonePath, niceTicks, useWidth } from "@/lib/chart";
 import { formatDate } from "@/lib/format";
 import type { PriceBar } from "@/lib/types";
@@ -10,8 +11,10 @@ import type { PriceBar } from "@/lib/types";
  * Price chart, Apple Stocks style: one smooth line in green or red (the move
  * over the shown range, also spelled out as ▲/▼ and a percentage), a soft
  * glow and gradient beneath it, three recessive gridlines, and a crosshair
- * with a floating readout on hover, touch or the arrow keys. It draws itself
- * in on load.
+ * on hover, touch or the arrow keys. While scrubbing, the price and change
+ * above roll to the touched day and its date rides along the top of the
+ * crosshair, so nothing in the header moves around. It draws itself in on
+ * load.
  */
 export function PriceChart({
   bars,
@@ -19,6 +22,7 @@ export function PriceChart({
   formatVal = (v: number) => `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   markDate,
   markLabel = "Meldung",
+  size = "lg",
 }: {
   bars: PriceBar[];
   height?: number;
@@ -26,6 +30,8 @@ export function PriceChart({
   /** Optional event to mark on the line (e.g. a disclosure date). */
   markDate?: string | null;
   markLabel?: string;
+  /** Size of the price above the chart ("md" inside sheets). */
+  size?: "lg" | "md";
 }) {
   const [idx, setIdx] = useState<number | null>(null);
   const { ref, width } = useWidth<HTMLDivElement>();
@@ -41,7 +47,7 @@ export function PriceChart({
   }
 
   const n = data.length;
-  const padTop = 14;
+  const padTop = 26;
   const padBottom = 10;
   const axisW = 52;
   const plotW = Math.max(40, width - axisW);
@@ -83,17 +89,17 @@ export function PriceChart({
     });
   };
 
-  const tipX = idx != null ? Math.min(Math.max(x(idx), 64), plotW - 64) : 0;
+  const tipX = idx != null ? Math.min(Math.max(x(idx), 38), plotW - 38) : 0;
   const summary = `Kursverlauf ${formatDate(data[0].date)} bis ${formatDate(data[n - 1].date)}: von ${formatVal(first)} auf ${formatVal(last)} (${up ? "plus" : "minus"} ${Math.abs(((last - first) / (first || 1)) * 100).toFixed(1)} Prozent), Tief ${formatVal(lo)}, Hoch ${formatVal(hi)}.`;
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1" aria-live="polite">
-        <span className="num-xl">{formatVal(cur.close)}</span>
-        <span className={`text-[15px] font-semibold tabular-nums ${chg >= 0 ? "text-bull" : "text-bear"}`}>
-          {chg >= 0 ? "▲" : "▼"} {Math.abs(chg * 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %
+      <div className="mb-1 flex items-baseline gap-x-3">
+        <RollingNumber value={formatVal(cur.close)} duration={idx != null ? 280 : 650} className={size === "lg" ? "num-xl" : "num-lg"} />
+        <span className={`flex items-baseline gap-1 text-[15px] font-semibold transition-colors duration-200 ${chg >= 0 ? "text-bull" : "text-bear"}`}>
+          <span aria-hidden="true" className="text-[12px]">{chg >= 0 ? "▲" : "▼"}</span>
+          <RollingNumber value={`${Math.abs(chg * 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u00a0%`} duration={idx != null ? 280 : 650} label={`${chg >= 0 ? "plus" : "minus"} ${Math.abs(chg * 100).toFixed(2)} Prozent`} />
         </span>
-        <span className="text-[13px] text-subtle">{idx != null ? formatDate(cur.date) : `seit ${formatDate(data[0].date)}`}</span>
       </div>
 
       <div
@@ -103,6 +109,7 @@ export function PriceChart({
         tabIndex={0}
         onKeyDown={onKey}
         onBlur={() => setIdx(null)}
+        data-sheet-nodrag=""
         className="relative cursor-crosshair touch-none select-none rounded-xl outline-offset-4"
         onPointerMove={(e) => move(e.clientX, e.currentTarget.getBoundingClientRect())}
         onPointerDown={(e) => move(e.clientX, e.currentTarget.getBoundingClientRect())}
@@ -151,17 +158,21 @@ export function PriceChart({
 
           {idx != null && (
             <g>
-              <line x1={x(idx)} x2={x(idx)} y1={0} y2={height} className="stroke-ink/25" strokeWidth="1" />
+              <line x1={x(idx)} x2={x(idx)} y1={18} y2={height} className="stroke-ink/25" strokeWidth="1" />
               <circle cx={x(idx)} cy={y(data[idx].close)} r="5.5" fill="currentColor" className="stroke-card" strokeWidth="2.5" />
             </g>
           )}
         </svg>
 
-        {idx != null && (
-          <div className="glass pointer-events-none absolute -top-3 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-semibold text-ink" style={{ left: tipX }}>
-            {formatVal(data[idx].close)} <span className="font-normal text-subtle">· {formatDate(data[idx].date)}</span>
-          </div>
-        )}
+        {/* The touched day, riding on top of the crosshair. */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute top-0 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold tabular-nums text-subtle transition-opacity duration-150 ${idx != null ? "opacity-100" : "opacity-0"}`}
+          style={{ left: tipX }}
+        >
+          {idx != null ? formatDate(data[idx].date) : ""}
+        </div>
+        <span className="sr-only" aria-live="polite">{idx != null ? `${formatDate(cur.date)}: ${formatVal(cur.close)}` : ""}</span>
       </div>
     </div>
   );

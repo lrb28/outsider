@@ -88,7 +88,8 @@ import {
   volatility,
   xirr,
 } from "@/lib/portfolio";
-import { assetMeta } from "@/lib/sectors";
+import { type AssetMeta, classify } from "@/lib/sectors";
+import { useAssetMeta } from "@/lib/useAssetMeta";
 import { MatchResponse, MatchRow } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
@@ -397,6 +398,7 @@ export default function MePage() {
   const toDepot = useCallback((symbol: string): Bar[] => depotBars.get(symbol) ?? [], [depotBars]);
 
   const quotes = useQuotes(symbols);
+  const listingMeta = useAssetMeta(symbols);
 
   // ── Investoren-Überschneidung ─────────────────────────────────────────────
   useEffect(() => {
@@ -895,23 +897,33 @@ export default function MePage() {
   }, [seriesR, benchR, mode, bench.label, hasCashFlows, lineColor]);
 
   // ── Aufteilungen ──────────────────────────────────────────────────────────
+  // Sector, region and class from the curated list, the fund's name, the
+  // ISIN's country and Yahoo's sector for everything else.
+  const classOf = (r: Row): AssetMeta =>
+    classify({
+      symbol: r.symbol,
+      isin: isIsin(r.ticker) ? r.ticker : null,
+      name: r.company,
+      assetClass: r.assetClass,
+      meta: r.symbol ? listingMeta[r.symbol.toUpperCase()] : null,
+    });
   // Groups take the categorical palette by size, like positions do. Fixed
   // hex colours per sector used to include near-black, which vanished on the
   // dark card ("Technologie", "USA", "Aktie").
-  const groupSegs = (pick: (t: string) => string): Segment[] => {
+  const groupSegs = (pick: (m: AssetMeta) => string): Segment[] => {
     const m = new Map<string, number>();
     for (const r of rows) {
       if (r.value === null) continue;
-      const k = pick(r.symbol ?? r.ticker);
+      const k = pick(classOf(r));
       m.set(k, (m.get(k) ?? 0) + r.value);
     }
     let i = 0;
     return [...m.entries()]
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => (a[0] === "Sonstige" ? 1 : b[0] === "Sonstige" ? -1 : b[1] - a[1]))
       .map(([label, value]) => ({
         label,
         value,
-        color: label === "Unbekannt" ? OTHER : CAT[i++] ?? OTHER,
+        color: label === "Sonstige" ? OTHER : CAT[i++] ?? OTHER,
       }));
   };
 
@@ -1093,7 +1105,7 @@ export default function MePage() {
               <div className="grid gap-4 lg:grid-cols-2">
                 <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).sector)}
+                  segments={groupSegs((m) => m.sector)}
                   total={total}
                   title="Aufteilung nach Sektor"
                  
@@ -1349,19 +1361,19 @@ export default function MePage() {
                 <AllocView segments={posSegs} total={total} title="Nach Position" />
                 <Concentration weights={weights} count={rows.length} />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).sector)}
+                  segments={groupSegs((m) => m.sector)}
                   total={total}
                   title="Nach Sektor"
                  
                 />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).region)}
+                  segments={groupSegs((m) => m.region)}
                   total={total}
                   title="Nach Region"
                  
                 />
                 <AllocView
-                  segments={groupSegs((t) => assetMeta(t).assetClass)}
+                  segments={groupSegs((m) => m.assetClass)}
                   total={total}
                   title="Nach Anlageklasse"
                 />
@@ -1378,14 +1390,14 @@ export default function MePage() {
                     <Check ok={rows.length >= 10} text={`Mindestens 10 Positionen (${rows.length})`} />
                     <Check
                       ok={
-                        groupSegs((t) => assetMeta(t).sector).filter((s) => s.value > 0)
+                        groupSegs((m) => m.sector).filter((s) => s.value > 0)
                           .length >= 4
                       }
                       text="Mindestens 4 Sektoren vertreten"
                     />
                     <Check
                       ok={
-                        groupSegs((t) => assetMeta(t).region).filter((s) => s.value > 0)
+                        groupSegs((m) => m.region).filter((s) => s.value > 0)
                           .length >= 2
                       }
                       text="Mehr als eine Region"
@@ -1398,8 +1410,10 @@ export default function MePage() {
                 </div>
               </div>
               <p className="text-[11px] text-subtle">
-                Sektor und Region stammen aus einer gepflegten Liste der gängigsten Titel.
-                Unbekannte Ticker landen bewusst in „Unbekannt“ statt geraten zu werden.
+                Sektor, Region und Anlageklasse stammen aus einer gepflegten Liste der gängigsten
+                Titel, dem Namen des Fonds (etwa „S&amp;P US … ETF“), dem Land der ISIN und für alle
+                übrigen Aktien aus Yahoo Finance. ETFs zählen als ein Block, ihre Einzeltitel werden
+                nicht aufgeschlüsselt.
               </p>
             </>
           )}
@@ -1666,8 +1680,14 @@ type Row = {
   live: boolean;
 };
 
-type SortKey = "value" | "gain" | "gainPct" | "day" | "name" | "weight";
+type SortKey = "value" | "gainPct" | "day" | "name";
 
+/**
+ * Positions as a plain list (getquin / Parqet): logo, name, shares × price;
+ * value and result on the right. One control sorts, and "Heute" also swaps
+ * the result for today's move. Removing lives behind "Bearbeiten", so a row
+ * is never one stray tap away from deletion.
+ */
 function PositionsTable({
   rows,
   total,
@@ -1678,172 +1698,90 @@ function PositionsTable({
   onRemove: (t: string) => void;
 }) {
   const [sort, setSort] = useState<SortKey>("value");
-  const [desc, setDesc] = useState(true);
+  const [editing, setEditing] = useState(false);
 
   const sorted = useMemo(() => {
-    const val = (r: Row): number | string => {
-      switch (sort) {
-        case "name":
-          return r.company;
-        case "gain":
-          return r.unreal ?? -Infinity;
-        case "gainPct":
-          return r.unrealPct ?? -Infinity;
-        case "day":
-          return r.dayPct ?? -Infinity;
-        default:
-          return r.value ?? -Infinity;
-      }
-    };
-    const a = [...rows].sort((x, y) => {
-      const vx = val(x);
-      const vy = val(y);
-      if (typeof vx === "string" || typeof vy === "string")
-        return String(vx).localeCompare(String(vy));
-      return vx - vy;
-    });
-    return desc ? a.reverse() : a;
-  }, [rows, sort, desc]);
-
-  const head: [SortKey, string, string][] = [
-    ["name", "Position", "text-left"],
-    ["value", "Wert", "text-right"],
-    ["day", "Heute", "text-right hidden sm:table-cell"],
-    ["gainPct", "Gewinn", "text-right"],
-    ["weight", "Anteil", "text-right hidden md:table-cell"],
-  ];
+    const val = (r: Row): number => (sort === "gainPct" ? r.unrealPct : sort === "day" ? r.dayPct : r.value) ?? -Infinity;
+    return [...rows].sort((x, y) => (sort === "name" ? x.company.localeCompare(y.company, "de") : val(y) - val(x)));
+  }, [rows, sort]);
 
   return (
     <div className="space-y-3">
-      <div className="lcard overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto text-sm">
-            <thead>
-              <tr className="border-b border-hair text-[11px] uppercase tracking-wide text-subtle">
-                {head.map(([key, label, cls]) => (
-                  <th key={key} className={`px-2 py-2.5 font-medium first:pl-4 ${cls}`}>
-                    <button
-                      onClick={() => {
-                        if (sort === key) setDesc((d) => !d);
-                        else {
-                          setSort(key);
-                          setDesc(key !== "name");
-                        }
-                      }}
-                      className="press-sm inline-flex !min-h-8 items-center gap-1 hover:text-ink"
-                    >
-                      {label}
-                      {sort === key && <span className="text-[9px]">{desc ? "▼" : "▲"}</span>}
-                    </button>
-                  </th>
-                ))}
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((r) => {
-                const w = r.value != null && total > 0 ? (r.value / total) * 100 : null;
-                return (
-                  <tr key={r.ticker} className="border-b border-hair last:border-0 hover:bg-slate-50/70">
-                    <td className="w-full max-w-0 py-3 pl-4 pr-2">
-                      <div className="flex items-center gap-2.5">
-                        <CompanyLogo ticker={r.symbol} company={r.company} size={34} />
-                        <div className="min-w-0 flex-1">
-                          {r.symbol ? (
-                            <Link
-                              href={stockHref(r.symbol)}
-                              className="block truncate font-medium hover:text-brand"
-                            >
-                              {r.company}
-                            </Link>
-                          ) : (
-                            <div className="truncate font-medium">{r.company}</div>
-                          )}
-                          <div className="truncate text-[12px] text-subtle">
-                            {r.symbol ? fixTicker(r.symbol, r.company) : r.ticker} ·{" "}
-                            {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}{NBSP}St.
-                          </div>
-                          {r.avgPrice ? (
-                            <div className="truncate text-[12px] tabular-nums text-subtle">Ø {usd(r.avgPrice)}</div>
-                          ) : null}
-                          {r.manualPrice != null && (
-                            <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-subtle">
-                              Kurs manuell gesetzt
-                            </span>
-                          )}
-                          {r.mismatch && (
-                            <span
-                              className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-subtle"
-                              title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}
-                            >
-                              Zuordnung prüfen · {r.mismatch}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-3 text-right">
-                      <div className="font-semibold tabular-nums">
-                        {r.value != null ? abbrevMoney(r.value) : "—"}
-                      </div>
-                      <div className="text-[11px] tabular-nums text-subtle">
-                        {r.last != null ? usd(r.last) : "kein Kurs"}
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3 text-right sm:table-cell">
-                      <div
-                        className={`font-medium tabular-nums ${
-                          r.dayPct === null ? "text-subtle" : r.dayPct >= 0 ? "text-bull" : "text-bear"
-                        }`}
-                      >
-                        {pct2(r.dayPct)}
-                      </div>
-                      <div className="text-[11px] tabular-nums text-subtle">{signed(r.dayAbs)}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-3 text-right">
-                      <div
-                        className={`font-semibold tabular-nums ${
-                          r.unrealPct === null ? "text-subtle" : r.unrealPct >= 0 ? "text-bull" : "text-bear"
-                        }`}
-                      >
-                        {pct2(r.unrealPct)}
-                      </div>
-                      <div className="text-[11px] tabular-nums text-subtle">{signed(r.unreal)}</div>
-                    </td>
-                    <td className="hidden px-4 py-3 text-right md:table-cell">
-                      <div className="font-medium tabular-nums">{w != null ? pctOf(w / 100, 1, false) : "—"}</div>
-                      <div className="mt-1 h-1 w-16 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-brand" style={{ width: `${w ?? 0}%` }} />
-                      </div>
-                    </td>
-                    <td className="w-10 pr-2 text-right">
-                      <button
-                        onClick={() => {
-                          if (confirm(`${r.company} mit allen Buchungen entfernen?`)) onRemove(r.ticker);
-                        }}
-                        aria-label={`${r.company} entfernen`}
-                        className="press-sm inline-flex h-9 w-9 !min-h-0 items-center justify-center rounded-full text-muted hover:bg-bear/10 hover:text-bear"
-                      >
-                        <Icon name="delete" className="h-[18px] w-[18px]" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {sorted.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-subtle">
-                    Keine offenen Positionen.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <Pills
+          label="Sortieren nach"
+          size="sm"
+          options={[["value", "Wert"], ["gainPct", "Gewinn"], ["day", "Heute"], ["name", "A–Z"]] as const}
+          value={sort}
+          onChange={setSort}
+        />
+        <button type="button" onClick={() => setEditing((e) => !e)} className="press-sm shrink-0 px-1 text-[15px] font-medium text-ink !min-h-9">
+          {editing ? "Fertig" : "Bearbeiten"}
+        </button>
       </div>
-      <p className="text-[11px] text-subtle">
-        „Gewinn“ zeigt den Kursgewinn der offenen Stücke gegenüber deinem Durchschnittseinstand.
-        Realisierte Gewinne und Dividenden findest du unter Performance bzw. Dividenden.
+
+      <ul className="card overflow-hidden">
+        {sorted.map((r) => {
+          const w = r.value != null && total > 0 ? r.value / total : null;
+          const shown = sort === "day" ? r.dayPct : r.unrealPct;
+          const shownAbs = sort === "day" ? r.dayAbs : r.unreal;
+          const sub = r.mismatch ? null : `${r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}${NBSP}St.${r.last != null ? ` · ${usd(r.last)}` : ""}`;
+          const body = (
+            <>
+              <CompanyLogo ticker={r.symbol} company={r.company} size={42} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[16px] font-semibold leading-snug">{r.company}</span>
+                {sub ? (
+                  <span className="block truncate text-[13px] tabular-nums text-subtle">
+                    {sub}
+                    {r.manualPrice != null ? " · manuell" : ""}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 truncate text-[13px] font-medium text-warn" title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}>
+                    <Icon name="danger" className="h-3.5 w-3.5 shrink-0" />
+                    Zuordnung prüfen
+                  </span>
+                )}
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block text-[16px] font-semibold tabular-nums leading-snug">{r.value != null ? cMoney(r.value) : "—"}</span>
+                <span className={`block text-[13px] font-medium tabular-nums ${shown == null ? "text-subtle" : shown >= 0 ? "text-bull" : "text-bear"}`}>
+                  {shown == null ? (r.value == null ? "kein Kurs" : "—") : `${shown >= 0 ? "▲" : "▼"} ${pctOf(Math.abs(shown), 2, false)}`}
+                  {shownAbs != null && shown != null && <span className="sr-only"> ({signed(shownAbs)})</span>}
+                </span>
+              </span>
+            </>
+          );
+          const cls = "flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-4";
+          return (
+            <li key={r.ticker} className="relative flex items-center after:absolute after:bottom-0 after:left-[4.5rem] after:right-0 after:h-px after:bg-hair last:after:hidden">
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`${r.company} mit allen Buchungen entfernen?`)) onRemove(r.ticker);
+                  }}
+                  aria-label={`${r.company} entfernen`}
+                  className="fade-in ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bear-fill text-white ![animation-delay:0ms] ![animation-duration:200ms] !min-h-0"
+                >
+                  <span className="block h-[2px] w-3 rounded-full bg-white" />
+                </button>
+              )}
+              {r.symbol && !editing ? (
+                <Link href={stockHref(r.symbol)} className={`${cls} transition-colors active:bg-ink/[0.04]`} title={w != null ? `${pctOf(w, 1, false)} deines Depots` : undefined}>
+                  {body}
+                </Link>
+              ) : (
+                <div className={cls}>{body}</div>
+              )}
+            </li>
+          );
+        })}
+        {sorted.length === 0 && <li className="px-4 py-10 text-center text-sm text-subtle">Keine offenen Positionen.</li>}
+      </ul>
+      <p className="text-[12px] leading-snug text-subtle">
+        {sort === "day" ? "Rechts steht die Kursänderung von heute." : "Rechts steht der Kursgewinn der offenen Stücke gegenüber deinem Durchschnittseinstand."} Realisierte
+        Gewinne und Dividenden findest du unter Performance bzw. Dividenden.
       </p>
     </div>
   );
@@ -2011,45 +1949,27 @@ function DividendsTab({
       )}
 
       {info.perPos.length > 0 && (
-        <div className="lcard overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-hair text-[11px] uppercase tracking-wide text-subtle">
-                  <th className="px-4 py-2.5 text-left font-medium">Position</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Erhalten</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Erwartet / Jahr</th>
-                  <th className="hidden px-4 py-2.5 text-right font-medium sm:table-cell">Rendite</th>
-                  <th className="hidden px-4 py-2.5 text-right font-medium md:table-cell">Auf Einstand</th>
-                </tr>
-              </thead>
-              <tbody>
-                {info.perPos.map((p) => (
-                  <tr key={p.ticker} className="border-b border-hair last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <CompanyLogo ticker={p.symbol} company={p.company} size={30} />
-                        <span className="truncate font-medium">{p.company}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {p.received > 0 ? abbrevMoney(p.received) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-bull">
-                      {p.annual > 0 ? abbrevMoney(p.annual) : "—"}
-                    </td>
-                    <td className="hidden px-4 py-3 text-right tabular-nums sm:table-cell">
-                      {p.yieldNow ? pctOf(p.yieldNow, 2, false) : "—"}
-                    </td>
-                    <td className="hidden px-4 py-3 text-right tabular-nums md:table-cell">
-                      {p.yieldOnCost ? pctOf(p.yieldOnCost, 2, false) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <section className="space-y-2">
+          <h3 className="px-1 text-[17px] font-semibold tracking-[-0.01em]">Je Position</h3>
+          <ul className="card overflow-hidden">
+            {info.perPos.map((p) => (
+              <li key={p.ticker} className="relative flex items-center gap-3 px-4 py-3 after:absolute after:bottom-0 after:left-[4.25rem] after:right-0 after:h-px after:bg-hair last:after:hidden">
+                <CompanyLogo ticker={p.symbol} company={p.company} size={38} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold">{p.company}</span>
+                  <span className="block truncate text-[13px] tabular-nums text-subtle">
+                    {p.yieldNow ? `Rendite ${pctOf(p.yieldNow, 2, false)}` : "Rendite —"}
+                    {p.yieldOnCost ? ` · auf Einstand ${pctOf(p.yieldOnCost, 2, false)}` : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-[15px] font-semibold tabular-nums text-bull">{p.annual > 0 ? `${abbrevMoney(p.annual)} / Jahr` : "—"}</span>
+                  <span className="block text-[13px] tabular-nums text-subtle">{p.received > 0 ? `${abbrevMoney(p.received)} erhalten` : "noch nichts erhalten"}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {closed.length > 0 && (
@@ -2335,10 +2255,15 @@ function InvestorsTab({
   rows: Row[];
   total: number;
 }) {
+  // The match API speaks in exchange symbols (the ones sent to it); a row's
+  // `ticker` is usually the ISIN from the broker export, which never matched
+  // and showed every investor at 0 %.
+  const norm = (t: string) => t.toUpperCase().replace(/[.\-/]/g, "");
   const weightWith = (m: MatchRow) => {
     if (total <= 0) return null;
+    const shared = new Set(m.sharedTickers.map(norm));
     const w = rows
-      .filter((r) => m.sharedTickers.includes(r.ticker.toUpperCase()))
+      .filter((r) => shared.has(norm(r.symbol ?? r.ticker)))
       .reduce((a, r) => a + (r.value ?? 0), 0);
     return w / total;
   };
@@ -2374,7 +2299,7 @@ function InvestorsTab({
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold tabular-nums">
-                  {uw != null ? pctOf(uw, 0, false) : "—"}
+                  {uw != null ? pctOf(uw, uw < 0.1 ? 1 : 0, false) : "—"}
                 </div>
                 <div className="text-[11px] text-subtle">deines Depots</div>
               </div>

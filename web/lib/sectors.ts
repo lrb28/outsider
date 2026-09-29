@@ -1,7 +1,10 @@
-// Nachschlagetabelle für die Diversifikationsanalyse: Ticker → Sektor, Region,
-// Anlageklasse. Bewusst als statische Liste gepflegt, damit die Auswertung ohne
-// zusätzlichen API-Aufruf und ohne Rate-Limits funktioniert. Unbekannte Ticker
-// landen ehrlich in "Unbekannt" statt geraten zu werden.
+// Diversifikationsanalyse: Sektor, Region und Anlageklasse je Position.
+//
+// Reihenfolge der Quellen: die gepflegte Liste unten (die gängigsten Titel),
+// dann Fonds am Namen erkannt ("… S&P US Dividend Aristocrats UCITS ETF" ist
+// ein ETF auf US-Aktien), dann Yahoos Sektorangabe für Aktien (/api/meta)
+// und für die Region das Land der ISIN oder der Börsenplatz. Nichts davon
+// wird geraten: was keine Quelle hergibt, landet in "Sonstige".
 
 export type Sector =
   | "Technologie"
@@ -15,13 +18,14 @@ export type Sector =
   | "Rohstoffe"
   | "Versorger"
   | "Immobilien"
-  | "Index / ETF"
+  | "Breit gestreut (ETF)"
+  | "Anleihen"
   | "Krypto"
-  | "Unbekannt";
+  | "Sonstige";
 
-export type Region = "USA" | "Europa" | "Asien" | "Schwellenländer" | "Global" | "Unbekannt";
+export type Region = "USA" | "Europa" | "Asien" | "Schwellenländer" | "Global" | "Kanada" | "Australien" | "Sonstige";
 
-export type AssetClass = "Aktie" | "ETF" | "Krypto" | "Anleihe" | "Rohstoff" | "Unbekannt";
+export type AssetClass = "Aktie" | "ETF" | "Krypto" | "Anleihe" | "Rohstoff" | "Sonstige";
 
 export interface AssetMeta {
   sector: Sector;
@@ -47,12 +51,12 @@ const MAT = S("Rohstoffe");
 const UTIL = S("Versorger");
 const RE = S("Immobilien");
 
-const ETF_US = S("Index / ETF", "USA", "ETF");
-const ETF_GLOBAL = S("Index / ETF", "Global", "ETF");
-const ETF_EU = S("Index / ETF", "Europa", "ETF");
-const ETF_EM = S("Index / ETF", "Schwellenländer", "ETF");
+const ETF_US = S("Breit gestreut (ETF)", "USA", "ETF");
+const ETF_GLOBAL = S("Breit gestreut (ETF)", "Global", "ETF");
+const ETF_EU = S("Breit gestreut (ETF)", "Europa", "ETF");
+const ETF_EM = S("Breit gestreut (ETF)", "Schwellenländer", "ETF");
 const GOLD = S("Rohstoffe", "Global", "Rohstoff");
-const BOND = S("Finanzen", "USA", "Anleihe");
+const BOND = S("Anleihen", "USA", "Anleihe");
 const CRYPTO = S("Krypto", "Global", "Krypto");
 
 export const ASSET_META: Record<string, AssetMeta> = {
@@ -155,10 +159,10 @@ export const ASSET_META: Record<string, AssetMeta> = {
   VT: ETF_GLOBAL, ACWI: ETF_GLOBAL, URTH: ETF_GLOBAL, IOO: ETF_GLOBAL,
   VXUS: ETF_GLOBAL, EFA: ETF_EU, VGK: ETF_EU, IEUR: ETF_EU, EZU: ETF_EU,
   EEM: ETF_EM, VWO: ETF_EM, IEMG: ETF_EM, FXI: ETF_EM, MCHI: ETF_EM,
-  INDA: ETF_EM, EWJ: S("Index / ETF", "Asien", "ETF"),
+  INDA: ETF_EM, EWJ: S("Breit gestreut (ETF)", "Asien", "ETF"),
   GLD: GOLD, IAU: GOLD, SLV: GOLD, GDX: GOLD, PDBC: GOLD, USO: GOLD,
   AGG: BOND, BND: BOND, TLT: BOND, IEF: BOND, SHY: BOND, LQD: BOND,
-  HYG: BOND, TIP: BOND, BNDX: S("Finanzen", "Global", "Anleihe"),
+  HYG: BOND, TIP: BOND, BNDX: S("Anleihen", "Global", "Anleihe"),
 
   // ── Krypto ────────────────────────────────────────────────────────────────
   "BTC-USD": CRYPTO, "ETH-USD": CRYPTO, "SOL-USD": CRYPTO, "XRP-USD": CRYPTO,
@@ -168,7 +172,7 @@ export const ASSET_META: Record<string, AssetMeta> = {
   GBTC: S("Krypto", "Global", "ETF"), MSTR: S("Krypto", "USA"),
 };
 
-const UNKNOWN: AssetMeta = { sector: "Unbekannt", region: "Unbekannt", assetClass: "Unbekannt" };
+const UNKNOWN: AssetMeta = { sector: "Sonstige", region: "Sonstige", assetClass: "Sonstige" };
 
 export function assetMeta(ticker: string | null | undefined): AssetMeta {
   if (!ticker) return UNKNOWN;
@@ -177,4 +181,140 @@ export function assetMeta(ticker: string | null | undefined): AssetMeta {
   // Krypto-Paare wie "BTC-USD" auch ohne Eintrag erkennen
   if (/-USD$/.test(t)) return CRYPTO;
   return UNKNOWN;
+}
+
+// ── Klassifizierung aus mehreren Quellen ────────────────────────────────────
+
+/** What Yahoo's search knows about a listing (see /api/meta). */
+export interface ListingMeta {
+  type?: string | null;
+  sector?: string | null;
+  industry?: string | null;
+  exchange?: string | null;
+}
+
+const YAHOO_SECTOR: Record<string, Sector> = {
+  Technology: "Technologie",
+  "Communication Services": "Kommunikation",
+  "Consumer Cyclical": "Zyklischer Konsum",
+  "Consumer Defensive": "Basiskonsum",
+  Healthcare: "Gesundheit",
+  "Financial Services": "Finanzen",
+  Industrials: "Industrie",
+  Energy: "Energie",
+  "Basic Materials": "Rohstoffe",
+  Utilities: "Versorger",
+  "Real Estate": "Immobilien",
+};
+
+const EUROPE = new Set(["AT", "BE", "CH", "CZ", "DE", "DK", "ES", "FI", "FR", "GB", "GR", "HU", "IE", "IT", "LU", "NL", "NO", "PL", "PT", "SE", "IS", "JE", "GG", "IM", "FO", "LI", "MC"]);
+const ASIA = new Set(["JP", "HK", "SG"]);
+const EMERGING = new Set(["CN", "IN", "BR", "MX", "ZA", "KR", "TW", "ID", "TH", "MY", "PH", "CL", "PE", "CO", "TR", "SA", "AE", "QA", "KW", "EG", "AR", "VN"]);
+// Seats of holding companies whose business sits elsewhere (Medtronic,
+// Accenture: Ireland; many Chinese ADRs: Cayman): the listing decides.
+const DOMICILES = new Set(["IE", "LU", "NL", "JE", "GG", "BM", "KY", "VG", "PA", "CW", "MH", "LR"]);
+
+function regionOfCountry(cc: string): Region | null {
+  if (cc === "US") return "USA";
+  if (cc === "CA") return "Kanada";
+  if (cc === "AU" || cc === "NZ") return "Australien";
+  if (EUROPE.has(cc)) return "Europa";
+  if (ASIA.has(cc)) return "Asien";
+  if (EMERGING.has(cc)) return "Schwellenländer";
+  return null;
+}
+
+/** Region of a Yahoo symbol from its exchange suffix; none means a US listing. */
+function regionOfSymbol(symbol: string): Region {
+  const m = /\.([A-Z]{1,3})$/.exec(symbol.toUpperCase());
+  if (!m) return "USA";
+  const sfx = m[1];
+  if (["DE", "F", "SG", "MU", "BE", "HM", "DU", "HA", "PA", "AS", "BR", "MI", "MC", "LS", "VI", "SW", "L", "IL", "IR", "ST", "CO", "HE", "OL", "WA", "PR", "AT", "IC"].includes(sfx)) return "Europa";
+  if (["TO", "V", "CN", "NE"].includes(sfx)) return "Kanada";
+  if (["AX", "NZ"].includes(sfx)) return "Australien";
+  if (["T", "HK", "SI"].includes(sfx)) return "Asien";
+  if (["SS", "SZ", "NS", "BO", "SA", "MX", "JO", "KS", "KQ", "TW", "TWO", "JK", "BK", "KL", "IS", "SN"].includes(sfx)) return "Schwellenländer";
+  return "Sonstige";
+}
+
+// A fund by its name: a fund word, or a brand that only issues funds. Asset
+// managers that are listed companies themselves (Amundi, Invesco, Franklin,
+// BlackRock) only count together with a fund word.
+const FUND_WORD = /\b(ETF|ETC|ETN|UCITS|FUND|FONDS|TRACKER)\b/i;
+const FUND_BRAND = /\b(ISHARES|VANGUARD|SPDR|XTRACKERS|LYXOR|WISDOMTREE|VANECK|HANETF|GLOBAL X|COMSTAGE|PROSHARES|DIREXION)\b/i;
+const isFundName = (name: string) => FUND_WORD.test(name) || FUND_BRAND.test(name);
+
+/** Region a fund invests in, read from its name ("S&P 500", "MSCI World"). */
+function fundRegion(name: string): Region {
+  const n = ` ${name.toUpperCase()} `;
+  if (/EMERGING|\bEM\b|SCHWELLEN|CHINA|INDIA|BRAZIL|LATIN|\bBRIC/.test(n)) return "Schwellenländer";
+  if (/\b(US|U\.S\.|USA|AMERICA|AMERICAN|S&P ?500|S&P|NASDAQ|DOW JONES|RUSSELL|NYSE)\b/.test(n) && !/\bEX[- ]?US\b/.test(n)) return "USA";
+  if (/EUROPE|EUROPA|EURO STOXX|STOXX|EUROZONE|\bEMU\b|\bDAX\b|MDAX|GERMANY|DEUTSCHLAND|FTSE 100|FTSE 250|\bUK\b|UNITED KINGDOM|FRANCE|\bCAC\b|SWITZERLAND|\bSMI\b|\bIBEX\b|\bAEX\b|NORDIC/.test(n)) return "Europa";
+  if (/JAPAN|NIKKEI|TOPIX|ASIA|PACIFIC|HONG KONG|SINGAPORE/.test(n)) return "Asien";
+  if (/CANADA|\bTSX\b/.test(n)) return "Kanada";
+  if (/AUSTRALIA|\bASX\b/.test(n)) return "Australien";
+  return "Global";
+}
+
+/** What a fund holds, from its name: a sector, bonds, a commodity or crypto. */
+function fundKind(name: string): { sector: Sector; assetClass: AssetClass } {
+  const n = name.toUpperCase();
+  if (/BITCOIN|ETHEREUM|CRYPTO|KRYPTO|SOLANA/.test(n)) return { sector: "Krypto", assetClass: "Krypto" };
+  if (/\bGOLD\b(?! MINERS)|SILVER|SILBER|PLATIN|PHYSICAL|COMMODIT|ROHSTOFF|\bETC\b/.test(n)) return { sector: "Rohstoffe", assetClass: "Rohstoff" };
+  if (/BOND|TREASURY|ANLEIHE|RENTEN|\bGOVT\b|GOVERNMENT|CORPORATE|AGGREGATE|T-BILL|MONEY MARKET|GELDMARKT|\bTIPS\b|INFLATION LINKED/.test(n)) return { sector: "Anleihen", assetClass: "Anleihe" };
+  const sectors: [RegExp, Sector][] = [
+    [/INFORMATION TECH|TECHNOLOGY|\bTECH\b|SEMICONDUCTOR|CYBER|ROBOTIC|ARTIFICIAL INTELLIGENCE|\bAI\b|CLOUD|SOFTWARE/, "Technologie"],
+    [/HEALTH ?CARE|BIOTECH|PHARMA|MEDICAL/, "Gesundheit"],
+    [/FINANCIAL|\bBANKS?\b|INSURANCE/, "Finanzen"],
+    [/ENERGY|\bOIL\b|\bGAS\b/, "Energie"],
+    [/REAL ESTATE|\bREITS?\b|PROPERTY|IMMOBILIEN/, "Immobilien"],
+    [/UTILITIES|VERSORGER/, "Versorger"],
+    [/CONSUMER STAPLES/, "Basiskonsum"],
+    [/CONSUMER DISCRETIONARY/, "Zyklischer Konsum"],
+    [/INDUSTRIAL|DEFEN[CS]E|AEROSPACE/, "Industrie"],
+    [/MATERIALS|MINING|MINERS|METALS/, "Rohstoffe"],
+    [/COMMUNICATION|TELECOM|MEDIA/, "Kommunikation"],
+  ];
+  for (const [re, sector] of sectors) if (re.test(n)) return { sector, assetClass: "ETF" };
+  return { sector: "Breit gestreut (ETF)", assetClass: "ETF" };
+}
+
+/**
+ * Sector, region and asset class of one position from everything known about
+ * it: the curated list, the name, the ISIN, the listing and Yahoo's data.
+ */
+export function classify({
+  symbol,
+  isin,
+  name,
+  assetClass,
+  meta,
+}: {
+  symbol: string | null;
+  isin: string | null;
+  name: string;
+  /** Asset class column of the broker export, if any ("ETF", "AKTIE", …). */
+  assetClass?: string | null;
+  meta?: ListingMeta | null;
+}): AssetMeta {
+  const sym = symbol?.toUpperCase() ?? null;
+  if (sym && ASSET_META[sym]) return ASSET_META[sym];
+  if (sym && /-USD$/.test(sym)) return CRYPTO;
+
+  const hint = (assetClass ?? "").toUpperCase();
+  const type = (meta?.type ?? "").toUpperCase();
+  const isFund = type === "ETF" || type === "MUTUALFUND" || /ETF|ETC|FONDS|FUND/.test(hint) || isFundName(name);
+  if (isFund) {
+    const kind = fundKind(name);
+    return { sector: kind.sector, region: kind.assetClass === "Rohstoff" || kind.assetClass === "Krypto" ? "Global" : fundRegion(name), assetClass: kind.assetClass };
+  }
+  if (type === "CRYPTOCURRENCY") return CRYPTO;
+
+  const cc = isin && /^[A-Z]{2}/.test(isin) ? isin.slice(0, 2).toUpperCase() : null;
+  let region: Region | null = cc && !DOMICILES.has(cc) ? regionOfCountry(cc) : null;
+  if (!region && sym) region = regionOfSymbol(sym);
+  if (!region && cc) region = regionOfCountry(cc);
+  const sector = (meta?.sector && YAHOO_SECTOR[meta.sector]) || "Sonstige";
+  const known = !!(sym || cc || meta);
+  return { sector, region: region ?? "Sonstige", assetClass: known ? "Aktie" : "Sonstige" };
 }
