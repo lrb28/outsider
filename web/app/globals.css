@@ -62,6 +62,13 @@
   --cat-7: 74 58 167;
   --cat-8: 227 73 72;
   --cat-other: 199 199 204;
+  /* Investor moves on a stock: a diverging ramp, saturated enough that the
+     light steps do not wash out on a white card. */
+  --move-new: 7 128 79;
+  --move-added: 40 196 134;
+  --move-held: 170 175 185;
+  --move-reduced: 242 104 120;
+  --move-exited: 190 28 56;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
   --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.06), 0 12px 32px rgb(0 0 0 / 0.08);
   --shadow-float: 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 30px rgb(0 0 0 / 0.12);
@@ -120,6 +127,11 @@
   --cat-7: 144 133 233;
   --cat-8: 230 103 103;
   --cat-other: 72 72 74;
+  --move-new: 26 170 116;
+  --move-added: 104 228 176;
+  --move-held: 124 130 144;
+  --move-reduced: 255 132 146;
+  --move-exited: 236 62 92;
   --shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.06);
   --shadow-card-hover: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 12px 32px rgb(0 0 0 / 0.5);
   --shadow-float: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 30px rgb(0 0 0 / 0.55);
@@ -178,6 +190,11 @@
     --cat-7: 144 133 233;
     --cat-8: 230 103 103;
     --cat-other: 72 72 74;
+    --move-new: 26 170 116;
+    --move-added: 104 228 176;
+    --move-held: 124 130 144;
+    --move-reduced: 255 132 146;
+    --move-exited: 236 62 92;
     --shadow-card: 0 0 0 0.5px rgb(255 255 255 / 0.06);
     --shadow-card-hover: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 12px 32px rgb(0 0 0 / 0.5);
     --shadow-float: 0 0 0 0.5px rgb(255 255 255 / 0.08), 0 10px 30px rgb(0 0 0 / 0.55);
@@ -398,6 +415,73 @@ h1, h2, h3 {
 
 /* The animated aura field (components/AuraField). It fades in once the
    shader has drawn; without WebGL a static gradient stands in. */
+/* Welcome screen: silk on plain white (black in dark mode), the mark and
+   headline in pure black (white), two equal frosted capsules. */
+.welcome-screen {
+  background: #fff;
+  color: #000;
+  --pill-bg: rgb(255 255 255 / 0.5);
+  --pill-rim: rgb(0 0 0 / 0.06);
+}
+:root[data-theme="dark"] .welcome-screen {
+  background: #000;
+  color: #fff;
+  --pill-bg: rgb(255 255 255 / 0.08);
+  --pill-rim: rgb(255 255 255 / 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .welcome-screen {
+    background: #000;
+    color: #fff;
+    --pill-bg: rgb(255 255 255 / 0.08);
+    --pill-rim: rgb(255 255 255 / 0.12);
+  }
+}
+.welcome-pill {
+  display: inline-flex;
+  min-height: 3.35rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--pill-bg);
+  box-shadow: inset 0 0 0 1px var(--pill-rim), 0 6px 24px rgb(0 0 0 / 0.06);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  font-size: 17px;
+  font-weight: 500;
+  color: inherit;
+}
+.silk-ribbon {
+  display: block;
+  opacity: 0;
+  transition: opacity 1s ease-out;
+}
+.silk-ribbon[data-live] {
+  opacity: 1;
+}
+.silk-ribbon[data-fallback] {
+  opacity: 1;
+  background:
+    radial-gradient(30% 22% at 85% 18%, rgb(255 150 70 / 0.55), transparent 70%),
+    radial-gradient(22% 30% at 95% 40%, rgb(60 110 255 / 0.5), transparent 70%),
+    radial-gradient(45% 20% at 40% 78%, rgb(255 140 200 / 0.45), transparent 70%);
+  filter: blur(18px);
+}
+@keyframes welcomeMark {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.welcome-mark {
+  animation: welcomeMark 0.9s cubic-bezier(0.32, 0.72, 0, 1) 0.1s both;
+}
+@keyframes welcomeLine {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+.welcome-line {
+  animation: welcomeLine 0.8s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 .aura-field {
   display: block;
   opacity: 0;
@@ -452,6 +536,16 @@ h1, h2, h3 {
   mask-image: linear-gradient(0deg, #000 40%, transparent 100%);
 }
 
+/* A tab glyph pops when its tab becomes current. */
+@keyframes tabPop {
+  0% { transform: scale(0.82); }
+  55% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.tab-pop {
+  animation: tabPop 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* Action menu items rise into place one after another. */
 @keyframes actionIn {
   from { opacity: 0; transform: translateY(14px) scale(0.96); }
@@ -459,6 +553,32 @@ h1, h2, h3 {
 }
 .action-item {
   animation: actionIn 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.action-list[data-closing] .action-item {
+  animation: none;
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  transition: opacity 0.14s ease-in, transform 0.14s ease-in;
+}
+/* The page behind the action menu: blur and tint rise first, the actions
+   follow once the page has gone soft (they wait ~170 ms). */
+.menu-scrim {
+  pointer-events: none;
+  background-color: rgb(var(--bg) / 0);
+  -webkit-backdrop-filter: blur(0px) saturate(100%);
+  backdrop-filter: blur(0px) saturate(100%);
+  /* Hidden once faded, so no blur layer sits over the page while scrolling. */
+  visibility: hidden;
+  transition: background-color 0.26s ease-out 0.12s, -webkit-backdrop-filter 0.26s ease-out 0.12s, backdrop-filter 0.26s ease-out 0.12s, visibility 0s linear 0.4s;
+}
+.menu-scrim[data-open] {
+  pointer-events: auto;
+  visibility: visible;
+  background-color: rgb(var(--bg) / 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  transition-delay: 0s;
+  transition-duration: 0.22s;
 }
 
 /* Loading: a slow sheen across placeholders instead of a blink. */
@@ -554,6 +674,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: rgb(var(--surface)); color: rgb(var(--ink)); }
 .skip-link:focus { top: 1rem; }
 dialog { color: rgb(var(--ink)); }
+dialog:focus { outline: none; }
 /* Everything modal floats over frosted glass: the page stays visible behind,
    blurred and milky, so a sheet reads as a layer and not as a new page.
    ::backdrop inherits no custom properties everywhere yet, hence literals. */
@@ -572,7 +693,7 @@ dialog[open] { animation: fadeUp .25s cubic-bezier(0.32, 0.72, 0, 1); }
    larger screens; closing plays the same motion backwards. */
 dialog.sheet[open] { animation: sheetUp 0.42s cubic-bezier(0.32, 0.72, 0, 1); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
 dialog.sheet[data-closing] { animation: sheetDown 0.26s cubic-bezier(0.4, 0, 1, 1) forwards; }
-dialog.sheet[data-closing]::backdrop { animation: backdropOut 0.26s ease-in forwards; }
+dialog.sheet[data-closing]::backdrop, dialog[data-dismissing]::backdrop { animation: backdropOut 0.26s ease-in forwards; }
 @media (min-width: 640px) {
   dialog.sheet[open] { animation-name: sheetPop; }
   dialog.sheet[data-closing] { animation-name: sheetFade; }

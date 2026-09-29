@@ -541,7 +541,12 @@ export async function getStockActivity(ticker: string): Promise<StockMove[]> {
 export async function getMatch(tickers: string[]): Promise<MatchRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
-  const T = [...new Set(tickers.map((t) => t.toUpperCase()))].slice(0, 40);
+  // Yahoo writes share classes with a dash (BRK-B), the filings with a dot
+  // (BRK.B): ask for both. A whole Depot fits (58 positions were cut at 40).
+  const T = [...new Set(tickers.flatMap((t) => {
+    const u = t.toUpperCase();
+    return u.includes("-") && !u.endsWith("-USD") ? [u, u.replace(/-/g, ".")] : [u];
+  }))].slice(0, 160);
   if (T.length === 0) return [];
   const { rows } = await pool.query(
     `

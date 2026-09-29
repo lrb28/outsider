@@ -16,11 +16,11 @@ import type { FeedRow, StockHolder, StockMove, StockMoveKind } from "@/lib/types
 // grey for no change, light rose for trimming, deep rose for selling out.
 // Lightness carries the order too, so it reads without colour vision.
 export const MOVES: Record<StockMoveKind, { label: string; short: string; color: string; tone: "bull" | "bear" | "flat" }> = {
-  new: { label: "Neu eingestiegen", short: "Neu eingestiegen", color: "rgb(var(--bull-deep))", tone: "bull" },
-  added: { label: "Aufgestockt", short: "Aufgestockt", color: "rgb(var(--bull-hi))", tone: "bull" },
-  held: { label: "Unverändert", short: "Unverändert", color: "rgb(var(--flat-fill))", tone: "flat" },
-  reduced: { label: "Reduziert", short: "Reduziert", color: "rgb(var(--bear-hi))", tone: "bear" },
-  exited: { label: "Komplett verkauft", short: "Ausgestiegen", color: "rgb(var(--bear-deep))", tone: "bear" },
+  new: { label: "Neu eingestiegen", short: "Neu eingestiegen", color: "rgb(var(--move-new))", tone: "bull" },
+  added: { label: "Aufgestockt", short: "Aufgestockt", color: "rgb(var(--move-added))", tone: "bull" },
+  held: { label: "Unverändert", short: "Unverändert", color: "rgb(var(--move-held))", tone: "flat" },
+  reduced: { label: "Reduziert", short: "Reduziert", color: "rgb(var(--move-reduced))", tone: "bear" },
+  exited: { label: "Komplett verkauft", short: "Ausgestiegen", color: "rgb(var(--move-exited))", tone: "bear" },
 };
 const ORDER: StockMoveKind[] = ["new", "added", "held", "reduced", "exited"];
 export const INFLOW: StockMoveKind[] = ["new", "added"];

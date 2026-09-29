@@ -4,22 +4,16 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { AuraField } from "@/components/AuraField";
+import { SilkRibbon } from "@/components/SilkRibbon";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Icon, type IconName } from "@/components/Icon";
-import { Wordmark } from "@/components/Wordmark";
 import { fetchCatalogue } from "@/lib/fetchJson";
 import type { InvestorsResponse, PoliticiansResponse, StocksResponse } from "@/lib/types";
 import { type FollowKind, getFollowed, toggleFollow } from "@/lib/watchlist";
 
-const SEEN = "aura:onboarded";
-
-/* The rotating word: who discloses. Each has its aura. */
-const WORDS: { word: string; icon: IconName; aura: "investor" | "insider" | "politician"; focus: [number, number, number] }[] = [
-  { word: "Investoren", icon: "chart", aura: "investor", focus: [1, 0.2, 0.25] },
-  { word: "Insider", icon: "work", aura: "insider", focus: [0.2, 1, 0.3] },
-  { word: "Politiker", icon: "people", aura: "politician", focus: [0.25, 0.3, 1] },
-];
+// v2: everyone sees the new first screen once.
+const SEEN = "aura:onboarded:v2";
 
 type Pick = { id: string; name: string; src?: string | null; ticker?: string | null };
 type Step = { kind: FollowKind; icon: IconName; aura: "investor" | "insider" | "politician"; title: string; text: string; focus: [number, number, number] };
@@ -30,57 +24,40 @@ const STEPS: Step[] = [
   { kind: "stock", icon: "work", aura: "insider", title: "Aktien merken", text: "Du siehst sofort, wenn Investoren, Insider oder Politiker sie handeln.", focus: [0.25, 1, 0.3] },
 ];
 
-function useWordWheel(active: boolean) {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (!active || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = window.setInterval(() => setI((n) => (n + 1) % WORDS.length), 2200);
-    return () => window.clearInterval(t);
-  }, [active]);
-  return i;
-}
+/** The Ā of the wordmark without its crossbar: a bar over a Λ. */
+const MARK = "M0 0H69.6V8H0ZM14.9 95.8H0L26.2 21.3H43.5L69.6 95.8H54.8L35.1 36.9H34.5Z";
 
+/*
+ * First screen, after the reference wallet app: a band of iridescent silk
+ * flowing through a white page (black in dark mode), the mark in the upper
+ * middle, a three-line headline bottom left and two equal frosted capsules.
+ */
 function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
-  const i = useWordWheel(true);
   const start = useRef<HTMLButtonElement>(null);
-  useEffect(() => start.current?.focus(), []);
+  useEffect(() => start.current?.focus({ preventScroll: true }), []);
   return (
-    <div className="relative flex h-full flex-col">
-      <AuraField vivid focus={WORDS[i].focus} className="pointer-events-none absolute inset-x-[-10%] bottom-[-8%] h-[72%] w-[120%] [mask-image:linear-gradient(to_bottom,transparent,#000_30%)]" />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+    <div className="welcome-screen relative flex h-full flex-col overflow-hidden">
+      <SilkRibbon className="pointer-events-none absolute inset-0 h-full w-full" />
 
-      <div className="relative px-7 pt-[max(1.5rem,env(safe-area-inset-top))]">
-        <Wordmark height={16} />
-      </div>
+      <svg viewBox="-2 -2 73.6 99.8" role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[34%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
+        <path d={MARK} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />
+      </svg>
 
-      {/* Word wheel */}
-      <div className="relative mt-[14vh] h-[9.5rem] overflow-hidden px-7" aria-live="polite">
-        {WORDS.map((w, n) => {
-          const offset = ((n - i + WORDS.length + 1) % WORDS.length) - 1; // -1 above, 0 centre, 1 below
-          return (
-            <div
-              key={w.word}
-              aria-hidden={offset !== 0}
-              className="absolute left-7 top-1/2 flex items-center gap-3 transition-[transform,opacity] duration-700 ease-spring"
-              // With three words the one arriving below always wraps round from
-              // above, so it jumps instead of sliding through the centre.
-              style={{ transform: `translateY(calc(-50% + ${offset * 3.1}rem)) scale(${offset === 0 ? 1 : 0.86})`, transformOrigin: "left center", opacity: offset === 0 ? 1 : 0.16, transitionDuration: offset === 1 ? "0ms" : undefined }}
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-[11px] text-white transition-colors duration-700" style={{ background: `rgb(var(--aura-${w.aura}))` }}>
-                <Icon name={w.icon} className="h-5 w-5" />
-              </span>
-              <span className="font-display text-[40px] font-bold leading-none tracking-[-0.02em]">{w.word}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="relative mt-auto px-7 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white">
-        <h2 id="onboarding-title" className="max-w-sm font-display text-[34px] font-bold leading-[1.02] tracking-[-0.02em]">Sieh, was die Mächtigen kaufen.</h2>
-        <p className="mt-3 max-w-sm text-[15px] leading-snug text-white/80">Investoren, Insider und Abgeordnete müssen ihre Trades offenlegen. ĀURA zeigt sie dir – verständlich und mit Quelle.</p>
-        <div className="mt-7 grid grid-cols-2 gap-3">
-          <button ref={start} onClick={onStart} className="press inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-[#fff] text-[16px] font-semibold text-black shadow-[0_8px_24px_rgb(0_0_0/0.18)]">Los geht’s</button>
-          <button onClick={onSkip} className="press inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-white/20 text-[16px] font-medium text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.45),inset_0_0_0_0.5px_rgb(255_255_255/0.3)] backdrop-blur-xl">Später</button>
+      <div className="relative mt-auto px-8 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <h2 id="onboarding-title" aria-label="Money leaves clues" className="font-display text-[3rem] font-semibold leading-[0.94] tracking-[-0.03em]">
+          {["Money", "leaves", "clues"].map((w, i) => (
+            <span key={w} aria-hidden="true" className="welcome-line block" style={{ animationDelay: `${260 + i * 90}ms` }}>
+              {w}
+            </span>
+          ))}
+        </h2>
+        <div className="welcome-line mt-9 grid grid-cols-2 gap-3" style={{ animationDelay: "560ms" }}>
+          <button type="button" onClick={onSkip} className="welcome-pill press">
+            Später
+          </button>
+          <button ref={start} type="button" onClick={onStart} className="welcome-pill press">
+            Los geht’s
+          </button>
         </div>
       </div>
     </div>

@@ -9,12 +9,13 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
 import { PriceChart } from "@/components/PriceChart";
+import { RollingNumber } from "@/components/RollingNumber";
 import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
 import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
 import { HoldersSheet, INFLOW, MovesSheet, OUTFLOW, StockActivity, TradesSheet } from "@/components/StockActivity";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate, shortMoney } from "@/lib/format";
+import { abbrevMoney, fixTicker, weightPct, shortMoney } from "@/lib/format";
 import { FeedRow, PriceBar, PricesResponse, StockDetail, StockMoveKind, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
@@ -111,7 +112,7 @@ export default function StockPage() {
       </div>
       {quote && (
         <div className="fade-up flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="num-xl">{quote.price.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[17px] font-semibold text-subtle">{quote.currency || ""}</span></span>
+          <span className="num-xl"><RollingNumber rollIn value={quote.price.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} /> <span className="text-[17px] font-semibold text-subtle">{quote.currency || ""}</span></span>
           {quote.changePct != null && (
             <span className={`text-[15px] font-semibold tabular-nums ${quote.changePct >= 0 ? "text-bull" : "text-bear"}`}>
               {quote.changePct >= 0 ? "▲" : "▼"} {Math.abs(quote.changePct * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 })} % heute
@@ -133,7 +134,6 @@ export default function StockPage() {
             <SegmentedControl label="Zeitraum" size="sm" options={[["1M", "1M"], ["3M", "3M"], ["6M", "6M"], ["1J", "1J"], ["Max", "Max"]] as const} value={range} onChange={setRange} />
           </div>
           <PriceChart key={range} bars={(series ?? bars).slice(-({ "1M": 22, "3M": 64, "6M": 127, "1J": 253, Max: (series ?? bars).length }[range]))} height={220} />
-          <p className="mt-3 text-[12px] leading-snug text-subtle">Schlusskurse bis {formatDate(bars[bars.length - 1].date)}{quote ? ` · Kurs von ${new Date(quote.t).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr` : isStaleDate(bars[bars.length - 1].date) ? " · veraltet" : ""}</p>
         </div>
       )}
       </div>

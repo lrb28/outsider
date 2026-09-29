@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { ActivityBars } from "@/components/ActivityBars";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
@@ -87,15 +86,6 @@ export default function PoliticianPage() {
 
         <div className="fade-up"><StatRow items={stats} /></div>
       </div>
-
-      {pol.trades.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Handelsaktivität</h2>
-          <div className="card p-4 sm:p-5">
-            <ActivityBars rows={pol.trades} />
-          </div>
-        </section>
-      )}
 
       {summary.top.length > 0 && (
         <section className="space-y-3">

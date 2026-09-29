@@ -9,8 +9,9 @@ import { Icon, type IconName } from "@/components/Icon";
 /*
  * The round "+" menu button beside the tab bar (from the reference wallet
  * app): it opens a short stack of actions above a blurred page, each with a
- * coloured icon, right-aligned towards the thumb. Escape, a tap outside or
- * any navigation closes it.
+ * coloured icon, right-aligned towards the thumb. The page blurs first and
+ * the actions rise once it has (closing runs the other way round). Escape, a
+ * tap outside or any navigation closes it.
  */
 
 type Action = { label: string; icon: IconName; colour: string; href?: string; run?: () => void };
@@ -27,9 +28,16 @@ const ACTIONS: Action[] = [
 
 export function ActionMenu({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
+  // Items stay mounted for a moment after closing so they can fade first.
+  const [items, setItems] = useState(false);
   const path = usePathname();
   const button = useRef<HTMLButtonElement>(null);
 
+  useEffect(() => {
+    if (open) return setItems(true);
+    const t = window.setTimeout(() => setItems(false), 160);
+    return () => window.clearTimeout(t);
+  }, [open]);
   useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
@@ -45,16 +53,10 @@ export function ActionMenu({ compact = false }: { compact?: boolean }) {
 
   return (
     <>
-      {open && (
-        <div
-          aria-hidden="true"
-          onClick={() => setOpen(false)}
-          className="fade-in fixed inset-0 z-30 bg-canvas/55 backdrop-blur-xl [animation-delay:0ms] [animation-duration:250ms]"
-        />
-      )}
+      <div aria-hidden="true" onClick={() => setOpen(false)} data-open={open ? "" : undefined} className="menu-scrim fixed inset-0 z-30" />
       <div className="relative z-40">
-        {open && (
-          <ul id="action-menu" role="menu" aria-label="Aktionen" className="absolute bottom-[calc(100%+1.25rem)] right-1 flex flex-col items-end gap-5">
+        {items && (
+          <ul id="action-menu" role="menu" aria-label="Aktionen" data-closing={open ? undefined : ""} className="action-list absolute bottom-[calc(100%+1.25rem)] right-1 flex flex-col items-end gap-5">
             {ACTIONS.map((a, i) => {
               const body = (
                 <>
@@ -66,7 +68,7 @@ export function ActionMenu({ compact = false }: { compact?: boolean }) {
               );
               const cls = "press flex min-h-11 items-center gap-3 whitespace-nowrap";
               return (
-                <li key={a.label} role="none" className="action-item" style={{ animationDelay: `${(ACTIONS.length - 1 - i) * 35}ms` }}>
+                <li key={a.label} role="none" className="action-item" style={{ animationDelay: `${170 + (ACTIONS.length - 1 - i) * 40}ms` }}>
                   {a.href ? (
                     <Link role="menuitem" href={a.href} className={cls} onClick={() => setOpen(false)}>{body}</Link>
                   ) : (

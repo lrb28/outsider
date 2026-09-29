@@ -10,8 +10,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 export const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
-/** Yahoo-Symbole: AAPL, BRK-B, MC.PA, BTC-USD, EURUSD=X, ^GSPC */
-export const SYMBOL_RE = /^[\^]?[A-Z0-9][A-Z0-9.\-=]{0,11}$/;
+/** Yahoo-Symbole: AAPL, BRK-B, MC.PA, BTC-USD, EURUSD=X, ^GSPC — und für manche
+ *  Fonds ISIN plus Börse (IE00BK5BQT80.SG, 15 Zeichen). */
+export const SYMBOL_RE = /^[\^]?[A-Z0-9][A-Z0-9.\-=]{0,19}$/;
 
 export function isIsin(s: string | null | undefined): boolean {
   return !!s && ISIN_RE.test(s.trim().toUpperCase());
