@@ -4,6 +4,7 @@ import {
   companyName,
   investorBio,
   investorPerson,
+  pctOf,
   personName,
   sizeDisplay,
 } from "./format";
@@ -21,6 +22,7 @@ import {
   PoliticianRow,
   StockDetail,
   StockHolder,
+  StockMove,
   StockRow,
 } from "./types";
 
@@ -52,8 +54,7 @@ const SQL = (whereSql: string, limIdx: number, offIdx: number) => `
          t.txn_type, nullif(t.put_call, '') as put_call,
          t.txn_date, t.disclosed_at, t.shares, t.amount_min, t.amount_max,
          f.source_url, f.period_of_report,
-         to_jsonb(t)->>'transaction_code' as transaction_code,
-         to_jsonb(t)->>'is_derivative' as is_derivative,
+         t.transaction_code, t.is_derivative,
          et.close as entry_trade_close,
          ed.close as entry_disc_close,
          cur.close as current_close, cur.date as price_as_of
@@ -118,7 +119,7 @@ function toFeedRow(r: Record<string, unknown>): FeedRow {
     pctSinceTrade: r.entity_type === "institution" || !fresh ? null : pctChange(num(r.entry_trade_close), num(r.current_close)),
     pctSinceDisclosure: fresh ? pctChange(num(r.entry_disc_close), num(r.current_close)) : null,
     transactionCode: r.transaction_code as string | null,
-    isDerivative: r.is_derivative === "true",
+    isDerivative: r.is_derivative === true || r.is_derivative === "true",
     priceAsOf,
     reportingDate: r.period_of_report ? new Date(r.period_of_report as string).toISOString().slice(0, 10) : null,
     sourceUrl: r.source_url as string,
@@ -130,7 +131,7 @@ export async function getTrades(f: TradeFilters): Promise<FeedRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
-  const where: string[] = ["coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'", NOT_SENATE];
+  const where: string[] = ["not t.superseded", NOT_SENATE];
   const params: unknown[] = [];
   if (f.type) {
     params.push(f.type);
@@ -261,6 +262,19 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     ? new Date(asOfRow.rows[0].as_of as string).toISOString().slice(0, 10)
     : null;
 
+  // The whole latest quarter, not just the trades loaded for the list.
+  const moveRows = asOf
+    ? (await pool.query(
+        `select t.txn_type, count(*)::int as n
+         from transactions t join filings f on f.id = t.filing_id
+         where t.entity_id = $1 and not t.superseded and nullif(t.put_call, '') is null
+           and coalesce(f.period_of_report, t.txn_date) = $2::date
+         group by t.txn_type`,
+        [e.id, asOf],
+      )).rows
+    : [];
+  const moveCount = (type: string) => Number(moveRows.find((r) => r.txn_type === type)?.n ?? 0);
+
   return {
     slug: e.slug as string,
     fund: e.fund as string,
@@ -272,6 +286,7 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     asOf,
     holdings,
     trades,
+    moves: { buys: moveCount("buy"), sells: moveCount("sell") },
   };
 }
 
@@ -284,8 +299,8 @@ export async function getPoliticians(): Promise<PoliticianRow[]> {
            e.external_ids->>'portrait' as photo,
            count(t.id) as trades, max(t.disclosed_at) as last
     from entities e
-    left join transactions t on t.entity_id = e.id and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
-    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    join transactions t on t.entity_id = e.id and not t.superseded
+    where e.type = 'politician' and ${NOT_SENATE}
     group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
     order by max(t.disclosed_at) desc nulls last, trades desc, e.full_name
   `);
@@ -358,7 +373,7 @@ export async function getStocks(): Promise<StockRow[]> {
            sum(c.market_value) as value,
            (array_agg(distinct e.full_name))[1:3] as holder_names,
            (select count(*) from transactions t
-            where t.security_id = s.id and t.txn_type = 'buy' and coalesce(to_jsonb(t)->>'superseded','false') = 'false') as buys
+            where t.security_id = s.id and t.txn_type = 'buy' and not t.superseded) as buys
     from cur c
     join securities s on s.id = c.security_id
     join entities e on e.id = c.entity_id
@@ -450,6 +465,7 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   // Kopfzahl: Investoren, nicht Zeilen. Wer Aktie und Option hält, zählt einmal.
   const investorCount = new Set(holderRows.map((r) => r.slug)).size;
   const trades = await getTrades({ ticker: ticker, limit: 25 });
+  const activity = await getStockActivity(T);
 
   return {
     ticker: (s.ticker as string) ?? null,
@@ -458,8 +474,67 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     investors: investorCount,
     value: value > 0 ? value : null,
     holders: holderRows,
+    activity,
     trades,
   };
+}
+
+/**
+ * Each tracked investor's latest 13F position in a stock against its filing
+ * the quarter before. Unlike the loaded trade list (25 rows, mostly Form 4),
+ * this covers every fund that holds or held the stock, so the activity ring
+ * and the "Zugänge"/"Abgänge" figures agree with the holder count.
+ */
+export async function getStockActivity(ticker: string): Promise<StockMove[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const { rows } = await pool.query(
+    `
+    with hs as (
+      select h.entity_id, h.as_of_date, sum(h.shares) as sh, sum(h.market_value) as v
+      from holdings h
+      where h.security_id = any(array(select id from securities where upper(ticker) = $1))
+        and nullif(h.put_call, '') is null
+      group by 1, 2
+    ),
+    ent as (
+      select x.entity_id, d.cur,
+             (select max(as_of_date) from holdings where entity_id = x.entity_id and as_of_date < d.cur) as prev
+      from (select distinct entity_id from hs) x
+      cross join lateral (select max(as_of_date) as cur from holdings where entity_id = x.entity_id) d
+    )
+    select e.slug, e.full_name as fund, ent.cur as as_of, ent.prev as prev_as_of,
+           c.sh as cur_shares, c.v as cur_value, p.sh as prev_shares
+    from ent
+    join entities e on e.id = ent.entity_id
+    left join hs c on c.entity_id = ent.entity_id and c.as_of_date = ent.cur
+    left join hs p on p.entity_id = ent.entity_id and p.as_of_date = ent.prev
+    where c.entity_id is not null or p.entity_id is not null
+    order by coalesce(c.v, 0) desc
+    `,
+    [ticker],
+  );
+  return rows.map((r) => {
+    const shares = r.cur_shares !== null ? Number(r.cur_shares) : null;
+    const prevShares = r.prev_shares !== null ? Number(r.prev_shares) : null;
+    // Without an earlier filing on record nothing can be said about a change.
+    const kind: StockMove["kind"] =
+      shares === null ? "exited"
+      : r.prev_as_of === null ? "held"
+      : prevShares === null ? "new"
+      : Math.abs(shares - prevShares) <= prevShares * 0.001 ? "held"
+      : shares > prevShares ? "added" : "reduced";
+    return {
+      slug: r.slug as string,
+      fund: r.fund as string,
+      person: investorPerson(r.fund as string),
+      kind,
+      shares,
+      prevShares,
+      value: r.cur_value !== null ? Number(r.cur_value) : null,
+      asOf: r.as_of ? String(r.as_of).slice(0, 10) : null,
+    };
+  });
 }
 
 // ── My-depot match: which tracked investors hold the user's tickers ─────────
@@ -579,7 +654,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     join securities s on s.id = t.security_id
     join filings f on f.id = t.filing_id
     where t.txn_type = 'buy' and s.ticker is not null and nullif(t.put_call,'') is null
-      and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+      and not t.superseded
       and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
     group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
   `);
@@ -590,9 +665,8 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     from transactions t
     join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
     join securities s on s.id = t.security_id
-    where t.txn_type = 'buy' and s.ticker is not null and to_jsonb(t)->>'transaction_code' = 'P'
-      and coalesce(to_jsonb(t)->>'is_derivative', 'false') = 'false'
-      and coalesce(to_jsonb(t)->>'superseded', 'false') = 'false'
+    where t.txn_type = 'buy' and s.ticker is not null and t.transaction_code = 'P'
+      and not t.is_derivative and not t.superseded
       and t.disclosed_at >= current_date - 90
     group by s.id, s.ticker, s.name order by insiders desc, value desc nulls last, s.ticker limit 12
   `);
@@ -624,7 +698,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   const polQ = pool.query(`
     select e.slug, e.full_name as name, e.party, e.chamber, e.role, e.external_ids->>'portrait' as photo, count(t.id) as n
     from entities e join transactions t on t.entity_id = e.id
-    where e.type = 'politician' and ${NOT_SENATE} and coalesce(to_jsonb(t)->>'superseded','false') = 'false'
+    where e.type = 'politician' and ${NOT_SENATE} and not t.superseded
       and t.disclosed_at >= current_date - 365
     group by e.id, e.slug, e.full_name, e.party, e.chamber, e.role, e.external_ids
     order by n desc
@@ -658,13 +732,11 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   return {
     mostHeld: mostHeld.rows.map((r) => item(r, `${Number(r.n)} Investoren`)),
     highestConviction: conviction.rows.map((r) =>
-      item(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Gewicht`),
+      item(r, `${pctOf(Number(r.mw) || 0, 0, false)} Gewicht`),
     ),
     biggest: biggest.rows.map((r) => {
       const mv = Number(r.mv) || 0;
-      const s =
-        mv >= 1e9 ? `$${(mv / 1e9).toFixed(1)} Mrd.` : `$${(mv / 1e6).toFixed(0)} Mio.`;
-      return item(r, s);
+      return item(r, abbrevMoney(mv));
     }),
     mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Aufstockungen`)),
     insiderBuys: insiderBuys.rows.map((r) => {
@@ -674,7 +746,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     }),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
-      inv(r, `${((Number(r.mw) || 0) * 100).toFixed(0)} % Top-Position`),
+      inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} Top-Position`),
     ),
     topPoliticians: pols.rows.map((r) => ({
       slug: r.slug as string,

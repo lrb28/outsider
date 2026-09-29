@@ -15,7 +15,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, companyName, fixTicker, formatDate, weightPct } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, formatDate, shortDate, shortMoney, weightPct, stockHref } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 
@@ -27,6 +27,9 @@ export default function InvestorPage() {
   const [sort, setSort] = useState<"value" | "name">("value");
   const [err, setErr] = useState(false);
   const [tick, setTick] = useState(0);
+  // Point72 reports almost 2,000 positions; rendering them all at once made
+  // the page stutter on phones. The list grows on request.
+  const [shown, setShown] = useState(40);
 
   useEffect(() => {
     if (!slug) return;
@@ -64,13 +67,13 @@ export default function InvestorPage() {
     );
 
   const stats = [
-    { label: "Portfolio-Wert", value: abbrevMoney(inv.value) },
+    { label: "Portfolio-Wert", value: shortMoney(inv.value) },
     { label: "Positionen", value: inv.positions.toLocaleString("de-DE") },
-    { label: "Stand", value: formatDate(inv.asOf) },
+    { label: "Stand", value: shortDate(inv.asOf) },
   ];
 
-  const buys = inv.trades.filter((t) => t.txnType === "buy").length;
-  const sells = inv.trades.filter((t) => t.txnType === "sell").length;
+  const buys = inv.moves?.buys ?? inv.trades.filter((t) => t.txnType === "buy").length;
+  const sells = inv.moves?.sells ?? inv.trades.filter((t) => t.txnType === "sell").length;
   const moves = [
     { label: "Aufstockungen", value: buys, color: "rgb(var(--bull-fill))" },
     { label: "Bestandsabbau", value: sells, color: "rgb(var(--bear-fill))" },
@@ -100,12 +103,12 @@ export default function InvestorPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Positionen</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Positionen</h2>
           <SegmentedControl label="Sortierung" size="sm" options={[["value", "Wert"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
         </div>
 
         <div className="card overflow-hidden">
-          {holdings.map((h, i) => {
+          {holdings.slice(0, shown).map((h, i) => {
             const company = companyName(h.ticker, h.securityName);
             return (
               <div
@@ -116,7 +119,7 @@ export default function InvestorPage() {
                 <div className="min-w-0 flex-1">
                   {h.ticker ? (
                     <Link
-                      href={`/stock/${h.ticker}`}
+                      href={stockHref(h.ticker)}
                       className="block truncate text-[15px] font-semibold hover:underline"
                     >
                       {company}
@@ -136,6 +139,15 @@ export default function InvestorPage() {
               </div>
             );
           })}
+          {holdings.length > shown && (
+            <button
+              onClick={() => setShown((n) => n + 100)}
+              className="flex w-full items-center justify-center gap-1 border-t border-hair px-4 py-3 text-[15px] font-medium text-ink hover:bg-ink/[0.03]"
+            >
+              {Math.min(100, holdings.length - shown)} weitere zeigen
+              <span className="text-subtle">· {(holdings.length - shown).toLocaleString("de-DE")} übrig</span>
+            </button>
+          )}
           {holdings.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-subtle">
               Keine 13F-Positionen vorhanden. (13F wird bis zu 45 Tage nach Quartalsende
@@ -147,7 +159,7 @@ export default function InvestorPage() {
 
       {moveTotal > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Bewegungen im Quartal</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Bewegungen im Quartal</h2>
           <div className="card flex flex-col items-center gap-6 p-5 sm:flex-row">
             <Donut
               segments={moves}
@@ -157,7 +169,7 @@ export default function InvestorPage() {
             <div className="w-full flex-1 space-y-2.5">
               {moves.map((s) => (
                 <div key={s.label} className="flex items-center gap-2 text-sm">
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
+                  <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
                   <span className="text-ink">{s.label}</span>
                   <span className="text-xs text-subtle">{s.value} Positionen</span>
                   <span className="ml-auto font-semibold">
@@ -171,7 +183,7 @@ export default function InvestorPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letzte Meldungen</h2>
         <TradeFeed
           rows={inv.trades}
           showActor={false}

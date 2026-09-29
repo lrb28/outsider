@@ -13,7 +13,7 @@ import { StatRow, DetailTopBar } from "@/components/ui";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { fixTicker } from "@/lib/format";
+import { fixTicker, stockHref } from "@/lib/format";
 import type { InsiderDetail, InsiderResponse } from "@/lib/types";
 
 export default function InsiderPage() {
@@ -69,8 +69,8 @@ export default function InsiderPage() {
               <Avatar name={ins.name} kind="insider" size={96} />
             )}
             {ins.ticker && (
-              <div className="absolute -bottom-2 -right-2 rounded-full shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
-                <Avatar name={ins.name} kind="insider" size={44} />
+              <div className="absolute -bottom-2 -right-2 flex">
+                <Avatar name={ins.name} kind="insider" size={44} className="face-lift" />
               </div>
             )}
           </div>
@@ -79,7 +79,7 @@ export default function InsiderPage() {
             <div className="mt-1 text-[15px] text-subtle">{ins.role || "Insider"}{ins.ticker ? ` · ${company}` : ""}</div>
           </div>
           {ins.ticker && (
-            <Link href={`/stock/${encodeURIComponent(ins.ticker)}`} className="btn-capsule">
+            <Link href={stockHref(ins.ticker)} className="btn-capsule">
               <CompanyLogo ticker={ins.ticker} company={company} size={22} rounded="rounded-[7px]" />
               Aktie ansehen
             </Link>
@@ -91,7 +91,7 @@ export default function InsiderPage() {
 
       {ins.trades.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Handelsaktivität</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Handelsaktivität</h2>
           <div className="card p-4 sm:p-5">
             <ActivityBars rows={ins.trades} />
           </div>
@@ -99,7 +99,7 @@ export default function InsiderPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">Alle Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Meldungen</h2>
         <TradeFeed rows={ins.trades} showActor={false} empty="Noch keine gemeldeten Trades." />
       </section>
 

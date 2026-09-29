@@ -12,7 +12,9 @@ export async function dataResponse<T extends object>(load: () => Promise<T>, dem
   if (!process.env.DATABASE_URL) return unavailable();
   try {
     return NextResponse.json({ ...await withRetry(load), source: "database" }, {
-      headers: { "Cache-Control": "public, max-age=0, s-maxage=30, stale-while-revalidate=60" },
+      // Disclosures and closes change once a day: the CDN answers repeat
+      // visits instantly and refreshes in the background.
+      headers: { "Cache-Control": "public, max-age=0, s-maxage=300, stale-while-revalidate=3600" },
     });
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unavailable";

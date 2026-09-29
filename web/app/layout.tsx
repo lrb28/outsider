@@ -52,9 +52,6 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="de">
-      <head>
-        <link rel="preload" href="/fonts/InterTight-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-      </head>
       <body className="min-h-screen text-ink">
         <a href="#main" className="skip-link">Zum Inhalt springen</a>
         {/* Floating navigation layer (HIG): separate glass elements over a
@@ -75,7 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SampleBanner enabled={isDemoMode()} />
         <StorageNotice />
 
-        <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-28 pt-4 md:pb-10">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-6 pt-4 md:pb-10">{children}</main>
 
         <BottomNav />
         <Onboarding />

@@ -56,7 +56,9 @@ export function SwipeRow({
       ref={ref}
       onScroll={update}
       style={{ WebkitMaskImage: mask, maskImage: mask }}
-      className={`no-scrollbar -mx-2 -my-2 flex snap-x gap-4 overflow-x-auto px-2 pb-4 pt-2 ${className}`}
+      // scroll-px keeps the snap point inside the padding; snapping flush to
+      // the clip edge cut the first card's corner and switched on the fade.
+      className={`no-scrollbar -mx-2 -my-2 flex snap-x scroll-px-2 gap-4 overflow-x-auto px-2 pb-4 pt-2 ${className}`}
     >
       {children}
     </div>

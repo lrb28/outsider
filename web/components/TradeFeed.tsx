@@ -124,18 +124,59 @@ export function TradeFeed({
             const disc = disclosureLabel(perf, r.disclosedAt, today);
             const perfCls = disc.muted ? subCls : perf! >= 0 ? "text-bull" : "text-bear";
             const company = companyName(r.ticker, r.securityName);
+            const actor = r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName;
+            const insider = r.entityType === "corporate_insider";
+            const toneCls = sig.tone === "bull" ? "text-bull" : sig.tone === "bear" ? "text-bear" : nameCls;
+            const perfText = r.priceAsOf && isStaleDate(r.priceAsOf) ? "Kurs veraltet" : disc.text;
             return (
               <button
                 key={r.id}
                 onClick={() => setSelected(r)}
-                className={`grid w-full grid-cols-2 ${grid} items-center gap-3 border-b px-4 py-3 text-left transition last:border-0 ${rowBorder}`}
+                className={`cv-row block w-full border-b px-4 py-3 text-left transition last:border-0 ${rowBorder}`}
               >
+                {/* Phone: one list row — picture, who, what, how much. */}
+                <div className="flex items-center gap-3 md:hidden">
+                  <div className="relative shrink-0">
+                    {!showActor || insider ? (
+                      <CompanyLogo ticker={r.ticker} company={company} size={42} rounded="rounded-[12px]" />
+                    ) : (
+                      <>
+                        <Avatar name={actor} src={r.entityPhoto} kind={auraOf(r.entityType)} size={42} />
+                        <div className="absolute -bottom-1 -right-1.5 flex">
+                          <CompanyLogo ticker={r.ticker} company={company} size={20} rounded="rounded-[7px]" className="logo-lift" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className={`flex items-center gap-1 truncate text-[15px] font-semibold leading-tight ${nameCls}`}>
+                      <span className="truncate">{showActor ? actor : company}</span>
+                      {showActor && r.highlight && <Icon name="star" className="h-3.5 w-3.5 shrink-0 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
+                    </div>
+                    <div className={`mt-0.5 truncate text-[13px] ${subCls}`}>
+                      <span className={`font-medium ${toneCls}`}>{sig.text}</span>
+                      {" · "}
+                      {showActor ? company : fixTicker(r.ticker, company) ?? "—"}
+                    </div>
+                    <div className={`mt-0.5 truncate text-[12px] ${subCls}`}>
+                      {r.sizeDisplay} · {formatDate(r.disclosedAt)}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className={`${disc.muted ? "max-w-[5.5rem] text-[11px] leading-tight" : "text-[15px] font-semibold tabular-nums"} ${perfCls}`}>
+                      {perfText}
+                    </div>
+                    {!disc.muted && <div className={`text-[11px] ${subCls}`}>seit Meldung</div>}
+                  </div>
+                </div>
+
+                <div className={`hidden ${grid} items-center gap-3 md:grid`}>
                 {showActor && (
                   <div className="flex items-center gap-3">
-                    <Avatar name={r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName} src={r.entityPhoto} kind={auraOf(r.entityType)} size={38} />
+                    <Avatar name={actor} src={r.entityPhoto} kind={auraOf(r.entityType)} ticker={insider ? r.ticker : null} company={company} size={38} />
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
-                        <span className="truncate">{r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName}</span>
+                        <span className="truncate">{actor}</span>
                         {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
                       </div>
                       <div className={`flex items-center gap-1 text-xs ${subCls}`}><i className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(var(--aura-${auraOf(r.entityType)}))` }} />{TYP[r.entityType]}</div>
@@ -168,9 +209,10 @@ export function TradeFeed({
                   <div
                     className={`${disc.muted ? "text-xs" : "text-sm font-semibold"} ${perfCls}`}
                   >
-                    {r.priceAsOf && isStaleDate(r.priceAsOf) ? "Kurs veraltet" : disc.text}
+                    {perfText}
                   </div>
                   <div className={`inline-flex items-center gap-0.5 text-[11px] ${subCls}`}>Details<Icon name="chevronRight" className="h-3 w-3" /></div>
+                </div>
                 </div>
               </button>
             );

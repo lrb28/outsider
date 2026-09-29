@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { formatDate } from "@/lib/format";
+import { useWidth } from "@/lib/chart";
+
+import { formatDate, pctOf } from "@/lib/format";
 
 export interface ChartSeries {
   key: string;
@@ -77,18 +79,10 @@ export function DepotChart({
   zeroLine?: boolean;
   header?: boolean;
 }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(720);
+  const { ref: wrapRef, width: measured } = useWidth<HTMLDivElement>(320);
+  const w = Math.max(240, measured);
   const [hover, setHover] = useState<number | null>(null);
-
-  useEffect(() => {
-    const el = wrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(280, e.contentRect.width)));
-    ro.observe(el);
-    setW(Math.max(280, el.getBoundingClientRect().width || 720));
-    return () => ro.disconnect();
-  }, []);
+  const box = useRef<HTMLDivElement | null>(null);
 
   const main = series[0];
   const dates = useMemo(() => main?.points.map((p) => p.date) ?? [], [main]);
@@ -137,7 +131,7 @@ export function DepotChart({
   const fmtAxis = formatAxis ?? format;
 
   const onMove = (clientX: number) => {
-    const r = wrapRef.current?.getBoundingClientRect();
+    const r = box.current?.getBoundingClientRect();
     if (!r) return;
     const rel = clientX - r.left - PAD_L;
     const innerW = w - PAD_L - PAD_R;
@@ -145,13 +139,15 @@ export function DepotChart({
     setHover(Math.max(0, Math.min(dates.length - 1, i)));
   };
 
-  const labelEvery = Math.max(1, Math.floor(dates.length / 5));
+  // As many dates as fit (about 72 px each), so they never run together.
+  const slots = Math.max(2, Math.floor((w - PAD_L - PAD_R) / 72));
+  const labelEvery = Math.max(1, Math.ceil(dates.length / slots));
   const xLabels = dates
     .map((d, i) => ({ d, i }))
     .filter(({ i }) => i % labelEvery === 0 && i < dates.length - labelEvery / 2);
 
   return (
-    <div ref={wrapRef} className="w-full select-none">
+    <div ref={(el) => { box.current = el; wrapRef(el); }} className="w-full select-none">
       {header && (
         <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           {series.map((s, si) => {
@@ -314,7 +310,7 @@ export function DepotChart({
 export function ReturnBars({
   data,
   height = 150,
-  formatValue = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} %`,
+  formatValue = (v: number) => pctOf(v, 1),
 }: {
   data: { key: string; r: number }[];
   height?: number;
@@ -324,46 +320,44 @@ export function ReturnBars({
   if (data.length === 0) {
     return <div className="py-8 text-center text-sm text-subtle">Noch keine volle Periode.</div>;
   }
-  const max = Math.max(...data.map((d) => Math.abs(d.r)), 0.02);
-  const zeroPct = 50;
+  // The baseline sits where the data needs it: at the bottom when every
+  // period gained, in between only when there are losses to show.
+  const LABEL = 18;
+  const pos = Math.max(0, ...data.map((d) => d.r));
+  const neg = Math.max(0, ...data.map((d) => -d.r));
+  const span = pos + neg || 0.02;
+  const area = height - LABEL * (neg > 0 ? 2 : 1);
+  const base = LABEL + (pos / span) * area;
 
   return (
     <div>
-      <div className="flex items-end gap-2" style={{ height }}>
+      <div className="relative flex gap-2" style={{ height }}>
+        <div className="absolute inset-x-0 h-px bg-hair" style={{ top: base }} />
         {data.map((d, i) => {
-          const h = (Math.abs(d.r) / max) * 45;
+          const h = Math.max(2, (Math.abs(d.r) / span) * area);
           const up = d.r >= 0;
           return (
             <div
               key={d.key}
-              className="relative flex h-full flex-1 flex-col justify-center"
+              className="relative h-full flex-1"
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}
             >
-              <div className="relative h-full">
-                <div className="absolute inset-x-0" style={{ top: `${zeroPct}%` }}>
-                  <div className="h-px bg-slate-200" />
-                </div>
-                <div
-                  className={`absolute inset-x-1 rounded-md transition-all ${
-                    up ? "bg-bull-fill" : "bg-bear-fill"
-                  } ${hover === i ? "opacity-100" : "opacity-85"}`}
-                  style={
-                    up
-                      ? { bottom: `${zeroPct}%`, height: `${h}%` }
-                      : { top: `${zeroPct}%`, height: `${h}%` }
-                  }
-                />
-                <div
-                  className="absolute inset-x-0 text-center text-[10px] font-semibold tabular-nums"
-                  style={
-                    up
-                      ? { bottom: `calc(${zeroPct}% + ${h}%)`, color: "rgb(var(--bull))" }
-                      : { top: `calc(${zeroPct}% + ${h}%)`, color: "rgb(var(--bear))" }
-                  }
-                >
-                  {formatValue(d.r)}
-                </div>
+              <div
+                className={`bar-3d absolute inset-x-1 transition-opacity ${up ? "rounded-t-lg bg-bull-fill" : "rounded-b-lg bg-bear-fill"} ${hover === null || hover === i ? "opacity-100" : "opacity-60"}`}
+                style={{
+                  top: up ? base - h : base,
+                  height: h,
+                  boxShadow: "0 2px 6px rgb(0 0 0 / 0.12)",
+                  transformOrigin: up ? "bottom" : "top",
+                  animation: `riseY 0.7s cubic-bezier(0.32,0.72,0,1) ${i * 60}ms both`,
+                }}
+              />
+              <div
+                className={`absolute inset-x-0 text-center text-[11px] font-semibold tabular-nums ${up ? "text-bull" : "text-bear"}`}
+                style={up ? { top: base - h - LABEL + 2 } : { top: base + h + 2 }}
+              >
+                {formatValue(d.r)}
               </div>
             </div>
           );

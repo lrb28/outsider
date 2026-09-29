@@ -69,14 +69,14 @@ function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void 
               <span className="flex h-9 w-9 items-center justify-center rounded-[11px] text-white transition-colors duration-700" style={{ background: `rgb(var(--aura-${w.aura}))` }}>
                 <Icon name={w.icon} className="h-5 w-5" />
               </span>
-              <span className="font-display text-[40px] font-bold leading-none tracking-[-0.04em]">{w.word}</span>
+              <span className="font-display text-[40px] font-bold leading-none tracking-[-0.02em]">{w.word}</span>
             </div>
           );
         })}
       </div>
 
       <div className="relative mt-auto px-7 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-white">
-        <h2 id="onboarding-title" className="max-w-sm font-display text-[34px] font-bold leading-[1.02] tracking-[-0.04em]">Sieh, was die Mächtigen kaufen.</h2>
+        <h2 id="onboarding-title" className="max-w-sm font-display text-[34px] font-bold leading-[1.02] tracking-[-0.02em]">Sieh, was die Mächtigen kaufen.</h2>
         <p className="mt-3 max-w-sm text-[15px] leading-snug text-white/80">Investoren, Insider und Abgeordnete müssen ihre Trades offenlegen. ĀURA zeigt sie dir – verständlich und mit Quelle.</p>
         <div className="mt-7 grid grid-cols-2 gap-3">
           <button ref={start} onClick={onStart} className="press inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-[#fff] text-[16px] font-semibold text-black shadow-[0_8px_24px_rgb(0_0_0/0.18)]">Los geht’s</button>
@@ -143,7 +143,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
           return (
             <div key={s.kind} className="fade-up py-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-[11px] text-white" style={{ background: `rgb(var(--aura-${s.aura}))` }}><Icon name={s.icon} className="h-5 w-5" /></span>
-              <h2 id="onboarding-title" className="mt-3 font-display text-[28px] font-bold leading-tight tracking-[-0.03em]">{s.title}</h2>
+              <h2 id="onboarding-title" className="mt-3 font-display text-[28px] font-bold leading-tight tracking-[-0.015em]">{s.title}</h2>
               <p className="mt-1 max-w-sm text-[15px] leading-snug text-subtle">{s.text}</p>
               <div className="no-scrollbar -mx-6 mt-4 grid max-h-[34vh] grid-cols-4 gap-x-2 gap-y-4 overflow-y-auto px-6 pb-2 sm:grid-cols-6">
                 {list === null

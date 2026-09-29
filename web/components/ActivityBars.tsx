@@ -38,12 +38,25 @@ export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRo
   const max = Math.max(1, ...data.map((d) => Math.max(d.buys, d.sells)));
   const mid = height / 2;
   const slot = width / data.length;
-  const barW = Math.max(6, Math.min(22, slot * 0.56));
-  const h = (v: number) => (v / max) * (mid - 14);
+  const barW = Math.max(8, Math.min(24, slot * 0.58));
+  // Cylinders seen slightly from above: an elliptical cap at the end away
+  // from the baseline, a body lit from the left, a soft shadow on the card.
+  const capRy = Math.max(2, barW * 0.2);
+  const h = (v: number) => (v / max) * (mid - 16 - capRy);
   const total = data.reduce((a, d) => a + d.buys + d.sells, 0);
-  if (total === 0) return null;
+  if (total === 0) {
+    return <p className="py-6 text-center text-[14px] text-subtle">Keine Käufe oder Verkäufe in den letzten {months} Monaten.</p>;
+  }
 
   const cur = hover != null ? data[hover] : null;
+  const body = (tone: "bull" | "bear") => (
+    <linearGradient id={`${gid}-${tone}`} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stopColor={`rgb(var(--${tone}-deep))`} />
+      <stop offset="32%" stopColor={`rgb(var(--${tone}-hi))`} />
+      <stop offset="62%" stopColor={`rgb(var(--${tone}-fill))`} />
+      <stop offset="100%" stopColor={`rgb(var(--${tone}-deep))`} />
+    </linearGradient>
+  );
 
   return (
     <div>
@@ -56,29 +69,44 @@ export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRo
         onPointerLeave={() => setHover(null)}
       >
         <svg width={width} height={height} className="block overflow-visible">
-          {/* Bars glow at the tip and fade into the baseline. */}
           <defs>
-            <linearGradient id={`${gid}-up`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(var(--bull-fill))" />
-              <stop offset="100%" stopColor="rgb(var(--bull-fill))" stopOpacity="0.35" />
-            </linearGradient>
-            <linearGradient id={`${gid}-down`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgb(var(--bear-fill))" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="rgb(var(--bear-fill))" />
-            </linearGradient>
+            {body("bull")}
+            {body("bear")}
+            <radialGradient id={`${gid}-cap-bull`} cx="40%" cy="40%" r="70%">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.7" />
+              <stop offset="100%" stopColor="rgb(var(--bull-hi))" />
+            </radialGradient>
+            <radialGradient id={`${gid}-cap-bear`} cx="40%" cy="40%" r="70%">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="rgb(var(--bear-hi))" />
+            </radialGradient>
+            <filter id={`${gid}-shadow`} x="-50%" y="-20%" width="200%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.18" />
+            </filter>
           </defs>
-          <line x1={0} x2={width} y1={mid} y2={mid} className="stroke-ink/20" strokeWidth="1" />
+          <line x1={0} x2={width} y1={mid} y2={mid} className="stroke-ink/15" strokeWidth="1" />
           {data.map((d, i) => {
             const cx = slot * i + slot / 2;
+            const x = cx - barW / 2;
             const dim = hover != null && hover !== i;
+            const up = h(d.buys);
+            const down = h(d.sells);
             return (
               <g key={d.key} opacity={dim ? 0.35 : 1} style={{ transition: "opacity 200ms" }} onPointerEnter={() => setHover(i)} onPointerDown={() => setHover(i)}>
                 <rect x={slot * i} y={0} width={slot} height={height} fill="transparent" />
                 {d.buys > 0 && (
-                  <rect x={cx - barW / 2} y={mid - 1 - h(d.buys)} width={barW} height={h(d.buys)} rx={Math.min(4, barW / 2)} fill={`url(#${gid}-up)`} className="rise-y" style={{ animationDelay: `${i * 35}ms` }} />
+                  <g className="rise-y" style={{ animationDelay: `${i * 35}ms` }} filter={`url(#${gid}-shadow)`}>
+                    <rect x={x} y={mid - 1 - up} width={barW} height={up} fill={`url(#${gid}-bull)`} />
+                    <ellipse cx={cx} cy={mid - 1} rx={barW / 2} ry={capRy} fill={`url(#${gid}-bull)`} />
+                    <ellipse cx={cx} cy={mid - 1 - up} rx={barW / 2} ry={capRy} fill={`url(#${gid}-cap-bull)`} />
+                  </g>
                 )}
                 {d.sells > 0 && (
-                  <rect x={cx - barW / 2} y={mid + 1} width={barW} height={h(d.sells)} rx={Math.min(4, barW / 2)} fill={`url(#${gid}-down)`} className="rise-y" style={{ animationDelay: `${i * 35}ms`, transformOrigin: "top" }} />
+                  <g className="rise-y" style={{ animationDelay: `${i * 35}ms`, transformOrigin: "top" }} filter={`url(#${gid}-shadow)`}>
+                    <rect x={x} y={mid + 1} width={barW} height={down} fill={`url(#${gid}-bear)`} />
+                    <ellipse cx={cx} cy={mid + 1 + down} rx={barW / 2} ry={capRy} fill={`url(#${gid}-bear)`} />
+                    <ellipse cx={cx} cy={mid + 1} rx={barW / 2} ry={capRy} fill={`url(#${gid}-cap-bear)`} opacity="0.85" />
+                  </g>
                 )}
                 <text x={cx} y={height - 1} textAnchor="middle" className="fill-subtle text-[10px]">{d.label}</text>
               </g>
@@ -94,8 +122,9 @@ export function ActivityBars({ rows, months = 12, height = 150 }: { rows: FeedRo
         )}
       </div>
       <div className="mt-2 flex gap-4 text-[13px] text-subtle">
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-[3px] bg-bull-fill" />Käufe</span>
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-[3px] bg-bear-fill" />Verkäufe</span>
+        <span className="flex items-center gap-1.5"><i className="dot-3d" style={{ ["--c" as string]: "rgb(var(--bull-fill))" }} />Käufe</span>
+        <span className="flex items-center gap-1.5"><i className="dot-3d" style={{ ["--c" as string]: "rgb(var(--bear-fill))" }} />Verkäufe</span>
+        <span className="ml-auto">letzte {months} Monate</span>
       </div>
     </div>
   );

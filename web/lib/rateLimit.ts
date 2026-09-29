@@ -15,6 +15,8 @@ export interface RateResult { allowed: boolean; remaining: number; retryAfterSec
 // 40er-, ISIN-Auflösung in 20er-Blöcken. Ein Depot mit 300 Positionen braucht
 // beim Laden rund 30 Anfragen.
 export const UPSTREAM_RULE: RateRule = { limit: 60, windowMs: 60_000 };
+// A long list shows a few dozen logos at once; the CDN answers repeats.
+export const LOGO_RULE: RateRule = { limit: 400, windowMs: 60_000 };
 
 export function createRateLimiter(maxKeys = 5_000) {
   const windows = new Map<string, { start: number; count: number }>();
@@ -48,8 +50,8 @@ export function clientKey(headers?: { get(name: string): string | null }): strin
 
 const check = createRateLimiter();
 
-export function limitUpstream(route: string, req: { headers?: { get(name: string): string | null } }) {
-  const result = check(`${route}:${clientKey(req.headers)}`, UPSTREAM_RULE);
+export function limitUpstream(route: string, req: { headers?: { get(name: string): string | null } }, rule: RateRule = UPSTREAM_RULE) {
+  const result = check(`${route}:${clientKey(req.headers)}`, rule);
   if (result.allowed) return null;
   return NextResponse.json(
     { error: "Zu viele Anfragen. Bitte kurz warten und erneut versuchen." },

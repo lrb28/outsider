@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { abbrevMoney, companyName, weightPct } from "@/lib/format";
+import { abbrevMoney, companyName, weightPct, stockHref } from "@/lib/format";
 import type { HoldingRow } from "@/lib/types";
 
 /*
@@ -101,7 +101,7 @@ export function DepotSkyline({ holdings, aura = "investor", title = "Depot in 3D
   return (
     <section className="space-y-3">
       <div className="flex items-end justify-between gap-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.02em]">{title}</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">{title}</h2>
         <span className="text-[13px] text-subtle">Höhe = Gewicht · ziehen zum Drehen</span>
       </div>
       <div
@@ -169,7 +169,7 @@ export function DepotSkyline({ holdings, aura = "investor", title = "Depot in 3D
       <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
         {towers.slice(0, 6).map((t) =>
           t.ticker ? (
-            <Link key={t.key} href={`/stock/${encodeURIComponent(t.ticker)}`} className="chip !min-h-9 shrink-0 !px-3 text-[13px]">
+            <Link key={t.key} href={stockHref(t.ticker)} className="chip !min-h-9 shrink-0 !px-3 text-[13px]">
               <span className="font-semibold text-ink">{t.company}</span> <span className="tabular-nums">{weightPct(t.weight)}</span>
             </Link>
           ) : null,

@@ -14,6 +14,10 @@ name from the index.
 Run:
   PYTHONPATH=. DATABASE_URL=... python3 -m outsider_ingest.pipelines.ingest_house --year 2026
   ... --year 2025 --year 2024 --dry-run   # parse and print, write nothing
+  ... --refresh                            # re-read PTRs that are already stored
+
+PTRs already stored are skipped, so the daily run only downloads new ones;
+--refresh re-reads everything (e.g. after a parser fix).
 """
 
 from __future__ import annotations
@@ -40,8 +44,8 @@ def _d(iso):
         return None
 
 
-def ingest_house(year: int | None = None, max_ptrs: int = 500, dry_run: bool = False,
-                 directory: Directory | None = None) -> int:
+def ingest_house(year: int | None = None, max_ptrs: int = 1000, dry_run: bool = False,
+                 directory: Directory | None = None, refresh: bool = False) -> int:
     provider = config.get_filings_provider("house")
     refs = provider.list_filings("", ["P"], year=year)
     refs.sort(key=lambda r: (r.filed_at or date.min), reverse=True)  # newest first
@@ -58,8 +62,11 @@ def ingest_house(year: int | None = None, max_ptrs: int = 500, dry_run: bool = F
         conn = connect(config.DATABASE_URL)
         repo = Repository(conn)
 
-    n, skipped, matched = 0, 0, set()
+    n, skipped, known, matched = 0, 0, 0, set()
     for ref in refs[:max_ptrs]:
+        if repo is not None and not refresh and repo.filing_has_transactions(ref.source_url):
+            known += 1
+            continue
         try:
             pdf = provider.fetch_document(ref)
             rows = extract_transactions(pdf)
@@ -114,10 +121,10 @@ def ingest_house(year: int | None = None, max_ptrs: int = 500, dry_run: bool = F
         repo.commit()
     if conn is not None:
         conn.close()
-    print(f"House {year or 'current'}: {n} transactions from {len(refs[:max_ptrs])} recent PTRs "
-          f"({skipped} skipped/scanned, {len(matched)} members matched)"
+    print(f"House {year or 'current'}: {n} transactions from {len(refs[:max_ptrs]) - known} new PTRs "
+          f"({known} already stored, {skipped} skipped/scanned, {len(matched)} members matched)"
           f"{' — dry run, nothing written' if dry_run else ''}")
-    if not n:
+    if not n and not known:
         raise RuntimeError("House import produced no parsed transactions; check source availability and OCR coverage")
     return n
 
@@ -125,8 +132,9 @@ def ingest_house(year: int | None = None, max_ptrs: int = 500, dry_run: bool = F
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", type=int, action="append", help="repeat for several years, e.g. a one-off backfill")
-    ap.add_argument("--max-ptrs", type=int, default=500)
+    ap.add_argument("--max-ptrs", type=int, default=1000)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--refresh", action="store_true", help="re-read PTRs that are already stored")
     args = ap.parse_args()
     directory = None
     for year in dict.fromkeys(args.year or [None]):
@@ -134,7 +142,7 @@ def main() -> None:
             directory = directory or Directory.load()
         except Exception:  # noqa: BLE001 — ingest_house falls back to index names
             directory = None
-        ingest_house(year=year, max_ptrs=args.max_ptrs, dry_run=args.dry_run, directory=directory)
+        ingest_house(year=year, max_ptrs=args.max_ptrs, dry_run=args.dry_run, directory=directory, refresh=args.refresh)
 
 
 if __name__ == "__main__":

@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { pctOf } from "@/lib/format";
+
 // Risiko gegen Ertrag — die eine Sicht, die im Performance-Reiter noch fehlte.
 
-const pctStr = (v: number) => `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)} %`;
+const pctStr = (v: number) => pctOf(v, 1);
 
 export interface RiskPoint {
   ticker: string;
@@ -51,7 +53,7 @@ export function RiskReturnMap({ points }: { points: RiskPoint[] }) {
           <div className="text-right">
             <div className="text-sm font-semibold">{points[hover].name}</div>
             <div className="text-[11px] tabular-nums text-subtle">
-              Schwankung {(points[hover].vol * 100).toFixed(0)} % · Rendite{" "}
+              Schwankung {pctOf(points[hover].vol, 0, false)} · Rendite{" "}
               <span className={points[hover].ret >= 0 ? "text-bull" : "text-bear"}>
                 {pctStr(points[hover].ret)}
               </span>

@@ -9,10 +9,17 @@ it, colour only where it carries meaning.
 - Written **ĀURA** (bar over the first A) in the wordmark and headlines,
   **AURA** where a plain ASCII name is needed (app name, share titles).
 - The wordmark is one flat path (`web/lib/wordmark.ts`), generated from Inter
-  Tight at weight 620 with 0.14 em tracking by `web/scripts/generate-wordmark.py`.
+  Tight (OFL, only in `web/scripts/fonts`, not loaded by the site) at weight
+  620 with 0.14 em tracking by `web/scripts/generate-wordmark.py`.
   It uses `currentColor`; never add effects to it.
-- App icon: a white Ā on the three auras over near-black (`web/app/icon.svg`,
-  PNGs in `web/public`).
+- App icon: the user's "3D gloss" icon from Figma (file lDOK5IkoP0lFNnTxIsxuFK,
+  node 1:11): a white Ā on a diagonal aura gradient (blue left, orange top
+  right, magenta bottom right), inner bevel shadows and top/right gloss
+  highlights. Rebuilt crisp from the same letter path and Figma's effect
+  values; iOS gets a full-bleed square (`app/apple-icon.png`,
+  `public/apple-touch-icon.png`, it applies its own mask), the manifest gets
+  rounded 192/512 and a full-bleed maskable 512. `web/app/icon.svg` is the
+  flat tab version of the same gradient. Source: `web/scripts/icon/app-icon.html`.
 
 ## Colour
 
@@ -26,8 +33,11 @@ light and dark values; Tailwind names map onto them (`web/tailwind.config.ts`).
 | `surface-2` | #F2F2F7 | #2C2C2E | fills, chips, tracks |
 | `ink` | #1D1D1F | #F5F5F7 | text, primary action |
 | `subtle` | #6C6C70 | #98989D | secondary text (≥ 4.5:1) |
-| `bull` / `bull-fill` | #248A3D / #34C759 | #30D158 | gains (text / marks) |
-| `bear` / `bear-fill` | #D70015 / #FF3B30 | #FF6961 / #FF453A | losses |
+| `bull` / `bull-fill` | #0A7F52 / #0FA36B | #3DDC97 / #2FD592 | gains (text / marks), emerald |
+| `bear` / `bear-fill` | #C8243B / #E8384F | #FF7D8B / #FF6B7D | losses (text / marks), rose |
+| `*-hi` / `*-deep` | lit / shaded steps of bull, bear, flat | | 3D chart shading only |
+| `flat-fill` | #9BA1AD | #7C8290 | "held", neutral marks |
+| `seg-thumb` | #FFFFFF | #636366 | selected segment |
 
 **The three auras** – identity colours for who disclosed. Validated for
 colour-vision deficiency in both modes with the dataviz validator (all pairs):
@@ -43,9 +53,14 @@ change is always spelled out with ▲/▼ and a number, never colour alone.
 
 ## Type
 
-- Text: the system face (SF Pro on Apple devices), 15–17 px.
-- Headlines and large numerals: Inter Tight (self-hosted, OFL), bold, tight
-  tracking (−0.02 to −0.045 em). Large title 34 px; numerals tabular.
+- One family: the system face, SF Pro on Apple devices (`font-sans` for text,
+  `font-display` for headlines, which picks SF Pro Display). It is never
+  self-hosted: Apple's licence only covers the copy on the device. Other
+  platforms fall back to Segoe UI or Roboto.
+- Text 15–17 px. Headlines and large numerals bold with light negative
+  tracking (−0.01 em for section titles up to −0.025 em for the hero); SF Pro
+  Display is spaced for large sizes, so go no tighter. Large title 34 px;
+  numerals tabular.
 
 ## Surfaces and controls
 
@@ -56,7 +71,17 @@ change is always spelled out with ▲/▼ and a number, never colour alone.
 - Buttons: `btn-primary` (solid capsule) for the one main action,
   `btn-capsule` (frosted capsule) for secondary and paired choices, round
   capsules for back/close. Motion uses the `ease-spring` curve (no overshoot).
-- Segmented controls slide one selection "droplet" (`SegmentedControl`).
+- Segmented controls slide one selection "droplet" (`SegmentedControl`); they
+  are for local switches inside a card (chart range, Investoren/Insider).
+- Page sections and list filters at the top of a page use the `ChipBar`
+  (Entdecken, Meldungen, Depot): 36 px capsules on `surface-2`, the chosen one
+  solid ink, aura dot for people categories. Same look on every tab.
+- Anything that answers "who/what is behind this?" opens a `Sheet` instead of
+  a new page: key figures (Investoren mit Bestand, Zugänge, Abgänge), legend
+  rows, the "So liest du die Daten" explainer. The page stays visible behind
+  it as frosted glass (blurred, milky tint, `dialog::backdrop`); swipe down,
+  tap outside or Escape closes it.
+- Key figures that can be opened carry a chevron (`StatRow` with `onClick`).
 
 ## Liquid Glass
 
@@ -71,7 +96,38 @@ Follow the dataviz method: one axis, thin smooth lines (monotone, never
 invented extremes), recessive hairline grid, crosshair + tooltip on hover,
 touch and arrow keys, draw-in animation that respects reduced motion.
 Categorical colours come from `web/lib/palette.ts` in fixed order; past eight
-series, fold into "Übrige".
+series, fold into "Übrige". Groups (sectors, regions, asset classes) take the
+palette by size too — never fixed hex values, which vanished on dark cards.
+
+Volume, where it helps reading: ring charts (`Donut`) are arcs with round
+ends and small gaps, lit along their length and lifted by a soft glow in their
+own colour; they sweep in clockwise, glide to new values when the data
+changes and the touched segment grows and steps out. Activity bars are lit
+cylinders (`ActivityBars`), stacked and yearly bars carry `.bar-3d`, legends
+use `.dot-3d`. Lines stay flat; price and Depot lines take emerald or rose by
+the result of the shown range.
+
+Investor activity on a stock is a diverging ramp, deep to light emerald,
+grey, light to deep rose: neu eingestiegen · aufgestockt · unverändert ·
+reduziert · ausgestiegen (each fund's latest 13F against the quarter before).
+
+Numbers are German everywhere (`num`, `pctOf` in `web/lib/format.ts`):
+"22,4 %", "$299,3 Mrd.", "$31,1K", with a no-break space before "%" and units.
+
+## Pictures
+
+People: official congressional portraits; credited Commons photos for
+investors (`web/lib/portraits.ts`, matched by fund or person name); else the
+fund's logo (`FUND_LOGOS`, files in `web/public/funds`: website icons or the
+public-domain text logos on Commons cut down to the mark; `tile` files are
+finished round tiles); insiders show their company's logo. Company logos load
+through `/api/logo` (Parqet by ISIN from the 13F CUSIP first, then by symbol,
+then FMP; PNG only, cached a week). `CompanyLogo` reads each file: a mark that
+runs to the border (wordmarks) is inset on its own field colour, a white mark
+on transparency gets a dark tile. Shadows go on the tile itself
+(`.logo-lift`, `.face-lift`), never on a wrapper, whose line box is taller
+than the logo and shows as a pale band. Logo groups sit side by side, never
+overlapped.
 
 ## Motion
 

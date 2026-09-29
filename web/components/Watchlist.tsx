@@ -1,5 +1,6 @@
 "use client";
 
+import { stockHref } from "@/lib/format";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -88,7 +89,7 @@ export function Watchlist() {
       {myStk.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {myStk.map((s) => (
-            <Link key={s.ticker} href={`/stock/${s.ticker}`} className="card lcard-hover press flex items-center gap-3 p-3">
+            <Link key={s.ticker} href={stockHref(s.ticker ?? "")} className="card lcard-hover press flex items-center gap-3 p-3">
               <CompanyLogo ticker={s.ticker} company={s.company} size={38} />
               <div className="min-w-0">
                 <div className="truncate text-[15px] font-semibold">{s.company}</div>

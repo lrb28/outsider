@@ -178,38 +178,3 @@ export function assetMeta(ticker: string | null | undefined): AssetMeta {
   if (/-USD$/.test(t)) return CRYPTO;
   return UNKNOWN;
 }
-
-export const SECTOR_COLOR: Record<Sector, string> = {
-  Technologie: "#1c1c1e",
-  Kommunikation: "#0ea5e9",
-  "Zyklischer Konsum": "#f59e0b",
-  Basiskonsum: "#16a34a",
-  Gesundheit: "#db2777",
-  Finanzen: "#7c3aed",
-  Industrie: "#64748b",
-  Energie: "#ea580c",
-  Rohstoffe: "#a16207",
-  Versorger: "#0d9488",
-  Immobilien: "#be123c",
-  "Index / ETF": "#2563eb",
-  Krypto: "#f97316",
-  Unbekannt: "#cbd5e1",
-};
-
-export const REGION_COLOR: Record<Region, string> = {
-  USA: "#1c1c1e",
-  Europa: "#0ea5e9",
-  Asien: "#f59e0b",
-  Schwellenländer: "#16a34a",
-  Global: "#7c3aed",
-  Unbekannt: "#cbd5e1",
-};
-
-export const ASSET_COLOR: Record<AssetClass, string> = {
-  Aktie: "#1c1c1e",
-  ETF: "#0ea5e9",
-  Krypto: "#f97316",
-  Anleihe: "#16a34a",
-  Rohstoff: "#a16207",
-  Unbekannt: "#cbd5e1",
-};

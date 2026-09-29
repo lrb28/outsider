@@ -1,5 +1,7 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { stockHref } from "@/lib/format";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -12,13 +14,13 @@ export function SearchBox() {
   const [items,setItems] = useState<Hit[]>([]); const [loading,setLoading] = useState(false);
   const [failed,setFailed] = useState(false); const [active,setActive] = useState(-1);
   const loaded = useRef(false); const busy = useRef(false); const box = useRef<HTMLDivElement>(null);
-  const router = useRouter(); const id = useId();
+  const router = useRouter(); const id = useId(); const path = usePathname();
   async function ensureData() {
     if (loaded.current || busy.current) return;
     busy.current = true; setLoading(true); setFailed(false);
     const results = await Promise.allSettled([
       fetchCatalogue<InvestorsResponse>("/api/investors").then(d => d.rows.map(r => ({name:r.person ?? r.fund,keywords:`${r.person} ${r.fund}`,href:`/investor/${r.slug}`,kind:"Investor"}))),
-      fetchCatalogue<StocksResponse>("/api/stocks").then(d => d.rows.filter(r => r.ticker).map(r => ({name:r.company,keywords:`${r.company} ${r.ticker}`,href:`/stock/${encodeURIComponent(r.ticker!)}`,kind:r.ticker!,ticker:r.ticker!}))),
+      fetchCatalogue<StocksResponse>("/api/stocks").then(d => d.rows.filter(r => r.ticker).map(r => ({name:r.company,keywords:`${r.company} ${r.ticker}`,href:stockHref(r.ticker!),kind:r.ticker!,ticker:r.ticker!}))),
       fetchCatalogue<PoliticiansResponse>("/api/politicians").then(d => d.rows.map(r => ({name:r.name,keywords:`${r.name} ${r.seat ?? ""}`,href:`/politician/${r.slug}`,kind:"Politiker",photo:r.photo}))),
     ]);
     setItems(results.flatMap(result => result.status === "fulfilled" ? result.value : []));
@@ -31,16 +33,36 @@ export function SearchBox() {
   const needle = q.trim().toLocaleLowerCase("de-DE");
   const hits = needle ? items.filter(r => r.keywords.toLocaleLowerCase("de-DE").includes(needle)).slice(0,10) : [];
   const visible = open && !!needle;
-  const choose = (hit: Hit) => { setOpen(false);setQ("");setActive(-1);router.push(hit.href); };
-  return <div ref={box} className="relative" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}>
+  const reset = () => { setOpen(false);setQ("");setActive(-1);input.current?.blur(); };
+  const choose = (hit: Hit) => { reset();router.push(hit.href); };
+  // A result is a real link, so a tap navigates even if iOS has already moved
+  // focus away from the field; the new page then closes the list.
+  useEffect(() => { setOpen(false);setQ("");setActive(-1); }, [path]);
+  // Close only when focus really lands elsewhere (keyboard Tab). A tap on a
+  // result blurs the field on iOS before the click arrives; closing then
+  // removed the list under the finger and the tap hit nothing.
+  return <div ref={box} className="relative" onBlur={e => { const next = e.relatedTarget as Node | null; if (next && !e.currentTarget.contains(next)) setOpen(false); }}>
     <label htmlFor={id} className="sr-only">Wertpapiere, Investoren und Politiker suchen</label>
     <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-subtle" />
-    <input ref={input} id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={`${id}-results`} aria-activedescendant={visible && active >= 0 && hits[active] ? `${id}-${active}` : undefined} autoComplete="off" value={q} placeholder="Suchen …" onFocus={() => {void ensureData();setOpen(true);}} onChange={e => {setQ(e.target.value);setOpen(true);setActive(-1);}} onKeyDown={e => { if(e.key === "Escape") {setOpen(false);setActive(-1);} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {e.preventDefault();setOpen(true);setActive(old => hits.length ? (old + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length : -1);} else if(e.key === "Enter" && visible && hits[active]) {e.preventDefault();choose(hits[active]);} }} className="search-capsule h-11 w-32 rounded-full !pl-9 pr-3 text-[15px] text-ink outline-none placeholder:text-subtle transition-[width] duration-300 ease-spring focus:w-44 sm:w-48 sm:focus:w-60 md:w-36 lg:w-48"/>
+    <input ref={input} id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={`${id}-results`} aria-activedescendant={visible && active >= 0 && hits[active] ? `${id}-${active}` : undefined} autoComplete="off" value={q} placeholder="Suchen …" onFocus={() => {void ensureData();setOpen(true);}} onChange={e => {setQ(e.target.value);setOpen(true);setActive(-1);}} onKeyDown={e => { if(e.key === "Escape") {setOpen(false);setActive(-1);} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {e.preventDefault();setOpen(true);setActive(old => hits.length ? (old + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length : -1);} else if(e.key === "Enter" && visible) {e.preventDefault();if (hits[active]) choose(hits[active]); else {const term = q.trim();reset();router.push(`/feed?q=${encodeURIComponent(term)}`);}} }} className="search-capsule h-11 w-32 rounded-full !pl-9 pr-3 text-[15px] text-ink outline-none placeholder:text-subtle transition-[width] duration-300 ease-spring focus:w-44 sm:w-48 sm:focus:w-60 md:w-36 lg:w-48"/>
     {visible && <div className="glass absolute right-0 z-40 mt-2 max-h-[65dvh] w-[min(22rem,calc(100vw-2rem))] overflow-auto rounded-3xl p-2">
       {loading && <p role="status" className="p-3 text-sm text-subtle">Suche wird geladen …</p>}
       {failed && <div role="status" className="p-3 text-sm text-warn">Ein Teil der Suche ist nicht verfügbar. <button onClick={() => void ensureData()} className="underline">Erneut versuchen</button></div>}
-      {!loading && !failed && !hits.length && <p role="status" className="p-3 text-sm text-subtle">Keine Treffer für „{q}“.</p>}
-      <ul id={`${id}-results`} role="listbox" aria-label="Suchergebnisse">{hits.map((hit,index) => <li key={hit.href} id={`${id}-${index}`} role="option" aria-selected={index === active} onPointerDown={e => e.preventDefault()} onClick={() => choose(hit)} onPointerMove={() => setActive(index)} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink ${index === active ? "bg-ink/[0.06]" : ""}`}>{hit.ticker ? <CompanyLogo ticker={hit.ticker} company={hit.name} size={30} rounded="rounded-[9px]" /> : <Avatar name={hit.name} src={hit.photo} kind={hit.kind === "Politiker" ? "politician" : "investor"} size={30} />}<span className="min-w-0 flex-1 truncate font-medium">{hit.name}</span><span className="shrink-0 text-xs text-subtle">{hit.kind}</span></li>)}</ul>
+      {!loading && !failed && !hits.length && <p role="status" className="px-3 pb-1 pt-3 text-sm text-subtle">Keine Investoren, Aktien oder Abgeordneten zu „{q}“.</p>}
+      <ul id={`${id}-results`} role="listbox" aria-label="Suchergebnisse">{hits.map((hit,index) => <li key={hit.href} id={`${id}-${index}`} role="option" aria-selected={index === active}>
+        <Link href={hit.href} onClick={reset} onMouseDown={e => e.preventDefault()} onPointerMove={() => setActive(index)} className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink active:bg-ink/[0.08] ${index === active ? "bg-ink/[0.06]" : ""}`}>
+          {hit.ticker ? <CompanyLogo ticker={hit.ticker} company={hit.name} size={30} rounded="rounded-[9px]" /> : <Avatar name={hit.name} src={hit.photo} kind={hit.kind === "Politiker" ? "politician" : "investor"} size={30} />}
+          <span className="min-w-0 flex-1 truncate font-medium">{hit.name}</span><span className="shrink-0 text-xs text-subtle">{hit.kind}</span>
+        </Link>
+      </li>)}
+        {/* Insiders and every other ticker live in the disclosures. */}
+        <li role="option" aria-selected={false}>
+          <Link href={`/feed?q=${encodeURIComponent(q.trim())}`} onClick={reset} onMouseDown={e => e.preventDefault()} className="flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink active:bg-ink/[0.08]">
+            <span className="icon-ring h-[30px] w-[30px]"><Icon name="search" className="h-4 w-4 text-subtle" /></span>
+            <span className="min-w-0 flex-1 truncate">Alle Meldungen zu „{q.trim()}“</span>
+          </Link>
+        </li>
+      </ul>
       <p className="px-3 pt-2 text-[11px] text-subtle">↑ ↓ auswählen · Enter öffnen · Esc schließen</p>
     </div>}
   </div>;

@@ -91,9 +91,28 @@ class OpenFigiProvider(SymbolProvider):
         return data[0]
 
     @staticmethod
+    def _job(identifier: str, id_type: str, us_only: bool) -> dict:
+        """One mapping job. An unfiltered CUSIP lookup returns up to a hundred
+        foreign lines and often not the US one at all (Chevron came back as
+        Frankfurt's CHV, Philip Morris as 4I1), so ask for the US composite
+        first. Non-US issuers carry a CINS number (a letter first, e.g. ASML
+        N07059210), which OpenFIGI only maps as ID_CINS."""
+        if id_type == "ID_CUSIP" and identifier[:1].isalpha():
+            id_type = "ID_CINS"
+        job = {"idType": id_type, "idValue": identifier}
+        if us_only:
+            job["exchCode"] = "US"
+        return job
+
+    @staticmethod
     def _identity(cusip: str, id_type: str, data0: dict) -> SecurityIdentity:
+        ticker = data0.get("ticker")
+        # OpenFIGI writes share classes with a slash (BRK/B); SEC, logos and the
+        # app use a dot (BRK.B), and a slash would break the /stock/ URL.
+        if ticker:
+            ticker = ticker.strip().upper().replace("/", ".")
         return SecurityIdentity(
-            ticker=data0.get("ticker"),
+            ticker=ticker or None,
             figi=data0.get("figi"),
             name=data0.get("name"),
             cusip=cusip if id_type == "ID_CUSIP" else None,
@@ -107,11 +126,15 @@ class OpenFigiProvider(SymbolProvider):
             if cached is not None:
                 return cached
 
-        resp = self._post([{"idType": id_type, "idValue": identifier}], timeout=30)
-        payload = resp.json()
-        if not payload or "data" not in payload[0] or not payload[0]["data"]:
+        identity = None
+        for us_only in (True, False):
+            resp = self._post([self._job(identifier, id_type, us_only)], timeout=30)
+            payload = resp.json()
+            if payload and isinstance(payload[0], dict) and payload[0].get("data"):
+                identity = self._identity(identifier, id_type, self._pick(payload[0]["data"]))
+                break
+        if identity is None:
             return None
-        identity = self._identity(identifier, id_type, self._pick(payload[0]["data"]))
         if self.cache_put:
             self.cache_put(identifier, identity)
         return identity
@@ -120,15 +143,19 @@ class OpenFigiProvider(SymbolProvider):
         self, identifiers: Iterable[str], id_type: str = "ID_CUSIP"
     ) -> dict[str, SecurityIdentity]:
         """Resolve many identifiers at once. Returns {identifier: SecurityIdentity}
-        for those that mapped (unmapped ones are simply absent)."""
+        for those that mapped (unmapped ones are simply absent). US listings are
+        asked for first; whatever has none (a foreign-only line) is retried
+        without the exchange filter."""
         ids = [i for i in dict.fromkeys(identifiers) if i]  # unique, drop blanks
         out: dict[str, SecurityIdentity] = {}
-        for start in range(0, len(ids), self.batch_size):
-            chunk = ids[start : start + self.batch_size]
-            jobs = [{"idType": id_type, "idValue": c} for c in chunk]
-            resp = self._post(jobs, timeout=45)
-            for cusip, item in zip(chunk, resp.json()):
-                data = item.get("data") if isinstance(item, dict) else None
-                if data:
-                    out[cusip] = self._identity(cusip, id_type, self._pick(data))
+        for us_only in (True, False):
+            todo = [i for i in ids if i not in out]
+            for start in range(0, len(todo), self.batch_size):
+                chunk = todo[start : start + self.batch_size]
+                jobs = [self._job(c, id_type, us_only) for c in chunk]
+                resp = self._post(jobs, timeout=45)
+                for cusip, item in zip(chunk, resp.json()):
+                    data = item.get("data") if isinstance(item, dict) else None
+                    if data:
+                        out[cusip] = self._identity(cusip, id_type, self._pick(data))
         return out

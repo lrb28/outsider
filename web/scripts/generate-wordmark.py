@@ -1,6 +1,6 @@
 """Generate lib/wordmark.ts: the ĀURA wordmark as one SVG path.
 
-Letters come from Inter Tight (public/fonts, OFL) at a fixed weight with wide
+Letters come from Inter Tight (scripts/fonts, OFL) at a fixed weight with wide
 tracking; the bar over the first A is drawn at stem weight across the A's full
 width, a little above the cap height.
 
@@ -20,7 +20,7 @@ from fontTools.ttLib import TTFont
 from fontTools.varLib.instancer import instantiateVariableFont
 
 WEB = Path(__file__).resolve().parents[1]
-FONT = WEB / "public/fonts/InterTight-latin.woff2"
+FONT = WEB / "scripts/fonts/InterTight-latin.woff2"
 OUT = WEB / "lib/wordmark.ts"
 WEIGHT = 620
 TRACKING = 0.14  # em between letters

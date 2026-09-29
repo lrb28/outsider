@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 
 import { Donut } from "@/components/Donut";
+import { SegmentedControl } from "@/components/ui";
 import { CAT, OTHER } from "@/lib/palette";
 import { cAbbrev, cMoney } from "@/lib/money";
+import { pctOf } from "@/lib/format";
 
 export interface DivEntry {
   month: string; // YYYY-MM
@@ -109,19 +111,13 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
             Jede Farbe ist ein Wertpapier. Fahr über einen Balken für die Zusammensetzung.
           </p>
         </div>
-        <div className="no-scrollbar inline-flex overflow-x-auto rounded-full bg-slate-100 p-0.5 text-xs font-medium">
-          {["alle", ...years].map((y) => (
-            <button
-              key={y}
-              onClick={() => setYear(y)}
-              className={`press-sm shrink-0 rounded-full px-3 py-1 ${
-                year === y ? "bg-card text-ink shadow-card" : "text-subtle hover:text-ink"
-              }`}
-            >
-              {y === "alle" ? "Alle Jahre" : y}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Jahr"
+          size="sm"
+          options={["alle", ...years].map((y) => [y, y === "alle" ? "Alle Jahre" : y] as const)}
+          value={year}
+          onChange={setYear}
+        />
       </div>
 
       {/* Kopfzeile: reagiert auf Auswahl */}
@@ -302,7 +298,7 @@ export function DividendSplit({ entries }: { entries: DivEntry[] }) {
             segments={segs}
             size={150}
             countTo={total > 0 ? (focus.value / total) * 100 : 0}
-            countFormat={(v) => `${v.toFixed(0)} %`}
+            countFormat={(v) => pctOf(v / 100, 0, false)}
             centerBottom={focus.label.length > 15 ? focus.label.slice(0, 14) + "…" : focus.label}
             activeIndex={hover}
             onHover={setHover}
@@ -320,14 +316,11 @@ export function DividendSplit({ entries }: { entries: DivEntry[] }) {
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover(null)}
             >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: s.color }}
-              />
+              <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
               <span className="min-w-0 flex-1 truncate">{s.label}</span>
               <span className="tabular-nums text-subtle">{cMoney(s.value)}</span>
-              <span className="w-12 text-right font-semibold tabular-nums">
-                {total > 0 ? ((s.value / total) * 100).toFixed(1) : "0"} %
+              <span className="w-14 whitespace-nowrap text-right font-semibold tabular-nums">
+                {pctOf(total > 0 ? s.value / total : 0, 1, false)}
               </span>
             </div>
           ))}

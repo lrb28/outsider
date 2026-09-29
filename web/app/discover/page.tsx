@@ -9,9 +9,9 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
 import { SkeletonList } from "@/components/Skeleton";
-import { AuraCard, EmptyState, ListCard, ListRow, PageTitle, SegmentedControl, politicianLine } from "@/components/ui";
+import { AuraCard, ChipBar, EmptyState, ListCard, ListRow, PageTitle, politicianLine } from "@/components/ui";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { abbrevMoney, formatDate } from "@/lib/format";
+import { abbrevMoney, formatDate, stockHref } from "@/lib/format";
 import type {
   CollectionInvestor,
   CollectionItem,
@@ -27,20 +27,19 @@ import type {
 type Tab = "highlights" | "investors" | "stocks" | "politicians";
 
 const TABS = [
-  ["highlights", "Highlights"],
-  ["investors", "Investoren"],
-  ["politicians", "Politiker"],
-  ["stocks", "Aktien"],
+  { key: "highlights", label: "Highlights" },
+  { key: "investors", label: "Investoren", aura: "investor" },
+  { key: "politicians", label: "Politiker", aura: "politician" },
+  { key: "stocks", label: "Aktien" },
 ] as const;
 
+/** Three logos side by side: overlapping tiles cut each other's marks off. */
 function LogoTrio({ items }: { items: CollectionItem[] }) {
-  if (!items.length) return <div className="h-[52px]" />;
+  if (!items.length) return <div className="h-12" />;
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-2">
       {items.slice(0, 3).map((it, i) => (
-        <div key={(it.ticker ?? it.company) + i} style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i }} className="rounded-[14px] shadow-[0_2px_10px_rgb(0_0_0/0.12)]">
-          <CompanyLogo ticker={it.ticker} company={it.company} size={i === 0 ? 52 : 44} rounded="rounded-[14px]" />
-        </div>
+        <CompanyLogo key={(it.ticker ?? it.company) + i} ticker={it.ticker} company={it.company} size={48} rounded="rounded-[14px]" className="logo-lift" />
       ))}
     </div>
   );
@@ -51,8 +50,8 @@ function FaceTrio({ people, kind = "investor" }: { people: CollectionInvestor[];
   return (
     <div className="flex items-center">
       {people.slice(0, 3).map((p, i) => (
-        <div key={p.slug + i} style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_10px_rgb(0_0_0/0.14)]">
-          <Avatar name={p.person ?? p.fund} src={p.photo} kind={kind} size={i === 0 ? 52 : 44} />
+        <div key={p.slug + i} style={{ marginLeft: i === 0 ? 0 : -12, zIndex: 3 - i }} className="flex">
+          <Avatar name={p.person ?? p.fund} src={p.photo} kind={kind} size={i === 0 ? 52 : 44} className="face-lift" />
         </div>
       ))}
     </div>
@@ -70,7 +69,7 @@ export default function DiscoverPage() {
 function Discover() {
   const query = useSearchParams();
   const router = useRouter();
-  const tab = (TABS.some(([key]) => key === query.get("tab")) ? query.get("tab") : "highlights") as Tab;
+  const tab = (TABS.some((t) => t.key === query.get("tab")) ? query.get("tab") : "highlights") as Tab;
   const setTab = (key: Tab) => router.push(`/discover?tab=${key}`, { scroll: false });
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -99,7 +98,7 @@ function Discover() {
     <div className="space-y-6">
       <PageTitle title="Entdecken" subtitle="Was Investoren halten, Insider kaufen und Abgeordnete handeln – aus den Originalmeldungen." />
 
-      <SegmentedControl label="Bereiche" options={TABS} value={tab} onChange={setTab} className="fade-up" />
+      <ChipBar label="Bereiche" items={TABS} value={tab} onChange={setTab} className="fade-up" />
 
       {error && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
 
@@ -192,7 +191,7 @@ function Discover() {
             {sortedStocks.map((s) => (
               <ListRow
                 key={s.ticker ?? s.company}
-                href={`/stock/${encodeURIComponent(s.ticker ?? "")}`}
+                href={stockHref(s.ticker ?? "")}
                 leading={<CompanyLogo ticker={s.ticker} company={s.company} size={44} />}
                 title={s.company}
                 subtitle={`${s.investors} ${s.investors === 1 ? "Investor" : "Investoren"} · ${abbrevMoney(s.value)}`}

@@ -37,7 +37,7 @@ export function cMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   const s = currencySymbol();
   const n = v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return current === "EUR" ? `${n} ${s}` : `${s}${n}`;
+  return current === "EUR" ? `${n}\u00A0${s}` : `${s}${n}`;
 }
 
 /** Kompakt für Kacheln und Achsen: 40,4K € */
@@ -46,17 +46,18 @@ export function cAbbrev(v: number | null | undefined): string {
   const s = currencySymbol();
   const a = Math.abs(v);
   const sign = v < 0 ? "−" : "";
+  const de1 = (x: number) => x.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const num =
     a >= 1e9
-      ? `${(a / 1e9).toFixed(1)} Mrd.`
+      ? `${de1(a / 1e9)}\u00A0Mrd.`
       : a >= 1e6
-      ? `${(a / 1e6).toFixed(1)} Mio.`
+      ? `${de1(a / 1e6)}\u00A0Mio.`
       : a >= 1e4
-      ? `${(a / 1e3).toFixed(1)}K`
+      ? `${de1(a / 1e3)}K`
       : a >= 1e3
       ? a.toLocaleString("de-DE", { maximumFractionDigits: 0 })
       : a.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return current === "EUR" ? `${sign}${num} ${s}` : `${sign}${s}${num}`;
+  return current === "EUR" ? `${sign}${num}\u00A0${s}` : `${sign}${s}${num}`;
 }
 
 /** Mit Vorzeichen — für Gewinne und Verluste. */

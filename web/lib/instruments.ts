@@ -41,6 +41,18 @@ export function isinValid(s: string): boolean {
 }
 
 /**
+ * ISIN of a US security from its CUSIP (13F filings). Only CUSIPs of US
+ * issuers (leading digit) map to "US…"; CINS numbers of foreign issuers do
+ * not name their country, so they return null.
+ */
+export function isinFromCusip(cusip: string): string | null {
+  const c = cusip.trim().toUpperCase();
+  if (!/^[0-9][0-9A-Z]{8}$/.test(c)) return null;
+  for (let d = 0; d <= 9; d++) if (isinValid(`US${c}${d}`)) return `US${c}${d}`;
+  return null;
+}
+
+/**
  * Gepflegte ISIN → Yahoo-Symbol-Tabelle. Bewusst nur Papiere, die eindeutig
  * zuzuordnen sind. Alles andere geht an die Yahoo-Suche oder bleibt offen.
  *
