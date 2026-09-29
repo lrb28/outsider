@@ -1725,6 +1725,7 @@ function PositionsTable({
           const w = r.value != null && total > 0 ? r.value / total : null;
           const shown = sort === "day" ? r.dayPct : r.unrealPct;
           const shownAbs = sort === "day" ? r.dayAbs : r.unreal;
+          const importIssue = !!r.mismatch && r.mismatch.includes("Import");
           const sub = r.mismatch ? null : `${r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}${NBSP}St.${r.last != null ? ` · ${usd(r.last)}` : ""}`;
           const body = (
             <>
@@ -1737,9 +1738,9 @@ function PositionsTable({
                     {r.manualPrice != null ? " · manuell" : ""}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 truncate text-[13px] font-medium text-warn" title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}>
+                  <span className="flex items-center gap-1 truncate text-[13px] font-medium text-warn" title={importIssue ? `${r.mismatch}. Lösche die Buchungen und lade die Datei erneut hoch.` : `${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}>
                     <Icon name="danger" className="h-3.5 w-3.5 shrink-0" />
-                    Zuordnung prüfen
+                    {importIssue ? "Falsch importiert" : "Zuordnung prüfen"}
                   </span>
                 )}
               </span>

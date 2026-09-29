@@ -14,7 +14,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { isIsin, isinValid, SYMBOL_RE } from "./instruments";
-import { Txn, TxnKind, makeTxn, parseDate, parseNum } from "./portfolio";
+import { Txn, TxnKind, detectDecimal, makeTxn, parseDate, parseNum as parseAny } from "./portfolio";
 
 export interface ImportReport {
   txns: Txn[];
@@ -43,6 +43,10 @@ export interface ImportReport {
 // ── CSV-Grundlagen ──────────────────────────────────────────────────────────
 
 function detectSep(line: string): string {
+  // German exports separate with ";" because the comma is the decimal mark:
+  // when every comma sits between digits, ";" wins even on a tie
+  // ("AAPL;2,5;217,425").
+  if (line.includes(";") && !/(^|[^\d]),|,($|[^\d])/.test(line)) return ";";
   const counts = [",", ";", "\t"].map((s) => [s, (line.match(new RegExp(`\\${s}`, "g")) || []).length] as const);
   counts.sort((a, b) => b[1] - a[1]);
   return counts[0][1] > 0 ? counts[0][0] : ",";
@@ -245,6 +249,13 @@ export function importCsv(text: string): ImportReport {
 
   const at = (cols: string[], i: number) => (i >= 0 && i < cols.length ? cols[i] : "");
 
+  // One decimal separator for the whole file, read from all its numbers:
+  // guessing per number turned German "217,425" (three decimals) into 217.425.
+  const numCols = [col.shares, col.price, col.amount, col.fee, col.tax].filter((i) => i >= 0);
+  const rows = lines.slice(1).map((l) => splitLine(l, sep));
+  const decimal = detectDecimal(rows.flatMap((cols) => numCols.map((i) => at(cols, i))));
+  const parseNum = (s: string) => parseAny(s, decimal);
+
   for (let li = 1; li < lines.length; li++) {
     const cols = splitLine(lines[li], sep);
     if (cols.every((c) => !c)) continue;
@@ -395,6 +406,8 @@ function importSimple(lines: string[], sep: string): ImportReport {
   const txns: Txn[] = [];
   const instruments = new Map<string, { name: string; assetClass: string; count: number }>();
   let unusable = 0;
+  const decimal = detectDecimal(lines.flatMap((l) => splitLine(l, sep).slice(1, 3)));
+  const parseNum = (s: string) => parseAny(s, decimal);
 
   for (const line of lines) {
     const cols = splitLine(line, sep);

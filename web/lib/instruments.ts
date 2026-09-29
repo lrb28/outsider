@@ -208,6 +208,9 @@ export function priceMismatch(
 ): string | null {
   if (!avgPrice || !lastPrice || avgPrice <= 0 || lastPrice <= 0) return null;
   const ratio = lastPrice / avgPrice;
+  // Genau um Faktor 1.000 daneben: fast immer ein Kaufkurs, dessen Komma beim
+  // Import als Tausenderpunkt gelesen wurde ("217,425" → 217.425).
+  if (ratio > 1 / 2500 && ratio < 1 / 400) return "Kaufkurs vermutlich beim Import um Faktor 1.000 verschoben";
   // Grenze wächst mit der Haltedauer, aber langsam: 7,2× nach einem Jahr,
   // 8,4× nach zwei, 15× nach acht Jahren. Ein Zuordnungsfehler liegt fast immer
   // um den Faktor 10 daneben; eine echte Vervielfachung braucht Zeit.
