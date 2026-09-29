@@ -65,7 +65,17 @@ change is always spelled out with ▲/▼ and a number, never colour alone.
 - Buttons: `btn-primary` (solid capsule) for the one main action,
   `btn-capsule` (frosted capsule) for secondary and paired choices, round
   capsules for back/close. Motion uses the `ease-spring` curve (no overshoot).
-- Segmented controls slide one selection "droplet" (`SegmentedControl`).
+- Segmented controls slide one selection "droplet" (`SegmentedControl`); they
+  are for local switches inside a card (chart range, Investoren/Insider).
+- Page sections and list filters at the top of a page use the `ChipBar`
+  (Entdecken, Meldungen, Depot): 36 px capsules on `surface-2`, the chosen one
+  solid ink, aura dot for people categories. Same look on every tab.
+- Anything that answers "who/what is behind this?" opens a `Sheet` instead of
+  a new page: key figures (Investoren mit Bestand, Zugänge, Abgänge), legend
+  rows, the "So liest du die Daten" explainer. The page stays visible behind
+  it as frosted glass (blurred, milky tint, `dialog::backdrop`); swipe down,
+  tap outside or Escape closes it.
+- Key figures that can be opened carry a chevron (`StatRow` with `onClick`).
 
 ## Liquid Glass
 
@@ -83,10 +93,17 @@ Categorical colours come from `web/lib/palette.ts` in fixed order; past eight
 series, fold into "Übrige". Groups (sectors, regions, asset classes) take the
 palette by size too — never fixed hex values, which vanished on dark cards.
 
-Volume, where it helps reading: ring charts are shaded discs with a visible
-side and a soft shadow (`Donut`), activity bars are lit cylinders
-(`ActivityBars`), stacked and yearly bars carry `.bar-3d`, legends use
-`.dot-3d`. Lines stay flat.
+Volume, where it helps reading: ring charts (`Donut`) are arcs with round
+ends and small gaps, lit along their length and lifted by a soft glow in their
+own colour; they sweep in clockwise, glide to new values when the data
+changes and the touched segment grows and steps out. Activity bars are lit
+cylinders (`ActivityBars`), stacked and yearly bars carry `.bar-3d`, legends
+use `.dot-3d`. Lines stay flat; price and Depot lines take emerald or rose by
+the result of the shown range.
+
+Investor activity on a stock is a diverging ramp, deep to light emerald,
+grey, light to deep rose: neu eingestiegen · aufgestockt · unverändert ·
+reduziert · ausgestiegen (each fund's latest 13F against the quarter before).
 
 Numbers are German everywhere (`num`, `pctOf` in `web/lib/format.ts`):
 "22,4 %", "$299,3 Mrd.", "$31,1K", with a no-break space before "%" and units.
@@ -95,10 +112,16 @@ Numbers are German everywhere (`num`, `pctOf` in `web/lib/format.ts`):
 
 People: official congressional portraits; credited Commons photos for
 investors (`web/lib/portraits.ts`, matched by fund or person name); else the
-fund's logo (`FUND_LOGOS`, files in `web/public/funds`); insiders show their
-company's logo. Company logos load through `/api/logo` (PNG only, cached a
-week) and get a soft edge when their own background matches the card. Logo
-groups sit side by side, never overlapped.
+fund's logo (`FUND_LOGOS`, files in `web/public/funds`: website icons or the
+public-domain text logos on Commons cut down to the mark; `tile` files are
+finished round tiles); insiders show their company's logo. Company logos load
+through `/api/logo` (Parqet by ISIN from the 13F CUSIP first, then by symbol,
+then FMP; PNG only, cached a week). `CompanyLogo` reads each file: a mark that
+runs to the border (wordmarks) is inset on its own field colour, a white mark
+on transparency gets a dark tile. Shadows go on the tile itself
+(`.logo-lift`, `.face-lift`), never on a wrapper, whose line box is taller
+than the logo and shows as a pale band. Logo groups sit side by side, never
+overlapped.
 
 ## Motion
 

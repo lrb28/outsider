@@ -102,6 +102,101 @@ export function SegmentedControl<T extends string>({
   );
 }
 
+/**
+ * Chip bar for the sections and filters at the top of a page (Entdecken,
+ * Meldungen, Depot): capsules on a quiet fill, the chosen one solid. People
+ * categories carry their aura dot. One style everywhere, so switching a
+ * section looks the same on every tab. The visible chip is 36 px, the tap
+ * target 44 px. Scrolls sideways with soft edges when it does not fit.
+ */
+export function ChipBar<T extends string>({
+  items,
+  value,
+  onChange,
+  label,
+  mode = "tabs",
+  className = "",
+}: {
+  items: readonly { key: T; label: string; aura?: AuraKind | null; count?: number | null }[];
+  value: T;
+  onChange: (value: T) => void;
+  label: string;
+  /** "tabs" switches sections (tablist), "filter" narrows a list (toggle buttons). */
+  mode?: "tabs" | "filter";
+  className?: string;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const chips = useRef(new Map<T, HTMLButtonElement>());
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const readEdges = useCallback(() => {
+    const el = track.current;
+    if (!el) return;
+    const left = el.scrollLeft > 2;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }, []);
+  useIsoLayoutEffect(readEdges, [readEdges, items.length]);
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const ro = new ResizeObserver(readEdges);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [readEdges]);
+  // The chosen chip is brought into view when the bar scrolls.
+  useEffect(() => {
+    const el = chips.current.get(value);
+    const host = track.current;
+    if (!el || !host || host.scrollWidth <= host.clientWidth) return;
+    const left = el.offsetLeft - (host.clientWidth - el.offsetWidth) / 2;
+    host.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  }, [value]);
+  const fade = edges.left || edges.right
+    ? `linear-gradient(90deg, ${edges.left ? "transparent, #000 24px" : "#000"}, ${edges.right ? "#000 calc(100% - 24px), transparent" : "#000"})`
+    : undefined;
+  return (
+    <div
+      ref={track}
+      role={mode === "tabs" ? "tablist" : "group"}
+      aria-label={label}
+      onScroll={readEdges}
+      style={fade ? { WebkitMaskImage: fade, maskImage: fade } : undefined}
+      className={`no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 ${className}`}
+    >
+      {items.map((it) => {
+        const on = it.key === value;
+        return (
+          <button
+            key={it.key}
+            ref={(node) => {
+              if (node) chips.current.set(it.key, node);
+              else chips.current.delete(it.key);
+            }}
+            type="button"
+            role={mode === "tabs" ? "tab" : undefined}
+            aria-selected={mode === "tabs" ? on : undefined}
+            aria-pressed={mode === "filter" ? on : undefined}
+            onClick={() => onChange(it.key)}
+            className="group flex shrink-0 items-center"
+          >
+            <span
+              className={`inline-flex h-9 items-center gap-[5px] whitespace-nowrap rounded-full px-3 text-[13.5px] transition-[background-color,color,transform,box-shadow] duration-300 ease-spring group-active:scale-95 ${
+                on
+                  ? "bg-brand font-semibold text-on-brand shadow-[0_2px_8px_rgb(0_0_0/0.14)]"
+                  : "bg-surface2 font-medium text-subtle group-hover:text-ink"
+              }`}
+            >
+              {it.aura && <i aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: `rgb(var(--aura-${it.aura}))` }} />}
+              {it.label}
+              {it.count != null && <span className={`tabular-nums ${on ? "opacity-70" : "opacity-60"}`}>{it.count}</span>}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Page title block (HIG large title) with an optional line below. */
 export function PageTitle({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children?: ReactNode }) {
   return (
@@ -236,17 +331,29 @@ export function BackButton({ href, label }: { href: string; label: string }) {
 
 /** Key figures in one card, separated by hairlines. Each cell is a size
  *  container, so a value shrinks with its column on narrow phones instead of
- *  being cut off. */
-export function StatRow({ items }: { items: { label: string; value: ReactNode; cls?: string }[] }) {
+ *  being cut off. A cell with `onClick` is a button (chevron top right) that
+ *  shows what is behind the number. */
+export function StatRow({ items }: { items: { label: string; value: ReactNode; cls?: string; onClick?: () => void; hint?: string }[] }) {
   const cols = items.length === 4 ? "grid-cols-2 sm:grid-cols-4" : items.length === 2 ? "grid-cols-2" : "grid-cols-3";
   return (
     <div className={`card grid ${cols} overflow-hidden`}>
-      {items.map((s, i) => (
-        <div key={s.label} className={`min-w-0 [container-type:inline-size] px-3 py-3.5 sm:px-5 sm:py-4 ${i > 0 ? "border-l border-hair" : ""} ${items.length === 4 && i === 2 ? "max-sm:border-l-0 max-sm:border-t" : ""} ${items.length === 4 && i === 3 ? "max-sm:border-t" : ""}`}>
-          <div className={`truncate font-display text-[clamp(14px,18cqi,19px)] font-bold leading-tight tracking-[-0.01em] tabular-nums sm:text-[clamp(14px,18cqi,24px)] ${s.cls ?? ""}`}>{s.value}</div>
-          <div className="mt-1 text-[12px] leading-snug text-subtle sm:text-[13px]">{s.label}</div>
-        </div>
-      ))}
+      {items.map((s, i) => {
+        const cell = `relative min-w-0 [container-type:inline-size] px-3 py-3.5 text-left sm:px-5 sm:py-4 ${i > 0 ? "border-l border-hair" : ""} ${items.length === 4 && i === 2 ? "max-sm:border-l-0 max-sm:border-t" : ""} ${items.length === 4 && i === 3 ? "max-sm:border-t" : ""}`;
+        const body = (
+          <>
+            <div className={`truncate ${s.onClick ? "pr-4" : ""} font-display text-[clamp(14px,18cqi,19px)] font-bold leading-tight tracking-[-0.01em] tabular-nums sm:text-[clamp(14px,18cqi,24px)] ${s.cls ?? ""}`}>{s.value}</div>
+            <div className="mt-1 text-[12px] leading-snug text-subtle sm:text-[13px]">{s.label}</div>
+          </>
+        );
+        return s.onClick ? (
+          <button key={s.label} type="button" onClick={s.onClick} aria-label={s.hint ?? `${s.label} anzeigen`} className={`${cell} group transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]`}>
+            {body}
+            <Icon name="chevronRight" className="absolute right-2 top-3.5 h-4 w-4 text-muted transition-transform duration-300 ease-spring group-hover:translate-x-0.5 sm:right-3 sm:top-4" />
+          </button>
+        ) : (
+          <div key={s.label} className={cell}>{body}</div>
+        );
+      })}
     </div>
   );
 }

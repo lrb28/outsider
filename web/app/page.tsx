@@ -32,10 +32,10 @@ function FloatingLogos({ items }: { items: CollectionItem[] }) {
       {items.slice(0, 3).map((it, i) => (
         <div
           key={`${it.ticker ?? it.company}-${i}`}
-          className="animate-floaty rounded-[16px] shadow-[0_6px_18px_rgb(0_0_0/0.14)]"
+          className="animate-floaty flex"
           style={{ "--rot": `${LOGO_TILT[i]}deg`, animationDelay: `${i * 0.7}s`, marginTop: i === 1 ? -18 : 12 } as CSSProperties}
         >
-          <CompanyLogo ticker={it.ticker} company={it.company} size={60} rounded="rounded-[16px]" />
+          <CompanyLogo ticker={it.ticker} company={it.company} size={60} rounded="rounded-[16px]" className="logo-lift" />
         </div>
       ))}
     </div>
@@ -59,9 +59,7 @@ function TradeCard({ row, onOpen }: { row: FeedRow; onOpen: () => void }) {
         ) : (
           <>
             <Avatar name={name} src={row.entityPhoto} kind={auraOf(row.entityType)} size={46} />
-            <div className="absolute -bottom-1 left-8 rounded-[10px] shadow-[0_2px_10px_rgb(0_0_0/0.16)]">
-              <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-[10px]" />
-            </div>
+            <CompanyLogo ticker={row.ticker} company={company} size={28} rounded="rounded-[10px]" className="logo-lift !absolute -bottom-1 left-8" />
           </>
         )}
       </div>
@@ -116,8 +114,8 @@ function AuraTile({ href, kind, title, count, unit, faces }: { href: string; kin
       <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full blur-2xl" style={{ background: `rgb(var(--aura-${kind}) / 0.32)` }} />
       <div className="relative flex items-center">
         {faces.slice(0, 3).map((f, i) => (
-          <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -9, zIndex: 3 - i }} className="rounded-full shadow-[0_2px_8px_rgb(0_0_0/0.14)]">
-            <Avatar name={f.name} src={f.src} kind={kind} ticker={f.ticker} size={30} />
+          <div key={f.name + i} style={{ marginLeft: i === 0 ? 0 : -9, zIndex: 3 - i }} className="flex">
+            <Avatar name={f.name} src={f.src} kind={kind} ticker={f.ticker} size={30} className="face-lift" />
           </div>
         ))}
         {faces.length === 0 && <Skeleton className="h-[34px] w-20 rounded-full" />}
@@ -232,9 +230,7 @@ export default function HomePage() {
                 </div>
                 <div className="mt-3 flex items-center gap-1.5">
                   {m.sharedTickers.slice(0, 4).map((t) => (
-                    <div key={t} className="rounded-[9px] shadow-[0_2px_6px_rgb(0_0_0/0.1)]">
-                      <CompanyLogo ticker={t} company={t} size={28} rounded="rounded-[9px]" />
-                    </div>
+                    <CompanyLogo key={t} ticker={t} company={t} size={28} rounded="rounded-[9px]" />
                   ))}
                 </div>
               </Link>

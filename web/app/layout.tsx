@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SampleBanner enabled={isDemoMode()} />
         <StorageNotice />
 
-        <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-28 pt-4 md:pb-10">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-6 pt-4 md:pb-10">{children}</main>
 
         <BottomNav />
         <Onboarding />

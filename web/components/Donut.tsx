@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 export interface DonutSeg {
   label: string;
@@ -10,22 +10,25 @@ export interface DonutSeg {
 
 /** Sanftes Ausrollen: schnell anfangen, weich auslaufen. */
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * t));
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const reducedMotion = () =>
+  typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * Animiert einen Wert von 0 auf `to`. Läuft genau einmal beim Einblenden —
  * beim Wechsel eines Unterreiters wird die Komponente neu eingehängt, also
  * zeichnet sich das Diagramm jedes Mal frisch auf.
  */
-function useGrow(to: number, duration = 900, delay = 0): number {
+function useGrow(to: number, duration = 900, delay = 0, ease = easeOut): number {
   const [v, setV] = useState(0);
   const raf = useRef<number>();
 
   useEffect(() => {
     // Wer Bewegung im System abgeschaltet hat, bekommt sofort den Endwert.
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-    ) {
+    if (reducedMotion()) {
       setV(to);
       return;
     }
@@ -33,14 +36,14 @@ function useGrow(to: number, duration = 900, delay = 0): number {
     const tick = (ts: number) => {
       if (start === null) start = ts + delay;
       const p = Math.min(1, Math.max(0, (ts - start) / duration));
-      setV(to * easeOut(p));
+      setV(to * ease(p));
       if (p < 1) raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
-  }, [to, duration, delay]);
+  }, [to, duration, delay, ease]);
 
   return v;
 }
@@ -61,6 +64,77 @@ export function CountUp({
   return <span className={className}>{format(v)}</span>;
 }
 
+type Span = { a0: number; a1: number };
+
+/** Start and end angle (0 = 12 o'clock, clockwise, radians) of each segment. */
+function spans(segments: DonutSeg[]): Span[] {
+  const total = segments.reduce((a, s) => a + Math.max(0, s.value), 0) || 1;
+  let a = 0;
+  return segments.map((s) => {
+    const len = (Math.max(0, s.value) / total) * Math.PI * 2;
+    const span = { a0: a, a1: a + len };
+    a += len;
+    return span;
+  });
+}
+
+/**
+ * Keeps the drawn angles in step with the data: sweeps in clockwise on first
+ * show, and when the data changes (another tab, a filter) every segment
+ * glides from its old arc to its new one instead of the ring redrawing.
+ */
+function useSpans(segments: DonutSeg[]): { spans: Span[]; sweep: number } {
+  const target = spans(segments);
+  const key = segments.map((s) => `${s.label}:${s.value}`).join("|");
+  const [state, setState] = useState<{ spans: Span[]; sweep: number }>({ spans: target, sweep: 0 });
+  const shown = useRef<Map<string, Span>>(new Map());
+  const first = useRef(true);
+  const raf = useRef<number>();
+
+  useIsoLayoutEffect(() => {
+    const labels = segments.map((s) => s.label);
+    if (raf.current) cancelAnimationFrame(raf.current);
+    if (reducedMotion()) {
+      setState({ spans: target, sweep: 1 });
+      shown.current = new Map(labels.map((l, i) => [l, target[i]]));
+      first.current = false;
+      return;
+    }
+    const from = labels.map((l, i) => shown.current.get(l) ?? { a0: target[i].a0, a1: target[i].a0 });
+    const initial = first.current;
+    first.current = false;
+    let start: number | null = null;
+    const duration = initial ? 1150 : 650;
+    const tick = (ts: number) => {
+      if (start === null) start = ts;
+      const p = Math.min(1, (ts - start) / duration);
+      if (initial) {
+        setState({ spans: target, sweep: easeOutExpo(p) });
+      } else {
+        const e = easeInOut(p);
+        const now = target.map((t, i) => ({ a0: from[i].a0 + (t.a0 - from[i].a0) * e, a1: from[i].a1 + (t.a1 - from[i].a1) * e }));
+        shown.current = new Map(labels.map((l, i) => [l, now[i]]));
+        setState({ spans: now, sweep: 1 });
+      }
+      if (p < 1) raf.current = requestAnimationFrame(tick);
+      else shown.current = new Map(labels.map((l, i) => [l, target[i]]));
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => {
+      if (raf.current) cancelAnimationFrame(raf.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  return state;
+}
+
+/**
+ * Ring chart. Each share is an arc with round ends and a small gap, lit
+ * along its length (lighter where it starts, full colour where it ends) and
+ * lifted by a soft glow in its own colour. It sweeps in clockwise, glides to
+ * new values, and the segment under the finger or pointer grows and steps out.
+ */
 export function Donut({
   segments,
   size = 150,
@@ -73,6 +147,7 @@ export function Donut({
   /** Index des hervorgehobenen Segments — es tritt leicht hervor. */
   activeIndex = null,
   onHover,
+  label,
 }: {
   segments: DonutSeg[];
   size?: number;
@@ -83,140 +158,128 @@ export function Donut({
   countFormat?: (v: number) => string;
   activeIndex?: number | null;
   onHover?: (i: number | null) => void;
+  /** Accessible summary; defaults to the segments and their values. */
+  label?: string;
 }) {
   const gid = useId().replace(/:/g, "");
-  const total = segments.reduce((a, s) => a + s.value, 0) || 1;
-  // Beim Überfahren wächst ein Segment um 5 px. Ohne diesen Rand würde der
-  // dickere Ring am Rand der Zeichenfläche abgeschnitten.
-  const GROW = 6;
-  // The ring is a thick disc seen slightly from above: its side shows as a
-  // darker band below it, and a soft shadow grounds it on the card.
-  const DEPTH = Math.max(4, Math.round(thickness * 0.3));
-  const r = (size - thickness - GROW) / 2;
-  const c = 2 * Math.PI * r;
-  const cx = size / 2;
-  const inner = r - thickness / 2;
-  const outer = r + thickness / 2;
-  const progress = useGrow(1, 1000);
-  const H = size + DEPTH + 6;
+  const PAD = 10; // room for the glow and the grown, stepped-out segment
+  const W = size + PAD * 2;
+  const c = W / 2;
+  const r = (size - thickness - 6) / 2;
+  const { spans: drawn, sweep } = useSpans(segments);
+  const count = useGrow(countTo ?? 0, 1000);
+  const multi = segments.filter((s) => s.value > 0).length > 1;
+  const cap = multi ? thickness / 2 / r : 0; // a round cap reaches this far past the end
+  const gap = multi ? 3.5 / r : 0;
+  const sweepAngle = sweep * Math.PI * 2;
 
-  const arcs = (() => {
-    let offset = 0;
-    return segments.map((s) => {
-      const full = (s.value / total) * c;
-      // A 2 px gap in the surface colour separates neighbouring segments.
-      const len = segments.length > 1 ? Math.max(0, full - 2) * progress : full * progress;
-      const arc = { len: Math.max(0, len), off: -offset * progress };
-      offset += full;
-      return arc;
-    });
-  })();
-  const ring = (i: number, stroke: string, extra: Record<string, unknown> = {}) => {
-    const active = activeIndex === i;
-    return (
-      <circle
-        key={i}
-        cx={cx}
-        cy={cx}
-        r={r}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={active ? thickness + 5 : thickness}
-        strokeDasharray={`${arcs[i].len} ${c}`}
-        strokeDashoffset={arcs[i].off}
-        strokeLinecap={segments.length > 1 ? "butt" : "round"}
-        {...extra}
-      />
-    );
+  const pt = (a: number, rad = r) => [c + rad * Math.sin(a), c - rad * Math.cos(a)] as const;
+  const arc = (a0: number, a1: number) => {
+    if (a1 - a0 >= Math.PI * 2 - 1e-4) {
+      const [x0, y0] = pt(0);
+      const [x1, y1] = pt(Math.PI);
+      return `M${x0} ${y0}A${r} ${r} 0 1 1 ${x1} ${y1}A${r} ${r} 0 1 1 ${x0} ${y0}`;
+    }
+    const [x0, y0] = pt(a0);
+    const [x1, y1] = pt(a1);
+    return `M${x0} ${y0}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`;
   };
-  const dim = (i: number) => (activeIndex === null || activeIndex === i ? 1 : 0.35);
+
+  // Visible part of each segment: shortened by the caps and the gap, clipped
+  // by the entry sweep. A sliver still shows as a dot.
+  const visible = segments.map((s, i) => {
+    const sp = drawn[i] ?? { a0: 0, a1: 0 };
+    if (s.value <= 0 || sp.a1 - sp.a0 <= 1e-4) return null;
+    let a0 = sp.a0 + cap + gap / 2;
+    let a1 = sp.a1 - cap - gap / 2;
+    if (a1 < a0) a0 = a1 = (sp.a0 + sp.a1) / 2;
+    if (a0 > sweepAngle) return null;
+    a1 = Math.min(a1, sweepAngle);
+    return { a0, a1, mid: (a0 + a1) / 2 };
+  });
+
+  const total = segments.reduce((a, s) => a + s.value, 0);
+  const summary = label ?? segments.map((s) => `${s.label}: ${s.value}`).join(", ");
+  const top = countTo !== undefined && countFormat ? countFormat(count) : centerTop;
 
   return (
-    <svg
-      width={size}
-      height={H}
-      viewBox={`0 0 ${size} ${H}`}
-      onMouseLeave={() => onHover?.(null)}
-      className="overflow-visible"
-    >
-      <defs>
-        {/* Across the ring: shade at both edges, a highlight just inside the
-            middle — the band reads as a rounded tube. */}
-        <radialGradient id={`${gid}-tube`} gradientUnits="userSpaceOnUse" cx={cx} cy={cx} r={outer + 3}>
-          <stop offset={Math.max(0, inner - 3) / (outer + 3)} stopColor="#000" stopOpacity="0.26" />
-          <stop offset={(inner + thickness * 0.38) / (outer + 3)} stopColor="#fff" stopOpacity="0.34" />
-          <stop offset={(inner + thickness * 0.62) / (outer + 3)} stopColor="#fff" stopOpacity="0.06" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.24" />
-        </radialGradient>
-        {/* Light from above: brighter top half, darker bottom half. */}
-        <linearGradient id={`${gid}-light`} gradientUnits="userSpaceOnUse" x1="0" y1={cx - outer} x2="0" y2={cx + outer}>
-          <stop offset="0" stopColor="#fff" stopOpacity="0.2" />
-          <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.16" />
-        </linearGradient>
-        <filter id={`${gid}-blur`} x="-20%" y="-50%" width="140%" height="200%">
-          <feGaussianBlur stdDeviation="5" />
-        </filter>
-      </defs>
+    <div className="relative shrink-0" style={{ width: W, height: W, margin: -PAD }}>
+      <svg width={W} height={W} viewBox={`0 0 ${W} ${W}`} role="img" aria-label={summary} onMouseLeave={() => onHover?.(null)} className="overflow-visible">
+        <defs>
+          {visible.map((v, i) => {
+            if (!v) return null;
+            const [x0, y0] = pt(v.a0);
+            const [x1, y1] = pt(v.a1 + 1e-3);
+            return (
+              <linearGradient key={i} id={`${gid}-g${i}`} gradientUnits="userSpaceOnUse" x1={x0} y1={y0} x2={x1} y2={y1}>
+                <stop offset="0" stopColor="#fff" stopOpacity="0.38" />
+                <stop offset="0.55" stopColor="#fff" stopOpacity="0.08" />
+                <stop offset="1" stopColor="#000" stopOpacity="0.1" />
+              </linearGradient>
+            );
+          })}
+          {/* Across the band: a highlight along the outer rim, shade inside. */}
+          <radialGradient id={`${gid}-rim`} gradientUnits="userSpaceOnUse" cx={c} cy={c} r={r + thickness / 2 + 4}>
+            <stop offset={(r - thickness / 2) / (r + thickness / 2 + 4)} stopColor="#000" stopOpacity="0.16" />
+            <stop offset={(r + thickness * 0.1) / (r + thickness / 2 + 4)} stopColor="#fff" stopOpacity="0" />
+            <stop offset={(r + thickness * 0.42) / (r + thickness / 2 + 4)} stopColor="#fff" stopOpacity="0.22" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </radialGradient>
+          <filter id={`${gid}-glow`} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation={Math.max(4, thickness * 0.38)} />
+          </filter>
+        </defs>
 
-      <ellipse cx={cx} cy={cx + outer + DEPTH - 1} rx={outer * 0.86} ry={5} fill="#000" opacity="0.16" filter={`url(#${gid}-blur)`} />
+        {/* Track */}
+        <circle cx={c} cy={c} r={r} fill="none" stroke="rgb(var(--surface-2))" strokeWidth={thickness} />
 
-      {/* Side of the disc: the same segments, lower and in shade. */}
-      <g transform={`translate(0 ${DEPTH})`}>
-        <g transform={`rotate(-90 ${cx} ${cx})`}>
-          {segments.map((s, i) => ring(i, s.color, { opacity: dim(i) }))}
-          {segments.map((_, i) => ring(i, "#000", { opacity: 0.34 * dim(i), style: { pointerEvents: "none" } }))}
+        {/* Coloured glow under the ring: it seems to float above the card. */}
+        <g filter={`url(#${gid}-glow)`} opacity="0.42" transform={`translate(0 ${thickness * 0.28})`} aria-hidden="true">
+          {visible.map((v, i) => v && <path key={i} d={arc(v.a0, v.a1)} fill="none" stroke={segments[i].color} strokeWidth={thickness * 0.8} strokeLinecap="round" opacity={activeIndex === null || activeIndex === i ? 1 : 0.3} />)}
         </g>
-      </g>
 
-      <g transform={`rotate(-90 ${cx} ${cx})`}>
-        <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgb(var(--surface-2))" strokeWidth={thickness} />
-        {segments.map((s, i) =>
-          ring(i, s.color, {
-            opacity: dim(i),
-            style: { transition: "stroke-width 160ms ease, opacity 160ms ease", cursor: onHover ? "pointer" : undefined },
-            onMouseEnter: () => onHover?.(i),
-            onPointerDown: () => onHover?.(i),
-          }),
-        )}
-        {segments.map((_, i) => ring(i, `url(#${gid}-tube)`, { opacity: dim(i), style: { pointerEvents: "none", transition: "stroke-width 160ms ease" } }))}
-        {segments.map((_, i) => ring(i, `url(#${gid}-light)`, { opacity: dim(i), style: { pointerEvents: "none", transition: "stroke-width 160ms ease" } }))}
-      </g>
+        {visible.map((v, i) => {
+          if (!v) return null;
+          const active = activeIndex === i;
+          const dim = activeIndex !== null && !active;
+          const [dx, dy] = [Math.sin(v.mid) * 3.5, -Math.cos(v.mid) * 3.5];
+          const w = active ? thickness + 5 : thickness;
+          const d = arc(v.a0, v.a1);
+          return (
+            <g
+              key={i}
+              style={{
+                transform: active ? `translate(${dx}px, ${dy}px)` : "translate(0, 0)",
+                opacity: dim ? 0.38 : 1,
+                transition: "transform 380ms cubic-bezier(0.32, 0.72, 0, 1), opacity 220ms ease",
+                cursor: onHover ? "pointer" : undefined,
+              }}
+              onMouseEnter={() => onHover?.(i)}
+              onPointerDown={() => onHover?.(active ? null : i)}
+            >
+              <path d={d} fill="none" stroke={segments[i].color} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+              <path d={d} fill="none" stroke={`url(#${gid}-g${i})`} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+              <path d={d} fill="none" stroke={`url(#${gid}-rim)`} strokeWidth={w} strokeLinecap={multi ? "round" : "butt"} pointerEvents="none" style={{ transition: "stroke-width 380ms cubic-bezier(0.32, 0.72, 0, 1)" }} />
+            </g>
+          );
+        })}
+      </svg>
 
-      {countTo !== undefined && countFormat ? (
-        <text
-          x={cx}
-          y={cx - size * 0.02}
-          textAnchor="middle"
-          className="fill-ink font-display tabular-nums"
-          style={{ fontSize: size * 0.19, fontWeight: 700, letterSpacing: "-0.02em" }}
-        >
-          {countFormat(countTo * progress)}
-        </text>
-      ) : (
-        centerTop && (
-          <text
-            x={cx}
-            y={cx - size * 0.02}
-            textAnchor="middle"
-            className="fill-ink font-display tabular-nums"
-            style={{ fontSize: size * 0.19, fontWeight: 700, letterSpacing: "-0.02em" }}
-          >
-            {centerTop}
-          </text>
-        )
-      )}
-      {centerBottom && (
-        <text
-          x={cx}
-          y={cx + size * 0.12}
-          textAnchor="middle"
-          className="fill-subtle"
-          style={{ fontSize: size * 0.09 }}
-        >
-          {centerBottom}
-        </text>
-      )}
-    </svg>
+      {/* Centre: a real text layer (crisper than SVG text, and it can fade). */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center" aria-hidden="true">
+        <div key={`${centerBottom}|${total}`} className="animate-[fadeIn_0.35s_ease-out] px-6">
+          {top && (
+            <div className="font-display font-bold tabular-nums leading-none tracking-[-0.02em] text-ink" style={{ fontSize: Math.round(size * 0.2) }}>
+              {top}
+            </div>
+          )}
+          {centerBottom && (
+            <div className="mx-auto mt-1.5 max-w-[7.5rem] truncate text-subtle" style={{ fontSize: Math.max(11, Math.round(size * 0.085)) }}>
+              {centerBottom}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

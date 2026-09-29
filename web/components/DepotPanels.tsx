@@ -38,6 +38,41 @@ export function Kpi({
   );
 }
 
+/**
+ * Key figures of the Depot in one grouped card: hairline grid instead of six
+ * floating tiles, so the eye reads a table of numbers, not a wall of cards.
+ */
+export function KpiGrid({ items }: { items: { label: string; value: string; sub?: string; tone?: "bull" | "bear" | null; hint?: string }[] }) {
+  return (
+    <div className="card overflow-hidden">
+      <dl className="grid grid-cols-2 gap-px bg-hair sm:grid-cols-3">
+        {items.map((k) => (
+          <div key={k.label} title={k.hint} className="min-w-0 bg-card px-4 py-3.5 [container-type:inline-size] sm:px-5">
+            <dt className="text-[12px] font-medium text-subtle">{k.label}</dt>
+            <dd className={`mt-1 truncate font-display text-[clamp(17px,13cqi,22px)] font-bold leading-tight tracking-[-0.01em] tabular-nums ${k.tone === "bull" ? "text-bull" : k.tone === "bear" ? "text-bear" : ""}`}>{k.value}</dd>
+            {k.sub && <dd className="mt-0.5 truncate text-[12px] text-subtle">{k.sub}</dd>}
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+/** One-line finding with a tinted badge (benchmark comparison and alike). */
+export function Insight({ tone, title, text }: { tone: "bull" | "bear"; title: string; text: string }) {
+  return (
+    <div className="card flex items-start gap-3 p-4">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tone === "bull" ? "bg-bull/10 text-bull" : "bg-bear/10 text-bear"}`}>
+        <Icon name={tone === "bull" ? "arrowUp" : "arrowDown"} className="h-[18px] w-[18px]" />
+      </span>
+      <div className="min-w-0">
+        <div className={`text-[15px] font-semibold leading-snug ${tone === "bull" ? "text-bull" : "text-bear"}`}>{title}</div>
+        <p className="mt-0.5 text-[13px] leading-snug text-subtle">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Gruppierte Allokation (Sektor / Region / Anlageklasse / Position) ───────
 
 export interface Segment {

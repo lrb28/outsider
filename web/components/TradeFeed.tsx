@@ -142,8 +142,8 @@ export function TradeFeed({
                     ) : (
                       <>
                         <Avatar name={actor} src={r.entityPhoto} kind={auraOf(r.entityType)} size={42} />
-                        <div className="absolute -bottom-1 -right-1.5 rounded-[7px] shadow-[0_1px_4px_rgb(0_0_0/0.18)]">
-                          <CompanyLogo ticker={r.ticker} company={company} size={20} rounded="rounded-[7px]" />
+                        <div className="absolute -bottom-1 -right-1.5 flex">
+                          <CompanyLogo ticker={r.ticker} company={company} size={20} rounded="rounded-[7px]" className="logo-lift" />
                         </div>
                       </>
                     )}

@@ -69,8 +69,8 @@ export default function InsiderPage() {
               <Avatar name={ins.name} kind="insider" size={96} />
             )}
             {ins.ticker && (
-              <div className="absolute -bottom-2 -right-2 rounded-full shadow-[0_4px_14px_rgb(0_0_0/0.18)]">
-                <Avatar name={ins.name} kind="insider" size={44} />
+              <div className="absolute -bottom-2 -right-2 flex">
+                <Avatar name={ins.name} kind="insider" size={44} className="face-lift" />
               </div>
             )}
           </div>

@@ -115,6 +115,23 @@ export interface StockHolder {
   putCall: "Put" | "Call" | null;
 }
 
+/**
+ * What one tracked investor did with a stock in its latest 13F, against the
+ * quarter before: opened, added, kept, trimmed or sold out. Option positions
+ * are left out; they are not a stake in the company.
+ */
+export type StockMoveKind = "new" | "added" | "held" | "reduced" | "exited";
+export interface StockMove {
+  slug: string;
+  fund: string;
+  person: string | null;
+  kind: StockMoveKind;
+  shares: number | null;
+  prevShares: number | null;
+  value: number | null;
+  asOf: string | null;
+}
+
 export interface StockDetail {
   ticker: string | null;
   securityName: string;
@@ -122,6 +139,8 @@ export interface StockDetail {
   investors: number;
   value: number | null;
   holders: StockHolder[];
+  /** Latest quarter's moves of the tracked investors (13F vs the one before). */
+  activity?: StockMove[];
   trades: FeedRow[];
 }
 

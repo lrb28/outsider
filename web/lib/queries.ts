@@ -22,6 +22,7 @@ import {
   PoliticianRow,
   StockDetail,
   StockHolder,
+  StockMove,
   StockRow,
 } from "./types";
 
@@ -464,6 +465,7 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   // Kopfzahl: Investoren, nicht Zeilen. Wer Aktie und Option hält, zählt einmal.
   const investorCount = new Set(holderRows.map((r) => r.slug)).size;
   const trades = await getTrades({ ticker: ticker, limit: 25 });
+  const activity = await getStockActivity(T);
 
   return {
     ticker: (s.ticker as string) ?? null,
@@ -472,8 +474,67 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     investors: investorCount,
     value: value > 0 ? value : null,
     holders: holderRows,
+    activity,
     trades,
   };
+}
+
+/**
+ * Each tracked investor's latest 13F position in a stock against its filing
+ * the quarter before. Unlike the loaded trade list (25 rows, mostly Form 4),
+ * this covers every fund that holds or held the stock, so the activity ring
+ * and the "Zugänge"/"Abgänge" figures agree with the holder count.
+ */
+export async function getStockActivity(ticker: string): Promise<StockMove[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const { rows } = await pool.query(
+    `
+    with hs as (
+      select h.entity_id, h.as_of_date, sum(h.shares) as sh, sum(h.market_value) as v
+      from holdings h
+      where h.security_id = any(array(select id from securities where upper(ticker) = $1))
+        and nullif(h.put_call, '') is null
+      group by 1, 2
+    ),
+    ent as (
+      select x.entity_id, d.cur,
+             (select max(as_of_date) from holdings where entity_id = x.entity_id and as_of_date < d.cur) as prev
+      from (select distinct entity_id from hs) x
+      cross join lateral (select max(as_of_date) as cur from holdings where entity_id = x.entity_id) d
+    )
+    select e.slug, e.full_name as fund, ent.cur as as_of, ent.prev as prev_as_of,
+           c.sh as cur_shares, c.v as cur_value, p.sh as prev_shares
+    from ent
+    join entities e on e.id = ent.entity_id
+    left join hs c on c.entity_id = ent.entity_id and c.as_of_date = ent.cur
+    left join hs p on p.entity_id = ent.entity_id and p.as_of_date = ent.prev
+    where c.entity_id is not null or p.entity_id is not null
+    order by coalesce(c.v, 0) desc
+    `,
+    [ticker],
+  );
+  return rows.map((r) => {
+    const shares = r.cur_shares !== null ? Number(r.cur_shares) : null;
+    const prevShares = r.prev_shares !== null ? Number(r.prev_shares) : null;
+    // Without an earlier filing on record nothing can be said about a change.
+    const kind: StockMove["kind"] =
+      shares === null ? "exited"
+      : r.prev_as_of === null ? "held"
+      : prevShares === null ? "new"
+      : Math.abs(shares - prevShares) <= prevShares * 0.001 ? "held"
+      : shares > prevShares ? "added" : "reduced";
+    return {
+      slug: r.slug as string,
+      fund: r.fund as string,
+      person: investorPerson(r.fund as string),
+      kind,
+      shares,
+      prevShares,
+      value: r.cur_value !== null ? Number(r.cur_value) : null,
+      asOf: r.as_of ? String(r.as_of).slice(0, 10) : null,
+    };
+  });
 }
 
 // ── My-depot match: which tracked investors hold the user's tickers ─────────

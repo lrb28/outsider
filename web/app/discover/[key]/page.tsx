@@ -110,8 +110,8 @@ export default function CollectionPage() {
               return (
                 <Link key={rank} href={it.ticker ? stockHref(it.ticker) : "#"} className={`card lcard-hover press flex flex-col items-center p-3 text-center ${tall ? "pb-6 pt-5" : "pb-4"}`}>
                   <span className="mb-2 text-[13px] font-bold text-subtle">{rank + 1}</span>
-                  <div className="rounded-[18px] shadow-[0_8px_22px_rgb(0_0_0/0.14)]">
-                    <CompanyLogo ticker={it.ticker} company={it.company} size={tall ? 68 : 54} rounded="rounded-[18px]" />
+                  <div className="flex">
+                    <CompanyLogo ticker={it.ticker} company={it.company} size={tall ? 68 : 54} rounded="rounded-[18px]" className="logo-lift" />
                   </div>
                   <div className="mt-2 w-full truncate text-[14px] font-semibold">{it.company}</div>
                   <div className="text-[12px] text-subtle">{it.metric}</div>

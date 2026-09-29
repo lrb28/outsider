@@ -13,6 +13,7 @@ import { fetchMatches } from "@/lib/fetchMatches";
 import { conversionFactor, convertHistory, dailyChange, fxSymbol } from "@/lib/valuation";
 import { isStaleDate } from "@/lib/format";
 import { LiveValue } from "@/components/LiveValue";
+import { ChipBar } from "@/components/ui";
 import { RiskPoint, RiskReturnMap } from "@/components/PerformancePanels";
 import {
   CapitalFlow,
@@ -21,7 +22,7 @@ import {
   ReturnTreemap,
   TreeItem,
 } from "@/components/PerformanceViews";
-import { AllocView, Collapse, Concentration, Kpi, Pills, Segment } from "@/components/DepotPanels";
+import { AllocView, Collapse, Concentration, Insight, Kpi, KpiGrid, Pills, Segment } from "@/components/DepotPanels";
 import { NBSP, companyName, fixTicker, formatDate, num, pct, pctOf, stockHref } from "@/lib/format";
 import { fetchJson } from "@/lib/fetchJson";
 import { ImportReport, importCsv, summarize } from "@/lib/brokers";
@@ -227,6 +228,7 @@ export default function MePage() {
   const [txns, setTxnsState] = useState<Txn[]>([]);
   const [hist, setHist] = useState<Record<string, HistoryEntry>>({});
   const [loadingHist, setLoadingHist] = useState(false);
+  const [histFailed, setHistFailed] = useState(false);
   const [matches, setMatches] = useState<MatchRow[] | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [range, setRange] = useState<RangeKey>("1J");
@@ -350,9 +352,14 @@ export default function MePage() {
       }
       return {entries};
     })()
-      .then((d) => on && setHist((p) => ({ ...p, ...d.entries })))
+      .then((d) => {
+        if (!on) return;
+        setHistFailed(false);
+        setHist((p) => ({ ...p, ...d.entries }));
+      })
       .catch(() => {
         if (!on) return;
+        setHistFailed(true);
         setHist((p) => {
           const next = { ...p };
           for (const t of need)
@@ -521,6 +528,15 @@ export default function MePage() {
   const realizedTotal = positions.reduce((a, p) => a + p.realized, 0);
   const feesTotal = positions.reduce((a, p) => a + p.fees, 0);
   const noPrice = openIssues.length;
+  // No position priced yet: while prices load (or the price service is
+  // down) the figures would all read $0,00. Show that state instead.
+  const pricesPending = txns.length > 0 && rows.length === 0 && openIssues.length > 0 && (loadingHist || histFailed || Object.keys(hist).length === 0);
+  const retryPrices = () => {
+    searched.current.clear();
+    setHistFailed(false);
+    setHist((current) => Object.fromEntries(Object.entries(current).filter(([, e]) => e.source !== "none")));
+    setMapTick((t) => t + 1);
+  };
 
   /** Hat der Export echte Ein- und Auszahlungen? Dann ist das die bessere Bezugsgröße. */
   const hasCashFlows = useMemo(
@@ -810,6 +826,9 @@ export default function MePage() {
   }, [normTxns]);
 
   // ── Chartserien ───────────────────────────────────────────────────────────
+  // The depot line wears the colour of its result over the chosen range, like
+  // a stock chart: emerald when it gained, rose when it lost.
+  const lineColor = perfPortfolio != null && perfPortfolio < 0 ? "rgb(var(--bear-fill))" : "rgb(var(--bull-fill))";
   const chartSeries: ChartSeries[] = useMemo(() => {
     if (seriesR.length < 2) return [];
     if (mode === "drawdown") {
@@ -828,7 +847,7 @@ export default function MePage() {
         {
           key: "twr",
           label: "Dein Depot",
-          color: "rgb(var(--ink))",
+          color: lineColor,
           fill: true,
           points: twrCurve(seriesR),
         },
@@ -848,7 +867,7 @@ export default function MePage() {
       {
         key: "value",
         label: "Depotwert",
-        color: "rgb(var(--ink))",
+        color: lineColor,
         fill: true,
         points: seriesR.map((p) => ({ date: p.date, value: p.value })),
       },
@@ -873,7 +892,7 @@ export default function MePage() {
       });
     }
     return out;
-  }, [seriesR, benchR, mode, bench.label, hasCashFlows]);
+  }, [seriesR, benchR, mode, bench.label, hasCashFlows, lineColor]);
 
   // ── Aufteilungen ──────────────────────────────────────────────────────────
   // Groups take the categorical palette by size, like positions do. Fixed
@@ -966,7 +985,11 @@ export default function MePage() {
         </div>
         {!empty && (
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <LiveValue value={total} format={(v) => cMoney(v)} className="num-xl sm:text-5xl" />
+            {pricesPending ? (
+              <span aria-label="Depotwert wird geladen" className="inline-block h-9 w-52 animate-pulse rounded-xl bg-surface2 sm:h-12" />
+            ) : (
+              <LiveValue value={total} format={(v) => cMoney(v)} className="num-xl sm:text-5xl" />
+            )}
             {dayPctSum != null && (
               <span className={`text-[15px] font-semibold tabular-nums ${dayPctSum >= 0 ? "text-bull" : "text-bear"}`}>
                 {dayAbsSum >= 0 ? "▲ +" : "▼ −"}
@@ -981,7 +1004,7 @@ export default function MePage() {
             Gespeichert wird nur lokal in deinem Browser.
           </p>
         )}
-        {!empty && <Pills options={TABS} value={tab} onChange={setTab} label="Depotbereiche" />}
+        {!empty && <ChipBar items={TABS.map(([key, label]) => ({ key, label }))} value={tab} onChange={setTab} label="Depotbereiche" className="!mt-4" />}
       </div>
 
       {empty && <EmptyState onPick={() => fileRef.current?.click()} />}
@@ -1005,50 +1028,43 @@ export default function MePage() {
 
       {report && <ImportSummary report={report} onClose={() => setReport(null)} />}
 
-      {!empty && loadingHist && Object.keys(hist).length === 0 && (
-        <div className="lcard p-8 text-center text-sm text-subtle">Kurse werden geladen …</div>
+      {pricesPending && (
+        histFailed && !loadingHist ? (
+          <div role="alert" className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <span className="icon-ring h-12 w-12"><Icon name="danger" className="h-6 w-6 text-subtle" /></span>
+            <div className="text-[17px] font-semibold">Kurse gerade nicht erreichbar</div>
+            <p className="max-w-sm text-[15px] leading-snug text-subtle">Deine Buchungen sind sicher gespeichert. Ohne Kurse lässt sich das Depot nur nicht bewerten.</p>
+            <button type="button" onClick={retryPrices} className="btn-primary mt-1">Erneut versuchen</button>
+          </div>
+        ) : (
+          <div className="card flex items-center justify-center gap-3 p-8 text-[15px] text-subtle">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-subtle/30 border-t-subtle" aria-hidden="true" />
+            Kurse werden geladen …
+          </div>
+        )
       )}
 
-      {!empty && (
+      {!empty && !pricesPending && (
         <>
           {/* ── Übersicht ───────────────────────────────────────────────── */}
           {tab === "overview" && (
             <>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-                <Kpi label="Depotwert" value={abbrevMoney(total || null)} sub={`${rows.length} Positionen`} />
-                <Kpi
-                  label="Gewinn gesamt"
-                  value={signed(gainTotal)}
-                  tone={tone(gainTotal)}
-                  sub={
-                    gainBase > 0
-                      ? `${pct2(gainTotal / gainBase)} auf ${cAbbrev(gainBase)} ${
-                          hasCashFlows ? "eingezahlt" : "Einstand"
-                        }`
-                      : undefined
-                  }
-                  hint="Kursgewinn der offenen Positionen + realisierte Gewinne + Dividenden"
-                />
-                <Kpi
-                  label="Kursgewinn (offen)"
-                  value={signed(unrealTotal)}
-                  tone={tone(unrealTotal)}
-                  sub={costTotal > 0 ? pct2(unrealTotal / costTotal) : undefined}
-                />
-                <Kpi label="Investiert" value={abbrevMoney(costTotal || null)} sub="Einstand offener Positionen" />
-                <Kpi
-                  label="Dividenden"
-                  value={abbrevMoney(dividendsTotal || null)}
-                  tone={dividendsTotal > 0 ? "bull" : null}
-                  sub={dividendsBooked ? "laut deinen Buchungen" : "geschätzt"}
-                />
-                <Kpi
-                  label="Realisiert"
-                  value={signed(realizedTotal)}
-                  tone={realizedTotal === 0 ? null : tone(realizedTotal)}
-                  sub="aus Verkäufen"
-                />
-              </div>
+              <KpiGrid
+                items={[
+                  {
+                    label: "Gewinn gesamt",
+                    value: signed(gainTotal),
+                    tone: tone(gainTotal),
+                    sub: gainBase > 0 ? `${pct2(gainTotal / gainBase)} auf ${cAbbrev(gainBase)}` : undefined,
+                    hint: `Kursgewinn der offenen Positionen + realisierte Gewinne + Dividenden, bezogen auf ${hasCashFlows ? "das eingezahlte Geld" : "den Einstand"}`,
+                  },
+                  { label: "Kursgewinn offen", value: signed(unrealTotal), tone: tone(unrealTotal), sub: costTotal > 0 ? pct2(unrealTotal / costTotal) : undefined },
+                  { label: "Investiert", value: abbrevMoney(costTotal || null), sub: `${rows.length} ${rows.length === 1 ? "Position" : "Positionen"}` },
+                  { label: "Dividenden", value: abbrevMoney(dividendsTotal || null), tone: dividendsTotal > 0 ? "bull" : null, sub: dividendsBooked ? "laut Buchungen" : "geschätzt" },
+                  { label: "Realisiert", value: signed(realizedTotal), tone: realizedTotal === 0 ? null : tone(realizedTotal), sub: "aus Verkäufen" },
+                  { label: "Depotwert", value: abbrevMoney(total || null), sub: liveCount > 0 ? "mit Live-Kursen" : "letzte Schlusskurse" },
+                ]}
+              />
 
               <ChartCard
                 mode={mode}
@@ -1061,18 +1077,15 @@ export default function MePage() {
               />
 
               {perfPortfolio != null && perfBench != null && (
-                <div
-                  className={`rounded-xl px-4 py-2.5 text-sm font-medium ${
+                <Insight
+                  tone={perfPortfolio >= perfBench ? "bull" : "bear"}
+                  title={
                     perfPortfolio >= perfBench
-                      ? "bg-bull/10 text-bull ring-1 ring-bull/20"
-                      : "bg-bear/10 text-bear ring-1 ring-bear/20"
-                  }`}
-                >
-                  {perfPortfolio >= perfBench
-                    ? `Dein Depot schlägt den ${bench.label} um ${num((perfPortfolio - perfBench) * 100)} Prozentpunkte (${range}).`
-                    : `Dein Depot liegt ${num((perfBench - perfPortfolio) * 100)} Prozentpunkte hinter dem ${bench.label} (${range}).`}{" "}
-                  Du {pct(perfPortfolio)}, Index {pct(perfBench)}.
-                </div>
+                      ? `${num((perfPortfolio - perfBench) * 100)} Prozentpunkte vor dem ${bench.label}`
+                      : `${num((perfBench - perfPortfolio) * 100)} Prozentpunkte hinter dem ${bench.label}`
+                  }
+                  text={`Zeitraum ${range}: dein Depot ${pct(perfPortfolio)}, Index ${pct(perfBench)}. Zeitgewichtet, Ein- und Auszahlungen herausgerechnet.`}
+                />
               )}
 
               <TopMovers rows={rows} loading={liveCount === 0} />
@@ -1431,11 +1444,7 @@ export default function MePage() {
               <button
                 className="ml-2 !min-h-0 underline underline-offset-2"
                 disabled={loadingHist}
-                onClick={() => {
-                  searched.current.clear();
-                  setHist((current) => Object.fromEntries(Object.entries(current).filter(([, e]) => e.source !== "none")));
-                  setMapTick((t) => t + 1);
-                }}
+                onClick={retryPrices}
               >
                 Fehlende Kurse erneut laden
               </button>

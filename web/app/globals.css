@@ -426,6 +426,17 @@ h1, h2, h3 {
   :root:not([data-theme="light"]) .logo-edge-light { box-shadow: none; }
   :root:not([data-theme="light"]) .logo-edge-dark { box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.16); }
 }
+/* Lifted logos and faces (entry cards, badges, face piles). The shadow sits
+   on the tile itself: on a wrapper it would trace the wrapper's line box,
+   which is taller than the logo, and show as a pale band beneath it. */
+.logo-lift { box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.05), 0 2px 4px rgb(0 0 0 / 0.06), 0 8px 20px rgb(0 0 0 / 0.1); }
+.face-lift { box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 4px 12px rgb(0 0 0 / 0.14); }
+:root[data-theme="dark"] .logo-lift { box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 8px 20px rgb(0 0 0 / 0.5); }
+:root[data-theme="dark"] .face-lift { box-shadow: 0 4px 12px rgb(0 0 0 / 0.5); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .logo-lift { box-shadow: 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 8px 20px rgb(0 0 0 / 0.5); }
+  :root:not([data-theme="light"]) .face-lift { box-shadow: 0 4px 12px rgb(0 0 0 / 0.5); }
+}
 
 /* Scroll edge effect: content fades softly under floating bars. */
 .scroll-edge-top {
@@ -543,8 +554,35 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .skip-link { position: fixed; left: 1rem; top: -5rem; z-index: 100; padding: .8rem 1rem; border-radius: 1rem; background: rgb(var(--surface)); color: rgb(var(--ink)); }
 .skip-link:focus { top: 1rem; }
 dialog { color: rgb(var(--ink)); }
-dialog::backdrop { background: rgb(0 0 0 / .28); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+/* Everything modal floats over frosted glass: the page stays visible behind,
+   blurred and milky, so a sheet reads as a layer and not as a new page.
+   ::backdrop inherits no custom properties everywhere yet, hence literals. */
+dialog::backdrop {
+  background: rgb(242 242 247 / 0.46);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  animation: backdropIn 0.32s ease-out;
+}
+:root[data-theme="dark"] dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+}
 dialog[open] { animation: fadeUp .25s cubic-bezier(0.32, 0.72, 0, 1); }
+/* Sheets rise from the bottom edge on phones and settle in the middle on
+   larger screens; closing plays the same motion backwards. */
+dialog.sheet[open] { animation: sheetUp 0.42s cubic-bezier(0.32, 0.72, 0, 1); transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+dialog.sheet[data-closing] { animation: sheetDown 0.26s cubic-bezier(0.4, 0, 1, 1) forwards; }
+dialog.sheet[data-closing]::backdrop { animation: backdropOut 0.26s ease-in forwards; }
+@media (min-width: 640px) {
+  dialog.sheet[open] { animation-name: sheetPop; }
+  dialog.sheet[data-closing] { animation-name: sheetFade; }
+}
+@keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes backdropOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sheetDown { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes sheetPop { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes sheetFade { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(16px) scale(0.98); } }
 .prose-copy p { margin-top: 1rem; line-height: 1.75; color: rgb(var(--ink) / 0.8); }
 .prose-copy h2 { margin-top: 2rem; font-size: 1.25rem; font-weight: 650; }
 .prose-copy a { color: rgb(var(--ink)); text-decoration: underline; text-underline-offset: 3px; }

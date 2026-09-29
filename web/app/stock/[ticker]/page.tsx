@@ -6,16 +6,16 @@ import { useEffect, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { Donut } from "@/components/Donut";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
 import { PriceChart } from "@/components/PriceChart";
 import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
 import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
+import { HoldersSheet, INFLOW, MovesSheet, OUTFLOW, StockActivity, TradesSheet } from "@/components/StockActivity";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, fixTicker, weightPct, formatDate, isStaleDate, shortMoney } from "@/lib/format";
-import { PriceBar, PricesResponse, StockDetail, StockResponse } from "@/lib/types";
+import { FeedRow, PriceBar, PricesResponse, StockDetail, StockMoveKind, StockResponse } from "@/lib/types";
 import { useQuotes } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
 
@@ -28,7 +28,9 @@ export default function StockPage() {
   const [err, setErr] = useState(false);
   const [tick, setTick] = useState(0);
   const [priceError,setPriceError] = useState(false);
-  const [actTab, setActTab] = useState<"inv" | "ins">("inv");
+  type Open = { kind: "holders" } | { kind: "moves"; kinds: StockMoveKind[]; title: string } | { kind: "trades"; rows: FeedRow[]; title: string; subtitle: string };
+  const [open, setOpen] = useState<Open | null>(null);
+  const [allHolders, setAllHolders] = useState(false);
   const [range, setRange] = useState<"1M" | "3M" | "6M" | "1J" | "Max">("1J");
   const liveTicker = ticker;
   const quotes = useQuotes(liveTicker ? [liveTicker] : []);
@@ -62,46 +64,16 @@ export default function StockPage() {
       </div>
     );
 
-  const buys = stock.trades.filter((t) => t.txnType === "buy").length;
-  const sells = stock.trades.filter((t) => t.txnType === "sell").length;
-
-  // Investorenaktivität: jeder Investor landet in genau einem Topf. Die Meldungen
-  // reichen über mehrere Quartale — wer erst kaufte und später verkaufte, wurde
-  // vorher doppelt gezählt, sodass die Ringsumme über der Kopfzahl lag.
-  // Maßgeblich ist deshalb die jüngste Meldung je Investor (Liste ist nach
-  // Datum absteigend sortiert), Bestandshalter ohne Meldung gelten als gehalten.
-  const insts = stock.trades.filter((t) => t.entityType === "institution" && !t.putCall);
-  const lastAction = new Map<string, "buy" | "sell" | "hold">();
-  for (const t of insts) {
-    const key = t.entitySlug ?? t.entityName;
-    if (lastAction.has(key)) continue;
-    if (t.txnType === "buy" || t.txnType === "sell") lastAction.set(key, t.txnType);
-  }
-  for (const h of stock.holders) if (!h.putCall && !lastAction.has(h.slug)) lastAction.set(h.slug, "hold");
-  const countBy = (v: "buy" | "sell" | "hold") =>
-    [...lastAction.values()].filter((x) => x === v).length;
-  const act = [
-    { label: "Bestand erhöht", value: countBy("buy"), color: "rgb(var(--bull-fill))" },
-    { label: "Gehalten", value: countBy("hold"), color: "rgb(var(--flat-fill))" },
-    { label: "Bestand reduziert", value: countBy("sell"), color: "rgb(var(--bear-fill))" },
-  ];
-  const actTotal = act.reduce((a, s) => a + s.value, 0);
-
-  // Insider activity from Form 4 trades (no holdings snapshot, so no "held").
-  const insiderTrades = stock.trades.filter(t => t.entityType === "corporate_insider" && !t.isDerivative && ["P","S"].includes(t.transactionCode ?? ""));
-  const latestInsider = new Map<string,string>();
-  for (const t of insiderTrades) if (!latestInsider.has(t.entityName)) latestInsider.set(t.entityName,t.transactionCode!);
-  const insBought = new Set([...latestInsider].filter(([,code]) => code === "P").map(([name]) => name));
-  const insSold = new Set([...latestInsider].filter(([,code]) => code === "S").map(([name]) => name));
-  const insAct = [
-    { label: "Gekauft", value: insBought.size, color: "rgb(var(--bull-fill))" },
-    { label: "Verkauft", value: insSold.size, color: "rgb(var(--bear-fill))" },
-  ];
-  const insTotal = insBought.size + insSold.size;
-
-  const curSegs = actTab === "inv" ? act : insAct;
-  const curTotal = actTab === "inv" ? actTotal : insTotal;
-  const curTop = [...curSegs].sort((a, b) => b.value - a.value)[0];
+  // Zugänge/Abgänge: the tracked funds that bought or sold in their latest
+  // 13F, the same source as the activity ring below, so both agree. Older
+  // API responses without it fall back to the loaded filings.
+  const moves = stock.activity ?? null;
+  const inflow = moves ? moves.filter((m) => INFLOW.includes(m.kind)) : null;
+  const outflow = moves ? moves.filter((m) => OUTFLOW.includes(m.kind)) : null;
+  const buyRows = stock.trades.filter((t) => t.txnType === "buy");
+  const sellRows = stock.trades.filter((t) => t.txnType === "sell");
+  const holderAsOf = moves?.find((m) => m.shares !== null)?.asOf ?? null;
+  const holderList = allHolders ? stock.holders : stock.holders.slice(0, 6);
 
   // Stored closes end at the last import; the live quote extends the line to
   // now, so the chart and the price above it tell the same story.
@@ -113,11 +85,16 @@ export default function StockPage() {
     : bars;
   const up = series && series.length > 1 ? series[series.length - 1].close >= series[0].close : true;
 
+  const openHolders = stock.holders.length ? () => setOpen({ kind: "holders" }) : undefined;
   const stats = [
-    { label: "Investoren mit Bestand", value: stock.investors.toLocaleString("de-DE") },
-    { label: "Gehaltener Wert", value: shortMoney(stock.value) },
-    { label: "Zugänge (geladen)", value: String(buys), cls: "text-bull" },
-    { label: "Abgänge (geladen)", value: String(sells), cls: "text-bear" },
+    { label: "Investoren mit Bestand", value: stock.investors.toLocaleString("de-DE"), onClick: openHolders, hint: "Alle Investoren mit Bestand anzeigen" },
+    { label: "Gehaltener Wert", value: shortMoney(stock.value), onClick: openHolders, hint: "Bestände nach Wert anzeigen" },
+    inflow
+      ? { label: "Zugänge im Quartal", value: String(inflow.length), cls: "text-bull", onClick: () => setOpen({ kind: "moves", kinds: INFLOW, title: "Zugänge im Quartal" }), hint: "Investoren anzeigen, die gekauft haben" }
+      : { label: "Käufe in den Meldungen", value: String(buyRows.length), cls: "text-bull", onClick: () => setOpen({ kind: "trades", rows: buyRows, title: "Käufe", subtitle: `Gemeldete Käufe in den letzten ${stock.trades.length} Meldungen.` }) },
+    outflow
+      ? { label: "Abgänge im Quartal", value: String(outflow.length), cls: "text-bear", onClick: () => setOpen({ kind: "moves", kinds: OUTFLOW, title: "Abgänge im Quartal" }), hint: "Investoren anzeigen, die verkauft haben" }
+      : { label: "Verkäufe in den Meldungen", value: String(sellRows.length), cls: "text-bear", onClick: () => setOpen({ kind: "trades", rows: sellRows, title: "Verkäufe", subtitle: `Gemeldete Verkäufe in den letzten ${stock.trades.length} Meldungen.` }) },
   ];
 
   return (
@@ -156,69 +133,27 @@ export default function StockPage() {
             <SegmentedControl label="Zeitraum" size="sm" options={[["1M", "1M"], ["3M", "3M"], ["6M", "6M"], ["1J", "1J"], ["Max", "Max"]] as const} value={range} onChange={setRange} />
           </div>
           <PriceChart key={range} bars={(series ?? bars).slice(-({ "1M": 22, "3M": 64, "6M": 127, "1J": 253, Max: (series ?? bars).length }[range]))} height={220} />
+          <p className="mt-3 text-[12px] leading-snug text-subtle">Schlusskurse bis {formatDate(bars[bars.length - 1].date)}{quote ? ` · Kurs von ${new Date(quote.t).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr` : isStaleDate(bars[bars.length - 1].date) ? " · veraltet" : ""}</p>
         </div>
       )}
       </div>
 
       {priceError && <ErrorRetry onRetry={() => setTick(t => t+1)}/>}
-      {bars?.length ? <p className="-mt-5 text-[13px] text-subtle">Schlusskurse bis {formatDate(bars[bars.length-1].date)}{quote ? ` · aktueller Kurs von ${new Date(quote.t).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} Uhr` : isStaleDate(bars[bars.length-1].date) ? " · veraltet" : ""}</p> : !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
+      {bars && bars.length <= 1 && !priceError && <p className="text-sm text-subtle">Kein historischer Kursverlauf vorhanden.</p>}
       <StatRow items={stats} />
 
-      {(actTotal > 0 || insTotal > 0) && (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="min-w-[14rem] flex-1">
-              <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Aktivität</h2>
-              {/* Hinweis, weil diese Summe größer sein darf als „Investoren mit
-                  Bestand“: wer komplett verkauft hat, taucht hier noch auf. */}
-              <p className="text-xs text-subtle">
-                {actTab === "inv"
-                  ? "Jüngste geladene Bestandsänderung je Investor. Optionspositionen sind ausgenommen."
-                  : "Jüngster bestätigter Kauf oder Verkauf je Insider in den geladenen Meldungen."}
-              </p>
-            </div>
-            <SegmentedControl label="Aktivität von" size="sm" options={[["inv", "Investoren"], ["ins", "Insider"]] as const} value={actTab} onChange={setActTab} />
-          </div>
-
-          {curTotal === 0 ? (
-            <div className="card p-6 text-center text-[15px] text-subtle">
-              Keine {actTab === "inv" ? "Investoren" : "Insider"}-Aktivität in dieser Meldung.
-            </div>
-          ) : (
-            <div className="card flex flex-col items-center gap-6 p-5 sm:flex-row">
-              <Donut
-                segments={curSegs}
-                centerTop={`${Math.round((curTop.value / curTotal) * 100)} %`}
-                centerBottom={curTop.label}
-              />
-              <div className="w-full flex-1 space-y-2.5">
-                {curSegs.map((s) => (
-                  <div key={s.label} className="flex items-center gap-2 text-sm">
-                    <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
-                    <span className="text-ink">{s.label}</span>
-                    <span className="text-xs text-subtle">
-                      {s.value}{" "}
-                      {actTab === "inv"
-                        ? s.value === 1
-                          ? "Investor"
-                          : "Investoren"
-                        : "Insider"}
-                    </span>
-                    <span className="ml-auto font-semibold">
-                      {Math.round((s.value / curTotal) * 100)} %
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      )}
+      <StockActivity
+        company={stock.company}
+        moves={moves}
+        trades={stock.trades}
+        onOpenMoves={(kinds, title) => setOpen({ kind: "moves", kinds, title })}
+        onOpenTrades={(rows, title, subtitle) => setOpen({ kind: "trades", rows, title, subtitle })}
+      />
 
       <section className="space-y-3">
         <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Wer hält diese Aktie</h2>
         <div className="card overflow-hidden">
-          {stock.holders.map((h) => (
+          {holderList.map((h) => (
             <Link
               key={`${h.slug || h.fund}-${h.putCall ?? "stock"}`}
               href={h.slug ? `/investor/${h.slug}` : "#"}
@@ -243,6 +178,11 @@ export default function StockPage() {
               Aktuell hält keiner der verfolgten Investoren diese Aktie.
             </div>
           )}
+          {stock.holders.length > holderList.length && (
+            <button type="button" onClick={() => setAllHolders(true)} className="flex w-full items-center justify-center gap-1 border-t border-hair py-3 text-[15px] font-medium text-ink hover:bg-ink/[0.03]">
+              Alle {stock.holders.length} anzeigen <Icon name="chevronDown" className="h-4 w-4 text-subtle" />
+            </button>
+          )}
         </div>
       </section>
 
@@ -250,6 +190,10 @@ export default function StockPage() {
         <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letzte Meldungen</h2>
         <TradeFeed rows={stock.trades} empty="Keine gemeldeten Trades für diese Aktie." />
       </section>
+
+      {open?.kind === "holders" && <HoldersSheet holders={stock.holders} company={stock.company} value={stock.value} asOf={holderAsOf} onClose={() => setOpen(null)} />}
+      {open?.kind === "moves" && moves && <MovesSheet title={open.title} kinds={open.kinds} moves={moves} company={stock.company} onClose={() => setOpen(null)} />}
+      {open?.kind === "trades" && <TradesSheet title={open.title} subtitle={open.subtitle} rows={open.rows} onClose={() => setOpen(null)} />}
     </div>
   );
 }

@@ -6,10 +6,11 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { SkeletonList } from "@/components/Skeleton";
 import { Icon } from "@/components/Icon";
 import { TradeFeed } from "@/components/TradeFeed";
-import { PageTitle, SegmentedControl } from "@/components/ui";
+import { ChipBar, PageTitle, SegmentedControl } from "@/components/ui";
+import { DataGuideLink } from "@/components/DataGuide";
 import { fetchJson } from "@/lib/fetchJson";
 import type { FeedRow, TradesResponse } from "@/lib/types";
-const TYPES = [{key:"",label:"Alle"},{key:"institution",label:"Investoren"},{key:"corporate_insider",label:"Insider"},{key:"politician",label:"Politiker"}];
+const TYPES = [{key:"",label:"Alle"},{key:"institution",label:"Investoren",aura:"investor"},{key:"corporate_insider",label:"Insider",aura:"insider"},{key:"politician",label:"Politiker",aura:"politician"}] as const;
 const TXNS = [{key:"",label:"Alle"},{key:"buy",label:"Käufe"},{key:"sell",label:"Verkäufe"}];
 export default function FeedPage() { return <Suspense fallback={<SkeletonList n={8} />}><Feed /></Suspense>; }
 function Feed() {
@@ -53,9 +54,9 @@ function Feed() {
   const submit = (event: FormEvent) => { event.preventDefault(); update("q", q.trim()); };
   const extra = ["from", "to", "size"].filter(key => params.get(key)).length;
   return <div className="space-y-5">
-    <PageTitle title="Meldungen" subtitle={<>Alle Offenlegungen von Abgeordneten, Insidern und Investoren, neueste zuerst. Tippe eine Zeile für Details. <Link href="/methodik" className="font-medium text-ink underline underline-offset-2">So liest du die Daten</Link></>} />
+    <PageTitle title="Meldungen" subtitle={<>Alle Offenlegungen von Abgeordneten, Insidern und Investoren, neueste zuerst. Tippe eine Zeile für Details. <DataGuideLink /></>} />
     <div className="space-y-3">
-      <div role="group" aria-label="Akteure" className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-1">{TYPES.map(item => { const aura = item.key === "institution" ? "investor" : item.key === "corporate_insider" ? "insider" : item.key === "politician" ? "politician" : null; return <button type="button" key={item.key} aria-pressed={type === item.key} onClick={() => update("type", item.key)} className={`chip ${type === item.key ? "chip-on" : ""}`}>{aura && <i aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: `rgb(var(--aura-${aura}))` }} />}{item.label}</button>; })}</div>
+      <ChipBar mode="filter" label="Akteure" items={TYPES} value={type as (typeof TYPES)[number]["key"]} onChange={value => update("type", value)} />
       <div className="flex flex-wrap items-center gap-2">
         <SegmentedControl label="Vorgang" size="sm" options={TXNS.map(item => [item.key, item.label] as const)} value={txnType} onChange={value => update("txnType", value)} />
         <form onSubmit={submit} role="search" className="relative min-w-[12rem] flex-1"><label htmlFor="feed-query" className="sr-only">Akteur, Unternehmen oder Ticker suchen</label><Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" /><input id="feed-query" type="search" value={q} maxLength={100} onChange={e => setQ(e.target.value)} onBlur={() => { if (q.trim() !== (params.get("q") || "")) update("q", q.trim()); }} placeholder="Name oder Ticker suchen …" className="field !pl-9"/></form>

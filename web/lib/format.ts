@@ -476,6 +476,25 @@ const COMPANY_BY_TICKER: Record<string, string> = {
   DDOG: "Datadog", NET: "Cloudflare", SPGI: "S&P Global", ICE: "ICE",
   CME: "CME Group", TXN: "Texas Instruments", IBM: "IBM", INTU: "Intuit",
   ISRG: "Intuitive Surgical", VRT: "Vertiv", SMCI: "Super Micro",
+  // Names that 13F abbreviations mangle beyond repair
+  SPCX: "SpaceX", CART: "Instacart", JCI: "Johnson Controls", JHX: "James Hardie",
+  USFD: "US Foods", MELI: "MercadoLibre", CBRS: "Cerebras", HHH: "Howard Hughes",
+  BBD: "Bradesco", IEP: "Icahn Enterprises", HCC: "Warrior Met Coal",
+};
+
+// 13F issuer names are cut to fit a fixed-width column ("JOHNSON CTLS INTL",
+// "US FOODS HLDG"). After title-casing, the usual cuts are spelt out again.
+const ABBREV: Record<string, string> = {
+  Ctls: "Controls", Intl: "International", Inds: "Industries", Hldg: "Holdings",
+  Hldgs: "Holdings", Techn: "Technologies", Technolog: "Technologies", Svcs: "Services",
+  Svc: "Service", Sys: "Systems", Pptys: "Properties", Ppty: "Property", Mgmt: "Management",
+  Mfg: "Manufacturing", Finl: "Financial", Hlth: "Health", Hlthcare: "Healthcare",
+  Entmt: "Entertainment", Natl: "National", Amer: "American", Dev: "Development",
+  Elec: "Electric", Equip: "Equipment", Instrs: "Instruments", Invts: "Investments",
+  Matls: "Materials", Pwr: "Power", Semicndtr: "Semiconductor", Solutns: "Solutions",
+  Util: "Utilities", Commun: "Communications", Communctns: "Communications",
+  Pharmaceutica: "Pharmaceuticals", Therapeutc: "Therapeutics", Bancorporatn: "Bancorporation",
+  Us: "US", Ai: "AI", Usa: "USA", Nv: "NV", Etf: "ETF", Reit: "REIT",
 };
 
 // A CUSIP (9-char security id) sometimes ends up in the name/ticker column when
@@ -488,14 +507,20 @@ function isCusipLike(s: string | null | undefined): boolean {
 const SUFFIX_RE =
   /(?:^|\s)(incorporated|inc|corporation|corp|company|co|plc|ltd|limited|llc|l\.?p|lp|sa|s\.a|n\.?\s?v|a\.?g|a\/s|se|oyj|asa|holdings?|group|the|com|new|sponsored|adr|ads)\.?(?=\s|$)/gi;
 
-function prettifyCompany(raw: string): string {
+function prettifyCompany(raw: string, ticker = ""): string {
   // SEC registrant names are often already in proper case ("STMicroelectronics
   // N.V."); keep that. Only ALL-CAPS 13F abbreviations are title-cased.
   const shouting = raw === raw.toUpperCase();
   let s = (raw || "").replace(/\b(class [a-c]|cl\.? [a-c]|series [a-c]|common stock|ordinary shares?|shares?)\b/gi, " ");
   s = s.replace(/\s\/[a-z]{2}\/?\s*$/i, " "); // drop trailing /DE/ etc.
   s = s.replace(/[,]+/g, " ").replace(/\s+/g, " ").trim();
-  if (shouting) s = s.toLowerCase().replace(/(^|[\s\-&(])([a-z])/g, (_, lead: string, c: string) => lead + c.toUpperCase());
+  if (shouting) {
+    s = s.toLowerCase().replace(/(^|[\s\-&(])([a-z])/g, (_, lead: string, c: string) => lead + c.toUpperCase());
+    s = s.replace(/[A-Za-z]+/g, (w) => ABBREV[w] ?? w);
+    // Initialisms stay capitals: short words without a vowel (RGC, BCB) and
+    // a word that is the ticker itself (UMH Properties).
+    s = s.replace(/[A-Za-z]+/g, (w) => (w.length <= 4 && !/[aeiouy]/i.test(w) && w !== "St") || (w.length <= 5 && w.toUpperCase() === ticker) ? w.toUpperCase() : w);
+  }
   let prev = "";
   while (prev !== s) {
     prev = s;
@@ -539,7 +564,7 @@ export function companyName(ticker: string | null, rawName: string | null): stri
   const T = rawT && !isCusipLike(rawT) ? rawT.toUpperCase() : "";
   if (T && COMPANY_BY_TICKER[T]) return COMPANY_BY_TICKER[T];
   if (rawName && !isCusipLike(rawName)) {
-    const pretty = prettifyCompany(rawName);
+    const pretty = prettifyCompany(rawName, T);
     if (pretty && !isCusipLike(pretty)) return pretty;
   }
   if (T) return T; // clean ticker symbol beats an unresolved CUSIP
