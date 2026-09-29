@@ -349,5 +349,36 @@ if (real) {
   console.log(`     ${open.length} offene Positionen, ${r.instruments.length} Papiere insgesamt`);
 }
 
+// ── Drei Nachkommastellen in einer deutschen Datei ──────────────────────────
+// "217,425" wurde als Tausendertrenner gelesen: Visa kostete 217.425 €, aus
+// 344,683 Stück wurden 344.683 und das Depot stand bei 91 Mio. €.
+console.log("\nDezimalkomma je Datei");
+{
+  const csv =
+    "Name;ISIN;Anzahl;Kurs\n" +
+    "Visa Inc Class A;US92826C8394;40,7301;217,425\n" +
+    "SPDR S&P US Dividend Aristocrats UCITS ETF;IE00B6YX5D40;344,683;61,234\n" +
+    "Wise PLC Class A;GB00BL9YR756;100;7,82\n";
+  const r = B.importCsv(csv);
+  const visa = r.txns.find((t) => t.ticker === "US92826C8394");
+  const spdr = r.txns.find((t) => t.ticker === "IE00B6YX5D40");
+  ok("217,425 bleibt 217,425", near(visa?.price, 217.425), visa?.price, 217.425);
+  ok("344,683 Stück bleiben 344,683", near(spdr?.shares, 344.683), spdr?.shares, 344.683);
+  ok("61,234 bleibt 61,234", near(spdr?.price, 61.234), spdr?.price, 61.234);
+}
+{
+  const r = B.importCsv('symbol,shares,price\nAAPL,1,234\nMSFT,2,"1,234.50"\nNVDA,3,88.50\n');
+  const msft = r.txns.find((t) => t.ticker === "MSFT");
+  ok("US-Datei: 1,234.50 bleibt 1234,5", near(msft?.price, 1234.5), msft?.price, 1234.5);
+}
+{
+  const r = B.importCsv("AAPL;2,5;217,425\nMSFT;1;88,50\n");
+  ok("Bestandsliste DE: 217,425 bleibt 217,425", near(r.txns[0]?.price, 217.425), r.txns[0]?.price, 217.425);
+}
+ok("detectDecimal DE", P.detectDecimal(["217,425", "7,82"]) === ",", P.detectDecimal(["217,425", "7,82"]), ",");
+ok("detectDecimal US", P.detectDecimal(["1,234", "7.82"]) === ".", P.detectDecimal(["1,234", "7.82"]), ".");
+ok("detectDecimal mehrdeutig", P.detectDecimal(["217,425", "12"]) === null, P.detectDecimal(["217,425", "12"]), "null");
+ok("Faktor 1.000 wird als Importfehler benannt", /Import/.test(I.priceMismatch(217425, 290, 1) ?? ""), I.priceMismatch(217425, 290, 1), "Import");
+
 console.log(`\n${pass} bestanden, ${fail} fehlgeschlagen\n`);
 process.exit(fail === 0 ? 0 : 1);

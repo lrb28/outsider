@@ -184,12 +184,59 @@ export function sortTxns(t: Txn[]): Txn[] {
 // ── Zahlen- und CSV-Parsing ─────────────────────────────────────────────────
 
 /** Tolerant: "1.234,56" | "1,234.56" | "1234.56" | "1234" | "$12" */
-export function parseNum(s: string | number | undefined | null): number {
-  if (typeof s === "number") return s;
-  const t = String(s ?? "")
+const cleanNum = (s: string | number | undefined | null) =>
+  String(s ?? "")
     .trim()
     .replace(/\s/g, "")
     .replace(/[$€£']/g, "");
+
+/**
+ * Dezimaltrennzeichen einer ganzen Datei, aus allen ihren Zahlen bestimmt.
+ * Eine einzelne Zahl wie "217,425" ist mehrdeutig (217,425 € oder 217.425 €);
+ * steht in derselben Datei aber "7,82" oder "40,7301", ist das Komma dort
+ * Dezimalzeichen. Ohne eindeutigen Beleg: null (dann rät parseNum je Zahl).
+ */
+export function detectDecimal(values: (string | undefined | null)[]): "," | "." | null {
+  let comma = 0;
+  let dot = 0;
+  for (const raw of values) {
+    const t = cleanNum(raw).replace(/^[+-]/, "");
+    if (!/^[\d.,]+$/.test(t) || !/\d/.test(t)) continue;
+    const c = t.lastIndexOf(",");
+    const d = t.lastIndexOf(".");
+    if (c >= 0 && d >= 0) {
+      if (c > d) comma++;
+      else dot++;
+      continue;
+    }
+    const sep = c >= 0 ? "," : d >= 0 ? "." : null;
+    if (!sep) continue;
+    const first = t.indexOf(sep);
+    const last = sep === "," ? c : d;
+    if (first !== last) {
+      // "1.234.567": mehrfach vorkommend ist es ein Tausendertrenner.
+      if (sep === ",") dot++;
+      else comma++;
+      continue;
+    }
+    // Genau drei Nachkommastellen beweisen nichts, alles andere schon.
+    if (t.length - last - 1 !== 3 || first === 0) {
+      if (sep === ",") comma++;
+      else dot++;
+    }
+  }
+  if (comma === dot) return null;
+  return comma > dot ? "," : ".";
+}
+
+/**
+ * Zahl aus einem Export. Mit `decimal` (aus detectDecimal für die ganze
+ * Datei) wird nicht mehr je Zahl geraten: in einer deutschen Datei ist
+ * "217,425" dann 217,425 und nicht 217.425.
+ */
+export function parseNum(s: string | number | undefined | null, decimal: "," | "." | null = null): number {
+  if (typeof s === "number") return s;
+  const t = cleanNum(s);
   if (!t) return NaN;
   const hasComma = t.includes(",");
   const hasDot = t.includes(".");
@@ -199,8 +246,11 @@ export function parseNum(s: string | number | undefined | null): number {
       ? parseFloat(t.replace(/\./g, "").replace(",", "."))
       : parseFloat(t.replace(/,/g, ""));
   }
+  if (decimal === ",") return parseFloat(t.replace(/\./g, "").replace(",", "."));
+  if (decimal === ".") return parseFloat(t.replace(/,/g, ""));
   if (hasComma) {
-    // "1,234" mit exakt 3 Nachkommastellen ist fast immer ein Tausendertrenner.
+    // Ohne Kenntnis der Datei: "1,234" mit exakt 3 Nachkommastellen ist
+    // meist ein Tausendertrenner.
     const parts = t.split(",");
     if (parts.length === 2 && parts[1].length === 3 && parts[0].length <= 3) {
       return parseFloat(t.replace(",", ""));
