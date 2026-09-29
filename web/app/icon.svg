@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 <defs>
-<radialGradient id="b" cx="26%" cy="30%" r="62%"><stop offset="0" stop-color="#3987e5"/><stop offset="1" stop-color="#3987e5" stop-opacity="0"/></radialGradient>
-<radialGradient id="o" cx="72%" cy="24%" r="55%"><stop offset="0" stop-color="#eb6834"/><stop offset="1" stop-color="#eb6834" stop-opacity="0"/></radialGradient>
-<radialGradient id="m" cx="64%" cy="84%" r="62%"><stop offset="0" stop-color="#d55fae"/><stop offset="1" stop-color="#d55fae" stop-opacity="0"/></radialGradient>
+<linearGradient id="t" x1="0" x2="1"><stop offset="0" stop-color="#44699a"/><stop offset=".5" stop-color="#7a6d84"/><stop offset="1" stop-color="#c27c52"/></linearGradient>
+<linearGradient id="b" x1="0" x2="1"><stop offset="0" stop-color="#122265"/><stop offset=".5" stop-color="#551e60"/><stop offset="1" stop-color="#9c1a4f"/></linearGradient>
+<linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset=".04" stop-color="#fff" stop-opacity="0"/><stop offset=".96" stop-color="#fff"/></linearGradient>
+<mask id="m"><rect width="512" height="512" fill="url(#v)"/></mask>
+<clipPath id="c"><rect width="512" height="512" rx="113"/></clipPath>
 </defs>
-<rect width="512" height="512" rx="114" fill="#0b0b0d"/>
-<rect width="512" height="512" rx="114" fill="url(#b)" opacity=".9"/>
-<rect width="512" height="512" rx="114" fill="url(#o)" opacity=".85"/>
-<rect width="512" height="512" rx="114" fill="url(#m)" opacity=".9"/>
+<g clip-path="url(#c)">
+<rect width="512" height="512" fill="url(#t)"/>
+<rect width="512" height="512" fill="url(#b)" mask="url(#m)"/>
+</g>
 <path fill="#fff" d="M165.1 131.0H346.9V151.8H165.1Z M204.05 381.0H165.14L233.43 186.58H278.71L346.85 381.0H308.08L256.78 227.36H255.21ZM204.57 304.71H307.33V333.74H204.57Z"/>
 </svg>

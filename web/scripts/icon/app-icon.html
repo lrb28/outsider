@@ -1,0 +1,50 @@
+<!doctype html>
+<!-- Source of the app icon (docs/brand.md). Open in Chrome at 1024x1024 and
+     capture #icon: as is for the full-bleed iOS/maskable files, with class
+     "round" on #icon for the rounded manifest icons. -->
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;padding:0;background:transparent}
+.icon{position:relative;width:1024px;height:1024px;overflow:hidden}
+.icon.round{border-radius:226px}
+.layer{position:absolute;inset:0}
+/* Bilinear aura gradient sampled from the Figma artwork: blue left, orange top
+   right, magenta bottom right, navy bottom left. */
+.top{background:linear-gradient(90deg,#44699a 0%,#7a6d84 50%,#c27c52 100%)}
+.bottom{background:linear-gradient(90deg,#122265 0%,#551e60 50%,#9c1a4f 100%);
+  -webkit-mask:linear-gradient(180deg,transparent 4%,#000 96%);mask:linear-gradient(180deg,transparent 4%,#000 96%)}
+.letter{position:absolute;inset:0;width:1024px;height:1024px;filter:drop-shadow(-8px 12px 16px rgb(8 10 40 / .38))}
+/* Figma: inner shadows along the rounded edge (x2 for 1024 px) and a thin
+   rim; outside the rounded edge the same shade continues, so the iOS mask
+   never shows an unshaded sliver in the corners. */
+.bevel{border-radius:226px;box-shadow:0 0 0 240px rgb(3 16 22 / .82),inset -20px 20px 40px rgb(0 18 22 / .9),inset 40px -40px 60px rgb(1 17 21 / .7),inset 0 0 0 2px rgb(72 72 72 / .55)}
+.refl{position:absolute;left:94px;top:21px;width:935px;height:959px}
+</style></head><body>
+<div id="icon" class="icon">
+  <div class="layer top"></div>
+  <div class="layer bottom"></div>
+  <svg class="letter" viewBox="0 0 512 512"><defs><linearGradient id="lg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e8eaf2"/></linearGradient></defs><path fill="url(#lg)" d="M165.1 131.0H346.9V151.8H165.1Z M204.05 381.0H165.14L233.43 186.58H278.71L346.85 381.0H308.08L256.78 227.36H255.21ZM204.57 304.71H307.33V333.74H204.57Z"/></svg>
+  <div class="layer bevel"></div>
+  <div class="refl"><svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="935" height="959" viewBox="0 0 467.5 479.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Reflections">
+<g id="Right Reflection" opacity="0.4" filter="url(#filter0_f_0_4)">
+<path d="M450.5 105.5C450.5 50 416.333 32.6667 408.5 24C414.167 37.1667 431 78 431 105.5L431 371C431 399.4 421.333 448.167 418 462.5C423.5 453.667 450.5 437 450.5 371L450.5 105.5Z" fill="white"/>
+</g>
+<g id="Top Reflection" opacity="0.8" filter="url(#filter1_f_0_4)">
+<path d="M64 4C36.8 4 12.6667 19.6667 4 27.5C17.1667 21.8333 37.5 10.5 64 10.5H329.5C357.9 10.5 393.667 17.1667 408 20.5C399.167 15 371.1 4 329.5 4H64Z" fill="white"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_f_0_4" x="391.5" y="7" width="76" height="472.5" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="8.5" result="effect1_foregroundBlur_0_4"/>
+</filter>
+<filter id="filter1_f_0_4" x="0" y="0" width="412" height="31.5" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="2" result="effect1_foregroundBlur_0_4"/>
+</filter>
+</defs>
+</svg>
+</div>
+</div></body></html>

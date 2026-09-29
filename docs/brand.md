@@ -12,8 +12,14 @@ it, colour only where it carries meaning.
   Tight (OFL, only in `web/scripts/fonts`, not loaded by the site) at weight
   620 with 0.14 em tracking by `web/scripts/generate-wordmark.py`.
   It uses `currentColor`; never add effects to it.
-- App icon: a white Ā on the three auras over near-black (`web/app/icon.svg`,
-  PNGs in `web/public`).
+- App icon: the user's "3D gloss" icon from Figma (file lDOK5IkoP0lFNnTxIsxuFK,
+  node 1:11): a white Ā on a diagonal aura gradient (blue left, orange top
+  right, magenta bottom right), inner bevel shadows and top/right gloss
+  highlights. Rebuilt crisp from the same letter path and Figma's effect
+  values; iOS gets a full-bleed square (`app/apple-icon.png`,
+  `public/apple-touch-icon.png`, it applies its own mask), the manifest gets
+  rounded 192/512 and a full-bleed maskable 512. `web/app/icon.svg` is the
+  flat tab version of the same gradient. Source: `web/scripts/icon/app-icon.html`.
 
 ## Colour
 
