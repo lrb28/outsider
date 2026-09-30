@@ -8,7 +8,7 @@ import { ActionMenu } from "@/components/ActionMenu";
 import { Icon, type IconName } from "@/components/Icon";
 import { LiquidGlass } from "@/components/LiquidGlass";
 
-const TABS: { href: string; label: string; icon: IconName; fill: IconName }[] = [
+export const TABS: { href: string; label: string; icon: IconName; fill: IconName }[] = [
   { href: "/", label: "Home", icon: "home", fill: "homeFill" },
   { href: "/discover", label: "Discover", icon: "discovery", fill: "discoveryFill" },
   { href: "/feed", label: "Feed", icon: "notification", fill: "notificationFill" },
@@ -16,8 +16,8 @@ const TABS: { href: string; label: string; icon: IconName; fill: IconName }[] = 
   { href: "/settings", label: "Settings", icon: "setting", fill: "settingFill" },
 ];
 
-// Sections that fold into a main tab for highlighting purposes.
-function activeTab(path: string): string {
+// Sections that fold into a main tab (tab bar highlight, swipe between tabs).
+export function activeTab(path: string): string {
   if (path === "/") return "/";
   if (
     path.startsWith("/discover") ||

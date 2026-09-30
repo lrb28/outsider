@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { AuraField } from "@/components/AuraField";
-import { SilkRibbon } from "@/components/SilkRibbon";
+import { SilkVideo } from "@/components/SilkVideo";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Icon, type IconName } from "@/components/Icon";
@@ -27,30 +27,31 @@ const STEPS: Step[] = [
 
 
 /*
- * First screen, after the reference wallet app: a band of iridescent silk
- * flowing through a white page (black in dark mode), the mark in the upper
- * middle, a three-line headline bottom left and two equal frosted capsules.
+ * First screen, after the reference wallet app: its silk animation (the
+ * user's video, 1:1) on a white page (black in dark mode), the mark in the
+ * upper middle, a three-line headline bottom left and two equal frosted
+ * capsules, placed where the video had its own.
  */
 function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void }) {
   const start = useRef<HTMLButtonElement>(null);
   useEffect(() => start.current?.focus({ preventScroll: true }), []);
   return (
     <div className="welcome-screen relative flex h-full flex-col overflow-hidden">
-      <SilkRibbon className="pointer-events-none absolute inset-0 h-full w-full" />
+      <SilkVideo className="pointer-events-none absolute inset-0" />
 
-      <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[34%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
+      <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[36%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
         <path d={MARK_PATH} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />
       </svg>
 
-      <div className="relative mt-auto px-8 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <h2 id="onboarding-title" aria-label="Money leaves clues" className="font-display text-[3rem] font-semibold leading-[0.94] tracking-[-0.03em]">
+      <div className="relative mt-auto px-8 pb-[max(2.75rem,calc(env(safe-area-inset-bottom)+0.6rem))]">
+        <h2 id="onboarding-title" aria-label="Money leaves clues" className="font-display text-[2.7rem] font-semibold leading-[1] tracking-[-0.025em]">
           {["Money", "leaves", "clues"].map((w, i) => (
             <span key={w} aria-hidden="true" className="welcome-line block" style={{ animationDelay: `${260 + i * 90}ms` }}>
               {w}
             </span>
           ))}
         </h2>
-        <div className="welcome-line mt-9 grid grid-cols-2 gap-3" style={{ animationDelay: "560ms" }}>
+        <div className="welcome-line mt-8 grid grid-cols-2 gap-5" style={{ animationDelay: "560ms" }}>
           <button type="button" onClick={onSkip} className="welcome-pill press">
             Later
           </button>

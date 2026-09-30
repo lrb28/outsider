@@ -90,12 +90,11 @@ column names and decimal commas.
 - Page sections and list filters at the top of a page use the `ChipBar`
   (Discover, Feed, Portfolio): 36 px capsules on `surface-2`, the chosen one
   solid ink, aura dot for people categories. Same look on every tab.
-- Swiping the page sideways switches tabs (`SwipeNav`, `lib/swipeTabs.ts`):
-  first through the page's ChipBar sections, past either end on to the
-  neighbouring main tab (arriving from the right lands on its last section).
-  Rows that scroll sideways, charts, the 3D allocation (`data-noswipe`),
-  fields, open sheets and the outer 24 px (system back gesture) are left
-  alone.
+- Swiping the page sideways switches between the main tabs of the tab bar
+  (`SwipeNav`), never between a page's chips or filters (user,
+  2026-09-30); detail pages swipe from the tab they belong to. Rows that
+  scroll sideways, charts, the 3D allocation (`data-noswipe`), fields, open
+  sheets and the outer 24 px (system back gesture) are left alone.
 - Anything that answers "who/what is behind this?" opens a `Sheet` instead of
   a new page: key figures (Investors holding, Bought/Sold this quarter), legend
   rows, the "How to read the data" explainer; a trade opens the trade card
@@ -205,14 +204,12 @@ digits that appear or go grow and shrink in width. The Portfolio value and the
 start page counts roll up from zero once they are on screen; values that
 follow a finger (the chart price) roll in about 0.28 s.
 
-Welcome screen (first visit, or `/?welcome=1`): after the reference wallet
-app's two videos (light and dark), a ribbon of iridescent silk
-(`SilkRibbon`, WebGL, eight-second loop) enters wide at the top right,
-pinches at the right edge and fans out into separate strands towards the
-bottom left. Five strands of thin film multiply over white like tinted glass,
-so overlaps deepen into amber and navy; one spectrum runs across the band
-(cream, pink, orange, blue, cyan) with fine threads along it and a slight red
-and blue split at the edges. Dark mode is the negative on black (orange turns
-teal, blue turns gold) plus white glints on the lower strands, exactly as in
-the reference. The mark sits in the upper middle, "Money / leaves / clues"
-bottom left, two equal frosted capsules below.
+Welcome screen (first visit, or `/?welcome=1`): the silk animation of the
+user's reference videos, 1:1 (the user rejected a WebGL imitation on
+2026-09-30). The one-second loop was cut from both videos (light and dark),
+its clock, logo, headline and buttons painted out along the silk's streaks,
+upscaled to 1170×2538 and is played as HEVC or H.264 by `SilkVideo`
+(`public/welcome/`, rebuild with `web/scripts/welcome/`). A still poster shows
+until it plays and for reduced motion. On top: the mark in the upper middle
+(36 %), "Money / leaves / clues" bottom left and two equal frosted capsules
+where the video had its own buttons.
