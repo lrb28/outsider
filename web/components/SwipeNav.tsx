@@ -3,17 +3,16 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-import { canStepTabs, enterAtLast, stepTabs } from "@/lib/swipeTabs";
-
-/** The main tabs in tab bar order. */
-export const MAIN_TABS = ["/", "/discover", "/feed", "/me", "/settings"] as const;
+import { activeTab, TABS } from "@/components/Nav";
 
 const EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
 
 /**
- * Swipe the page sideways to switch tabs: first through the page's own
- * sections (its ChipBar), then on to the neighbouring main tab. The content
- * follows the finger a little and slides in from the side it came from.
+ * Swipe the page sideways to switch between the main tabs of the tab bar
+ * (Home, Discover, Feed, Portfolio, Settings), never between a page's own
+ * chips or filters (user, 2026-09-30). Works on every page, from the tab the
+ * bar highlights. The content follows the finger, slides out and the next
+ * tab slides in from the side it came from.
  *
  * Left alone: anything that scrolls or drags sideways itself (card rows, the
  * chip bar, charts, the 3D allocation), form fields, open sheets and
@@ -28,12 +27,19 @@ export function SwipeNav() {
   useEffect(() => {
     const main = document.getElementById("main");
     if (!main) return;
+    const order = TABS.map((t) => t.href);
     let x0 = 0;
     let y0 = 0;
     let t0 = 0;
     let dx = 0;
     let state: "idle" | "maybe" | "swipe" | "off" = "idle";
     let busy = false;
+
+    const neighbour = (dir: 1 | -1) => {
+      const i = order.indexOf(activeTab(pathRef.current));
+      // Pages outside the tab bar (methodology, privacy) don't swipe.
+      return i < 0 ? undefined : order[i + dir];
+    };
 
     const blocked = (target: Element | null) => {
       if (!target || !main.contains(target)) return true;
@@ -55,30 +61,26 @@ export function SwipeNav() {
     };
 
     const commit = (dir: 1 | -1) => {
-      const here = pathRef.current;
-      const tab = MAIN_TABS.indexOf(here as (typeof MAIN_TABS)[number]);
-      const nextTab = tab >= 0 ? MAIN_TABS[tab + dir] : undefined;
-      // Nothing further that way: spring back.
-      if (!canStepTabs(dir) && !nextTab) return slide(0, 1, 300);
+      const next = neighbour(dir);
+      // First or last tab: spring back.
+      if (!next) return slide(0, 1, 320);
       busy = true;
-      slide(-dir * 70, 0, 140);
+      const w = window.innerWidth;
+      slide(-dir * w * 0.45, 0, 170);
       window.setTimeout(() => {
-        if (!stepTabs(dir) && nextTab) {
-          if (dir === -1) enterAtLast(nextTab);
-          router.push(nextTab, { scroll: false });
-          window.scrollTo({ top: 0 });
-        }
-        slide(dir * 70, 0, 0);
+        router.push(next, { scroll: false });
+        window.scrollTo({ top: 0 });
+        slide(dir * w * 0.35, 0, 0);
         requestAnimationFrame(() =>
           requestAnimationFrame(() => {
-            slide(0, 1, 340);
+            slide(0, 1, 360);
             window.setTimeout(() => {
               main.style.transition = "";
               busy = false;
-            }, 360);
+            }, 380);
           }),
         );
-      }, 140);
+      }, 170);
     };
 
     const onStart = (e: TouchEvent) => {
@@ -109,7 +111,9 @@ export function SwipeNav() {
         state = "swipe";
       }
       e.preventDefault();
-      slide(dx * 0.3, 1 - Math.min(0.25, Math.abs(dx) / 1200), 0);
+      // Follows the finger; at the first and last tab it resists.
+      const edge = !neighbour(dx < 0 ? 1 : -1);
+      slide(dx * (edge ? 0.2 : 0.6), 1 - Math.min(0.35, Math.abs(dx) / 900), 0);
     };
     const onEnd = () => {
       if (state !== "swipe") {
@@ -119,7 +123,7 @@ export function SwipeNav() {
       state = "idle";
       const speed = Math.abs(dx) / Math.max(1, performance.now() - t0);
       if (Math.abs(dx) > 80 || (Math.abs(dx) > 36 && speed > 0.45)) commit(dx < 0 ? 1 : -1);
-      else slide(0, 1, 300);
+      else slide(0, 1, 320);
     };
 
     document.addEventListener("touchstart", onStart, { passive: true });
