@@ -451,21 +451,10 @@ h1, h2, h3 {
   font-weight: 500;
   color: inherit;
 }
-.silk-ribbon {
-  display: block;
-  opacity: 0;
-  transition: opacity 1s ease-out;
-}
-.silk-ribbon[data-live] {
-  opacity: 1;
-}
-.silk-ribbon[data-fallback] {
-  opacity: 1;
-  background:
-    radial-gradient(30% 22% at 85% 18%, rgb(255 150 70 / 0.55), transparent 70%),
-    radial-gradient(22% 30% at 95% 40%, rgb(60 110 255 / 0.5), transparent 70%),
-    radial-gradient(45% 20% at 40% 78%, rgb(255 140 200 / 0.45), transparent 70%);
-  filter: blur(18px);
+.silk-video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 @keyframes welcomeMark {
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }

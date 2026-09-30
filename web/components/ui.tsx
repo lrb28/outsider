@@ -5,7 +5,6 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useSta
 
 import { Icon } from "@/components/Icon";
 import type { AuraKind } from "@/lib/format";
-import { useSwipeTabs } from "@/lib/swipeTabs";
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -116,7 +115,6 @@ export function ChipBar<T extends string>({
   onChange,
   label,
   mode = "tabs",
-  swipe = true,
   className = "",
 }: {
   items: readonly { key: T; label: string; aura?: AuraKind | null; count?: number | null }[];
@@ -125,12 +123,9 @@ export function ChipBar<T extends string>({
   label: string;
   /** "tabs" switches sections (tablist), "filter" narrows a list (toggle buttons). */
   mode?: "tabs" | "filter";
-  /** Swiping the page sideways steps through these chips. */
-  swipe?: boolean;
   className?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
-  useSwipeTabs(items.map((it) => it.key), value, onChange as (key: string) => void, swipe);
   const chips = useRef(new Map<T, HTMLButtonElement>());
   const [edges, setEdges] = useState({ left: false, right: false });
   const readEdges = useCallback(() => {
