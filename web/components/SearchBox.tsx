@@ -9,10 +9,17 @@ import { Icon } from "@/components/Icon";
 import { fetchCatalogue } from "@/lib/fetchJson";
 import type { InvestorsResponse, PoliticiansResponse, StocksResponse } from "@/lib/types";
 type Hit = { name: string; keywords: string; href: string; kind: string; ticker?: string; photo?: string | null };
+// Recently opened results (after Eaves), kept on this device only.
+const RECENT = "aura:recent-searches";
+function readRecent(): Hit[] {
+  try { const v: unknown = JSON.parse(localStorage.getItem(RECENT) || "[]"); return Array.isArray(v) ? v.filter((h): h is Hit => !!h && typeof h.href === "string" && typeof h.name === "string" && h.href.startsWith("/")).slice(0, 6) : []; } catch { return []; }
+}
+function writeRecent(list: Hit[]) { try { localStorage.setItem(RECENT, JSON.stringify(list.slice(0, 6))); } catch { /* private mode: no history */ } }
 export function SearchBox() {
   const [q,setQ] = useState(""); const [open,setOpen] = useState(false);
   const [items,setItems] = useState<Hit[]>([]); const [loading,setLoading] = useState(false);
   const [failed,setFailed] = useState(false); const [active,setActive] = useState(-1);
+  const [recent,setRecent] = useState<Hit[]>([]);
   const loaded = useRef(false); const busy = useRef(false); const box = useRef<HTMLDivElement>(null);
   const router = useRouter(); const id = useId(); const path = usePathname();
   async function ensureData() {
@@ -28,13 +35,15 @@ export function SearchBox() {
   }
   const input = useRef<HTMLInputElement>(null);
   // The action menu's "Suchen" focuses this field.
-  useEffect(() => { const focus = () => { input.current?.focus(); void ensureData(); setOpen(true); }; window.addEventListener("aura:search", focus); return () => window.removeEventListener("aura:search", focus); });
+  useEffect(() => { const focus = () => { input.current?.focus(); void ensureData(); setRecent(readRecent()); setOpen(true); }; window.addEventListener("aura:search", focus); return () => window.removeEventListener("aura:search", focus); });
   useEffect(() => { const close = (event: PointerEvent) => { if (!box.current?.contains(event.target as Node)) setOpen(false); };document.addEventListener("pointerdown",close);return () => document.removeEventListener("pointerdown",close); },[]);
   const needle = q.trim().toLocaleLowerCase("en-US");
-  const hits = needle ? items.filter(r => r.keywords.toLocaleLowerCase("en-US").includes(needle)).slice(0,10) : [];
-  const visible = open && !!needle;
+  // With nothing typed, the list shows the recent searches instead.
+  const hits = needle ? items.filter(r => r.keywords.toLocaleLowerCase("en-US").includes(needle)).slice(0,10) : recent;
+  const visible = open && (!!needle || recent.length > 0);
+  const remember = (hit: Hit) => { const next = [hit, ...readRecent().filter(h => h.href !== hit.href)]; writeRecent(next); setRecent(next.slice(0, 6)); };
   const reset = () => { setOpen(false);setQ("");setActive(-1);input.current?.blur(); };
-  const choose = (hit: Hit) => { reset();router.push(hit.href); };
+  const choose = (hit: Hit) => { remember(hit);reset();router.push(hit.href); };
   // A result is a real link, so a tap navigates even if iOS has already moved
   // focus away from the field; the new page then closes the list.
   useEffect(() => { setOpen(false);setQ("");setActive(-1); }, [path]);
@@ -44,24 +53,25 @@ export function SearchBox() {
   return <div ref={box} className="relative" onBlur={e => { const next = e.relatedTarget as Node | null; if (next && !e.currentTarget.contains(next)) setOpen(false); }}>
     <label htmlFor={id} className="sr-only">Search stocks, investors and politicians</label>
     <Icon name="search" className="pointer-events-none absolute left-[13px] top-1/2 z-10 h-[18px] w-[18px] -translate-y-1/2 text-ink/70" />
-    <input ref={input} id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={`${id}-results`} aria-activedescendant={visible && active >= 0 && hits[active] ? `${id}-${active}` : undefined} autoComplete="off" value={q} onFocus={() => {void ensureData();setOpen(true);}} onChange={e => {setQ(e.target.value);setOpen(true);setActive(-1);}} onKeyDown={e => { if(e.key === "Escape") {setOpen(false);setActive(-1);} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {e.preventDefault();setOpen(true);setActive(old => hits.length ? (old + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length : -1);} else if(e.key === "Enter" && visible) {e.preventDefault();if (hits[active]) choose(hits[active]); else {const term = q.trim();reset();router.push(`/feed?q=${encodeURIComponent(term)}`);}} }} className={`search-capsule h-11 rounded-full text-[15px] text-ink outline-none transition-[width] duration-300 ease-spring ${open || q ? "w-48 cursor-text !pl-10 pr-3 sm:w-60" : "w-11 cursor-pointer !px-0 text-transparent"}`}/>
+    <input ref={input} id={id} type="search" role="combobox" aria-autocomplete="list" aria-expanded={visible} aria-controls={`${id}-results`} aria-activedescendant={visible && active >= 0 && hits[active] ? `${id}-${active}` : undefined} autoComplete="off" value={q} onFocus={() => {void ensureData();setRecent(readRecent());setOpen(true);}} onChange={e => {setQ(e.target.value);setOpen(true);setActive(-1);}} onKeyDown={e => { if(e.key === "Escape") {setOpen(false);setActive(-1);} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {e.preventDefault();setOpen(true);setActive(old => hits.length ? (old + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length : -1);} else if(e.key === "Enter" && visible) {e.preventDefault();if (hits[active]) choose(hits[active]); else if (needle) {const term = q.trim();reset();router.push(`/feed?q=${encodeURIComponent(term)}`);}} }} className={`search-capsule h-11 rounded-full text-[15px] text-ink outline-none transition-[width] duration-300 ease-spring ${open || q ? "w-48 cursor-text !pl-10 pr-3 sm:w-60" : "w-11 cursor-pointer !px-0 text-transparent"}`}/>
     {visible && <div className="glass absolute right-0 z-40 mt-2 max-h-[65dvh] w-[min(22rem,calc(100vw-2rem))] overflow-auto rounded-3xl p-2">
-      {loading && <p role="status" className="p-3 text-sm text-subtle">Loading search …</p>}
-      {failed && <div role="status" className="p-3 text-sm text-warn">Part of the search is unavailable. <button onClick={() => void ensureData()} className="underline">Try again</button></div>}
-      {!loading && !failed && !hits.length && <p role="status" className="px-3 pb-1 pt-3 text-sm text-subtle">No investors, stocks or politicians for “{q}”.</p>}
+      {!needle && <div className="flex items-center justify-between px-3 pb-1 pt-2"><span className="text-[13px] font-semibold text-subtle">Recent</span><button type="button" onMouseDown={e => e.preventDefault()} onClick={() => { writeRecent([]); setRecent([]); setActive(-1); }} className="press-sm !min-h-8 rounded-full px-2 text-[13px] font-medium text-subtle hover:text-ink">Clear</button></div>}
+      {needle && loading && <p role="status" className="p-3 text-sm text-subtle">Loading search …</p>}
+      {needle && failed && <div role="status" className="p-3 text-sm text-warn">Part of the search is unavailable. <button onClick={() => void ensureData()} className="underline">Try again</button></div>}
+      {needle && !loading && !failed && !hits.length && <p role="status" className="px-3 pb-1 pt-3 text-sm text-subtle">No investors, stocks or politicians for “{q}”.</p>}
       <ul id={`${id}-results`} role="listbox" aria-label="Search results">{hits.map((hit,index) => <li key={hit.href} id={`${id}-${index}`} role="option" aria-selected={index === active}>
-        <Link href={hit.href} onClick={reset} onMouseDown={e => e.preventDefault()} onPointerMove={() => setActive(index)} className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink active:bg-ink/[0.08] ${index === active ? "bg-ink/[0.06]" : ""}`}>
+        <Link href={hit.href} onClick={() => { remember(hit); reset(); }} onMouseDown={e => e.preventDefault()} onPointerMove={() => setActive(index)} className={`flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink active:bg-ink/[0.08] ${index === active ? "bg-ink/[0.06]" : ""}`}>
           {hit.ticker ? <CompanyLogo ticker={hit.ticker} company={hit.name} size={30} rounded="rounded-[9px]" /> : <Avatar name={hit.name} src={hit.photo} kind={hit.kind === "Politician" ? "politician" : "investor"} size={30} />}
           <span className="min-w-0 flex-1 truncate font-medium">{hit.name}</span><span className="shrink-0 text-xs text-subtle">{hit.kind}</span>
         </Link>
       </li>)}
         {/* Insiders and every other ticker live in the disclosures. */}
-        <li role="option" aria-selected={false}>
+        {needle && <li role="option" aria-selected={false}>
           <Link href={`/feed?q=${encodeURIComponent(q.trim())}`} onClick={reset} onMouseDown={e => e.preventDefault()} className="flex min-h-11 items-center gap-3 rounded-2xl px-3 py-2 text-[15px] text-ink active:bg-ink/[0.08]">
             <span className="icon-ring h-[30px] w-[30px]"><Icon name="search" className="h-4 w-4 text-subtle" /></span>
             <span className="min-w-0 flex-1 truncate">All filings for “{q.trim()}”</span>
           </Link>
-        </li>
+        </li>}
       </ul>
       <p className="px-3 pt-2 text-[11px] text-subtle">↑ ↓ select · Enter open · Esc close</p>
     </div>}

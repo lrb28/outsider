@@ -23,7 +23,6 @@ export const PORTRAITS: Record<string, Portrait> = {
   "David_Tepper": { name: "David Tepper", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3d/David_Tepper_01.jpg/330px-David_Tepper_01.jpg", author: "Appaloosa Management", license: "CC BY-SA 3.0", page: "https://commons.wikimedia.org/wiki/File:David_Tepper_01.jpg" },
   "Terry_Smith": { name: "Terry Smith", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7b/Terry_Smith_MNZM_investiture.jpg/330px-Terry_Smith_MNZM_investiture.jpg", author: "New Zealand Government, Office of the Governor-General", license: "CC BY 4.0", page: "https://commons.wikimedia.org/wiki/File:Terry_Smith_MNZM_investiture.jpg" },
   "Howard_Marks": { name: "Howard Marks", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Howard_Marks_2.17.12_%28cropped%29.jpg/330px-Howard_Marks_2.17.12_%28cropped%29.jpg", author: "kellywritershouse", license: "CC BY 2.0", page: "https://commons.wikimedia.org/wiki/File:Howard_Marks_2.17.12_(cropped).jpg" },
-  "Stephen_Mandel": { name: "Stephen Mandel", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a0/Stephen_Mandel_Jr%2C_Lone_Pine_Capital.jpg/330px-Stephen_Mandel_Jr%2C_Lone_Pine_Capital.jpg", author: "Hedge Funds", license: "CC BY 3.0", page: "https://commons.wikimedia.org/wiki/File:Stephen_Mandel_Jr,_Lone_Pine_Capital.jpg" },
   "Brad_Gerstner": { name: "Brad Gerstner", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg/330px-Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg", author: "The White House", license: "Public domain", page: "https://commons.wikimedia.org/wiki/File:Brad_Gerstner_at_the_White_House_2025_(54581192563).jpg", focus: { x: 36, y: 28, zoom: 1.9 } },
   "Prem_Watsa": { name: "Prem Watsa", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Prem_Watsa.jpg/330px-Prem_Watsa.jpg", author: "செல்வா at Tamil Wikipedia", license: "CC BY 3.0", page: "https://commons.wikimedia.org/wiki/File:Prem_Watsa.jpg" },
 };
@@ -37,6 +36,8 @@ export const PORTRAITS: Record<string, Portrait> = {
 export const FUND_LOGOS: Record<string, { src: string; fund: string; tile?: boolean }> = {
   Philippe_Laffont: { src: "/funds/coatue.png", fund: "Coatue Management", tile: true },
   Tom_Gayner: { src: "/funds/markel.png", fund: "Markel Group" },
+  // The Commons file for Stephen Mandel is a caricature, not a photo.
+  Stephen_Mandel: { src: "/funds/lone-pine.png", fund: "Lone Pine Capital" },
   Joseph_Edelman: { src: "/funds/perceptive.png", fund: "Perceptive Advisors" },
   Jeff_Smith: { src: "/funds/starboard.png", fund: "Starboard Value" },
   Chase_Coleman_III: { src: "/funds/tiger-global.png", fund: "Tiger Global Management", tile: true },

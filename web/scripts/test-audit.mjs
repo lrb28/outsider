@@ -46,6 +46,18 @@ test('disclosure language distinguishes 13F, grants, tax withholding and P/S', (
   assert.equal(F.sizeDisplay({shares:0.125,amount_min:null,amount_max:null}),'0.125 sh.');
   assert.equal(F.sourceLink('javascript:alert(1)'),null);
 });
+test('trade card sentence: P/S and politicians carry a tone, 13F and other Form 4 codes stay neutral', () => {
+  const row = (entityType, txnType, extra = {}) => ({ entityType, txnType, putCall: null, transactionCode: null, isDerivative: false, ...extra });
+  assert.deepEqual(F.tradeVerb(row('politician', 'sell')), { verb: 'sold', tone: 'bear' });
+  assert.deepEqual(F.tradeVerb(row('politician', 'buy', { putCall: 'Call' })), { verb: 'bought a call on', tone: 'bull' });
+  assert.deepEqual(F.tradeVerb(row('corporate_insider', 'buy', { transactionCode: 'P' })), { verb: 'bought', tone: 'bull' });
+  assert.deepEqual(F.tradeVerb(row('corporate_insider', 'buy', { transactionCode: 'A' })), { verb: 'was granted', tone: 'neutral' });
+  assert.equal(F.tradeVerb(row('corporate_insider', 'sell', { transactionCode: 'S', isDerivative: true })).tone, 'neutral');
+  assert.deepEqual(F.tradeVerb(row('institution', 'buy')), { verb: 'added to', tone: 'neutral' });
+  assert.equal(F.quarterOf('2026-06-30'), 'Q2 2026');
+  assert.equal(F.quarterOf('2025-12-31'), 'Q4 2025');
+  assert.equal(F.quarterOf(null), null);
+});
 test('key figures use short money and dates that fit a phone column', () => {
   assert.equal(F.shortMoney(263.1e9),'$263B');
   assert.equal(F.shortMoney(26.34e9),'$26.3B');

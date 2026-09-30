@@ -603,3 +603,37 @@ export function sourceLink(value: string | null | undefined): string | null {
   if (!value) return null;
   try { const u = new URL(value); return u.protocol === "https:" ? u.toString() : null; } catch { return null; }
 }
+
+/**
+ * The trade card's headline as a sentence (after Eaves: "Zhang Ning sold
+ * Pony AI"): the verb for "{who} … {company}" and its tone. 13F changes stay
+ * neutral, like everywhere else: a quarter's difference is not a dated trade.
+ */
+export function tradeVerb(row: Pick<FeedRow, "entityType" | "txnType" | "putCall" | "transactionCode" | "isDerivative">): { verb: string; tone: "bull" | "bear" | "neutral" } {
+  if (row.entityType === "institution") {
+    const verb = row.txnType === "buy" ? "added to" : row.txnType === "sell" ? "cut" : "changed";
+    return { verb: row.putCall ? `${verb} a ${row.putCall.toLowerCase()} on` : verb, tone: "neutral" };
+  }
+  if (row.entityType === "corporate_insider") {
+    const code = row.transactionCode;
+    if (!code) return { verb: row.txnType === "buy" ? "reported an acquisition of" : row.txnType === "sell" ? "reported a disposal of" : "reported a change in", tone: "neutral" };
+    const codes: Record<string, string> = { A: "was granted", F: "withheld for tax", D: "returned", G: "gifted", M: "exercised", C: "converted", X: "exercised options in", J: "reported a transaction in" };
+    if (code !== "P" && code !== "S") return { verb: codes[code] ?? "filed a change in", tone: "neutral" };
+    if (row.isDerivative) return { verb: code === "P" ? "bought derivatives of" : "sold derivatives of", tone: "neutral" };
+  }
+  if (row.putCall) {
+    const opening = row.txnType === "buy";
+    const kind = row.putCall.toLowerCase();
+    return opening ? { verb: `bought a ${kind} on`, tone: row.putCall === "Put" ? "bear" : "bull" } : { verb: `closed a ${kind} on`, tone: "neutral" };
+  }
+  if (row.txnType === "buy") return { verb: "bought", tone: "bull" };
+  if (row.txnType === "sell") return { verb: "sold", tone: "bear" };
+  if (row.txnType === "exchange") return { verb: "exchanged", tone: "neutral" };
+  return { verb: "filed", tone: "neutral" };
+}
+
+/** Quarter of a 13F report date: "2026-06-30" → "Q2 2026". */
+export function quarterOf(iso: string | null | undefined): string | null {
+  const p = iso ? parts(iso) : null;
+  return p ? `Q${Math.ceil(p[1] / 3)} ${p[0]}` : null;
+}
