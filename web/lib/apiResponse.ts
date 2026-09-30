@@ -3,7 +3,7 @@ import { isDemoMode } from "./dataMode";
 import { withRetry } from "./retry";
 export function unavailable() {
   return NextResponse.json(
-    { source: "unavailable", error: "Die Daten sind derzeit nicht erreichbar. Bitte versuche es später erneut." },
+    { source: "unavailable", error: "The data is unavailable right now. Please try again later." },
     { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "30" } },
   );
 }

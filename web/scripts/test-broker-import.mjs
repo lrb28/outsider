@@ -201,17 +201,17 @@ console.log("\nSpalte „Seit Offenlegung“");
   const F = await import("../.tmp-format.mjs");
   const heute = "2026-08-07";
   let r = F.disclosureLabel(0.045, "2026-06-17", heute);
-  ok("Rendite wird gezeigt", r.text === "+4,5\u00A0%" && !r.muted, r.text, "+4,5\u00A0%");
+  ok("Rendite wird gezeigt", r.text === "+4.5%" && !r.muted, r.text, "+4.5%");
   r = F.disclosureLabel(-0.009, "2026-05-29", heute);
-  ok("negative Rendite", r.text === "-0,9\u00A0%" && !r.muted, r.text, "-0,9\u00A0%");
+  ok("negative Rendite", r.text === "-0.9%" && !r.muted, r.text, "-0.9%");
   r = F.disclosureLabel(null, "2026-08-07", heute);
-  ok("heute gemeldet", r.text === "heute gemeldet" && r.muted, r.text, "heute gemeldet");
+  ok("heute gemeldet", r.text === "filed today" && r.muted, r.text, "filed today");
   r = F.disclosureLabel(null, "2026-05-01", heute);
-  ok("ohne Kursreihe", r.text === "kein Kurs hinterlegt" && r.muted, r.text, "kein Kurs hinterlegt");
+  ok("ohne Kursreihe", r.text === "no price on file" && r.muted, r.text, "no price on file");
   r = F.disclosureLabel(null, null, heute);
   ok("ohne Datum", r.muted === true, r.text, "grauer Hinweis");
   r = F.disclosureLabel(0, "2026-05-01", heute);
-  ok("null Prozent ist eine Zahl", r.text === "+0,0\u00A0%" && !r.muted, r.text, "+0,0\u00A0%");
+  ok("null Prozent ist eine Zahl", r.text === "+0.0%" && !r.muted, r.text, "+0.0%");
 }
 
 // ── Feed: Meldeserien bündeln ──────────────────────────────────────────────
@@ -303,12 +303,12 @@ console.log("\nAusweichbörsen und stillgelegte Papiere");
   // Kürzel, immer eine Begründung — sonst greift die Suche und rät.
   const world = r("LU1781541179");
   ok("verschmolzener Fonds bekommt kein Kürzel", world.symbol === null, world.symbol, "null");
-  ok("Verschmelzung wird begründet", /verschmolzen/i.test(world.unpriceable ?? ""), world.unpriceable, "Text");
+  ok("Verschmelzung wird begründet", /merged/i.test(world.unpriceable ?? ""), world.unpriceable, "Text");
   ok("Nachfolger wird genannt", (world.unpriceable ?? "").includes("IE000BI8OT95"), world.unpriceable, "IE000BI8OT95");
 
   const gdr = r("USY384721251");
   ok("eingestellter GDR bekommt kein Kürzel", gdr.symbol === null, gdr.symbol, "null");
-  ok("Einstellung wird begründet", /eingestellt/i.test(gdr.unpriceable ?? ""), gdr.unpriceable, "Text");
+  ok("Einstellung wird begründet", /discontinued/i.test(gdr.unpriceable ?? ""), gdr.unpriceable, "Text");
 
   // Eigene Zuordnung schlägt weiterhin alles — auch ein stillgelegtes Papier.
   const eigen = I.resolveInstrument("LU1781541179", null, null, { LU1781541179: "MWRD.DE" }, {});
@@ -378,7 +378,7 @@ console.log("\nDezimalkomma je Datei");
 ok("detectDecimal DE", P.detectDecimal(["217,425", "7,82"]) === ",", P.detectDecimal(["217,425", "7,82"]), ",");
 ok("detectDecimal US", P.detectDecimal(["1,234", "7.82"]) === ".", P.detectDecimal(["1,234", "7.82"]), ".");
 ok("detectDecimal mehrdeutig", P.detectDecimal(["217,425", "12"]) === null, P.detectDecimal(["217,425", "12"]), "null");
-ok("Faktor 1.000 wird als Importfehler benannt", /Import/.test(I.priceMismatch(217425, 290, 1) ?? ""), I.priceMismatch(217425, 290, 1), "Import");
+ok("Faktor 1.000 wird als Importfehler benannt", /import/i.test(I.priceMismatch(217425, 290, 1) ?? ""), I.priceMismatch(217425, 290, 1), "import");
 
 console.log(`\n${pass} bestanden, ${fail} fehlgeschlagen\n`);
 process.exit(fail === 0 ? 0 : 1);

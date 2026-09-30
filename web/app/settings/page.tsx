@@ -174,7 +174,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `aura-depot-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `aura-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -222,8 +222,8 @@ export default function SettingsPage() {
 
       <Group title="General">
         <Row icon="show" colour="var(--cat-3)" label="Appearance" value={THEMES.find((t) => t.key === theme)?.label} onClick={() => setOpen("theme")} />
-        <Row icon="graph" colour="var(--cat-1)" label="Depot" value={depot ? (depot.positions ? `${depot.positions} positions · ${depot.currency}` : "Empty") : undefined} href="/me" />
-        {!!depot?.positions && <Row icon="download" colour="var(--cat-5)" label="Export Depot as CSV" onClick={exportCsv} />}
+        <Row icon="graph" colour="var(--cat-1)" label="Portfolio" value={depot ? (depot.positions ? `${depot.positions} positions · ${depot.currency}` : "Empty") : undefined} href="/me" />
+        {!!depot?.positions && <Row icon="download" colour="var(--cat-5)" label="Export portfolio as CSV" onClick={exportCsv} />}
       </Group>
 
       <Group title="About">
@@ -285,7 +285,7 @@ export default function SettingsPage() {
       {(open === "investor" || open === "politician" || open === "stock") && <FollowList kind={open} onClose={() => setOpen(null)} />}
 
       {open === "reset" && (
-        <Sheet title="Delete all data?" subtitle="Removes your Depot and its import, everything you follow and your settings from this device. This can't be undone." onClose={() => setOpen(null)}>
+        <Sheet title="Delete all data?" subtitle="Removes your portfolio and its import, everything you follow and your settings from this device. This can’t be undone." onClose={() => setOpen(null)}>
           <div className="flex flex-col gap-2.5 px-5 pb-5 pt-1">
             <button type="button" onClick={resetAll} className="inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-bear-fill text-[16px] font-semibold text-white transition-transform active:scale-[0.98]">
               Delete all data

@@ -43,21 +43,23 @@ test('disclosure language distinguishes 13F, grants, tax withholding and P/S', (
   assert.equal(F.tradeSignal({...row,transactionCode:'F',txnType:'sell'}).tone,'neutral');
   assert.equal(F.tradeSignal({...row,entityType:'institution'}).tone,'neutral');
   assert.equal(F.tradeSignal({...row,transactionCode:'P',isDerivative:true}).tone,'neutral');
-  assert.equal(F.sizeDisplay({shares:0.125,amount_min:null,amount_max:null}),'0,125 St.');
+  assert.equal(F.sizeDisplay({shares:0.125,amount_min:null,amount_max:null}),'0.125 sh.');
   assert.equal(F.sourceLink('javascript:alert(1)'),null);
 });
 test('key figures use short money and dates that fit a phone column', () => {
-  assert.equal(F.shortMoney(263.1e9),'$263\u00A0Mrd.');
-  assert.equal(F.shortMoney(26.34e9),'$26,3\u00A0Mrd.');
-  assert.equal(F.shortMoney(99.96e6),'$100\u00A0Mio.');
-  assert.equal(F.shortMoney(999.7e9),'$1\u00A0Bio.');
-  assert.equal(F.shortMoney(71.02e9),'$71\u00A0Mrd.');
-  assert.equal(F.shortMoney(-4.2e6),'-$4,2\u00A0Mio.');
-  assert.equal(F.abbrevMoney(299.25e9),'$299,3\u00A0Mrd.');
-  assert.equal(F.pct(0.224),'+22,4\u00A0%');
+  assert.equal(F.shortMoney(263.1e9),'$263B');
+  assert.equal(F.shortMoney(26.34e9),'$26.3B');
+  assert.equal(F.shortMoney(99.96e6),'$100M');
+  assert.equal(F.shortMoney(999.7e9),'$1T');
+  assert.equal(F.shortMoney(71.02e9),'$71B');
+  assert.equal(F.shortMoney(-4.2e6),'-$4.2M');
+  assert.equal(F.abbrevMoney(299.25e9),'$299.3B');
+  assert.equal(F.pct(0.224),'+22.4%');
   assert.equal(F.shortMoney(980),'$980');
   assert.equal(F.shortMoney(null),'—');
-  assert.equal(F.shortDate('2026-03-31'),'31.03.26');
+  // The year is left out within the current year.
+  assert.match(F.shortDate('2026-03-31'),/^Mar 31( '26)?$/);
+  assert.equal(F.formatDate('2026-03-31'),'Mar 31, 2026');
   assert.equal(F.shortDate(null),'—');
 });
 test('strict API parameters reject overflow, dates and symbols', () => {
@@ -119,11 +121,11 @@ test('PostgreSQL: additive migration preserves old rows and supports multiple so
     INSERT INTO prices(security_id,date,close) VALUES(1,current_date,110),(1,current_date-1,100),(2,current_date-30,55);`);
   globalThis.__testPool={query:(sql,params)=>db.query(sql,params)};
   const rows=await Q.getTrades({limit:200});assert.equal(rows.length,6);assert.ok(!rows.some(r=>r.id==='1'));assert.equal(rows.find(r=>r.transactionCode==='A').txnType,'exchange');
-  const fractional=rows.find(r=>r.sizeDisplay==='0,125 St.');assert.ok(fractional);assert.equal(fractional.transactionCode,'P');
+  const fractional=rows.find(r=>r.sizeDisplay==='0.125 sh.');assert.ok(fractional);assert.equal(fractional.transactionCode,'P');
   assert.equal(rows.find(r=>r.ticker==='OLD').pctSinceDisclosure,null);
   assert.equal(rows.find(r=>r.entityType==='institution').txnDate,null);
   assert.equal((await Q.getDiscover()).mostBoughtQ[0].ticker,'TEST');
-  const discover=await Q.getDiscover();assert.ok(!discover.mostBoughtQ.some(r=>r.ticker==='OLD'));assert.equal(discover.insiderBuys.find(r=>r.ticker==='TEST').metric,'1 Insider','two purchases by one insider count once');
+  const discover=await Q.getDiscover();assert.ok(!discover.mostBoughtQ.some(r=>r.ticker==='OLD'));assert.equal(discover.insiderBuys.find(r=>r.ticker==='TEST').metric,'1 insider','two purchases by one insider count once');
   assert.equal((await Q.getTrades({q:'%'})).length,0,'search percent is literal');
   const stats=await S.getStats();assert.equal(stats.trades,6);assert.equal(stats.freshPriceSymbols,1);assert.equal(stats.groups.find(g=>g.type==='politician').missingDates,0);
 });

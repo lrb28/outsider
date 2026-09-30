@@ -72,7 +72,7 @@ function TradeCard({ row, onOpen }: { row: FeedRow; onOpen: () => void }) {
       </div>
       <div className="mt-1.5 text-[13px] text-subtle">
         {row.sizeDisplay} · {formatDate(row.disclosedAt)}
-        {perf != null && <span className={perf >= 0 ? "text-bull" : "text-bear"}> · {perf >= 0 ? "▲" : "▼"} {pct(perf)} seit Meldung</span>}
+        {perf != null && <span className={perf >= 0 ? "text-bull" : "text-bear"}> · {perf >= 0 ? "▲" : "▼"} {pct(perf)} since filing</span>}
       </div>
     </button>
   );
@@ -172,10 +172,10 @@ export default function HomePage() {
   // Insiders are shown by their companies' logos, three different ones.
   const insiderFaces = (insiders ?? []).filter((r, i, all) => r.ticker && all.findIndex((x) => x.ticker === r.ticker) === i).slice(0, 3).map((r) => ({ name: r.entityName, ticker: r.ticker }));
   const gateways = [
-    { href: "/discover/boughtq", aura: "investor" as const, title: "Häufigste Aufstockungen", blurb: "Diese Aktien stocken die verfolgten Investoren im letzten Quartal am häufigsten auf.", items: discover?.mostBoughtQ ?? [] },
-    { href: "/discover/insiderbuys", aura: "insider" as const, title: "Insider greifen zu", blurb: "Vorstände und Direktoren, die mit eigenem Geld Aktien ihrer Firma kaufen.", items: discover?.insiderBuys ?? [] },
-    { href: "/discover/conviction", aura: "neutral" as const, title: "Die mutigsten Wetten", blurb: "Aktien mit dem höchsten Anteil am gemeldeten Depot eines Investors.", items: discover?.highestConviction ?? [] },
-    { href: "/discover/biggest", aura: "neutral" as const, title: "Die größten Positionen", blurb: "Die wertvollsten gemeldeten Einzelpositionen des großen Geldes.", items: discover?.biggest ?? [] },
+    { href: "/discover/boughtq", aura: "investor" as const, title: "Most added to", blurb: "The stocks the tracked investors added to most often last quarter.", items: discover?.mostBoughtQ ?? [] },
+    { href: "/discover/insiderbuys", aura: "insider" as const, title: "Insiders buying", blurb: "Officers and directors buying their own company’s stock with their own money.", items: discover?.insiderBuys ?? [] },
+    { href: "/discover/conviction", aura: "neutral" as const, title: "The boldest bets", blurb: "Stocks that make up the largest share of an investor’s reported portfolio.", items: discover?.highestConviction ?? [] },
+    { href: "/discover/biggest", aura: "neutral" as const, title: "The biggest positions", blurb: "The most valuable single positions reported by big money.", items: discover?.biggest ?? [] },
   ];
 
   return (
@@ -183,29 +183,29 @@ export default function HomePage() {
       {/* Hero: the aura behind plain, large type. */}
       <section className="fade-up relative isolate -mx-4 px-4 pb-2 pt-6 sm:pt-10">
         <AuraField focus={[0.85, 1.25, 1]} className="pointer-events-none absolute -right-40 -top-28 -z-10 h-[34rem] w-[48rem] max-w-none [mask-image:radial-gradient(closest-side,#000_35%,transparent)] sm:-right-16" />
-        <p className="eyebrow">Live aus den Originalquellen</p>
+        <p className="eyebrow">Live from the original sources</p>
         <h1 className="mt-3 max-w-2xl font-display text-[clamp(34px,11vw,44px)] font-bold leading-[0.98] tracking-[-0.025em] sm:text-[64px]">
-          Sieh, was die Mächtigen kaufen.
+          See what the powerful buy.
         </h1>
         <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-subtle">
-          Investoren, Unternehmensinsider und US-Abgeordnete müssen ihre Trades offenlegen. ĀURA macht daraus einen klaren Überblick – jede Zeile mit Quelle.
+          Investors, corporate insiders and members of Congress have to disclose their trades. ĀURA turns them into a clear overview — every row with its source.
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5">
-          <Link href="/feed" className="btn-primary">Meldungen ansehen <Icon name="arrowRight" className="h-4 w-4" /></Link>
-          <Link href="/discover" className="btn-capsule">Entdecken</Link>
+          <Link href="/feed" className="btn-primary">See the filings <Icon name="arrowRight" className="h-4 w-4" /></Link>
+          <Link href="/discover" className="btn-capsule">Discover</Link>
         </div>
       </section>
 
       {/* The three auras */}
-      <section className="fade-up grid grid-cols-3 gap-2.5 sm:gap-3" aria-label="Wer offenlegt">
-        <AuraTile href="/discover?tab=investors" kind="investor" title="Investoren" unit="13F-Depots" count={stats?.institutions ?? (investors.length || null)} faces={spotlight.map((i) => ({ name: i.person ?? i.fund }))} />
-        <AuraTile href="/feed?type=corporate_insider" kind="insider" title="Insider" unit="mit Form 4" count={stats?.insiders ?? null} faces={insiderFaces} />
-        <AuraTile href="/discover?tab=politicians" kind="politician" title="Politiker" unit="im US-Kongress" count={stats?.politicians ?? (politicians.length || null)} faces={politicians.slice(0, 3).map((p) => ({ name: p.name, src: p.photo }))} />
+      <section className="fade-up grid grid-cols-3 gap-2.5 sm:gap-3" aria-label="Who discloses">
+        <AuraTile href="/discover?tab=investors" kind="investor" title="Investors" unit="13F portfolios" count={stats?.institutions ?? (investors.length || null)} faces={spotlight.map((i) => ({ name: i.person ?? i.fund }))} />
+        <AuraTile href="/feed?type=corporate_insider" kind="insider" title="Insiders" unit="with Form 4" count={stats?.insiders ?? null} faces={insiderFaces} />
+        <AuraTile href="/discover?tab=politicians" kind="politician" title="Politicians" unit="in Congress" count={stats?.politicians ?? (politicians.length || null)} faces={politicians.slice(0, 3).map((p) => ({ name: p.name, src: p.photo }))} />
       </section>
 
       {/* Entry cards */}
       <section className="space-y-3">
-        <SectionHeader title="Einstiege" href="/discover" />
+        <SectionHeader title="Start here" href="/discover" />
         {errors.includes("discover") ? <ErrorRetry onRetry={retry} /> : (
           <SwipeRow className="gap-4">
             {discover
@@ -219,14 +219,14 @@ export default function HomePage() {
 
       {depotCount > 0 && matches.length > 0 && (
         <section className="space-y-3">
-          <SectionHeader title="Wer hält, was du hältst" href="/me" more="Mein Depot" />
+          <SectionHeader title="Who holds what you hold" href="/me" more="My portfolio" />
           <SwipeRow className="gap-4">
             {matches.map((m) => (
               <Link key={m.slug} href={`/investor/${m.slug}`} className="card lcard-hover press flex w-56 shrink-0 snap-start flex-col items-center p-5 text-center">
                 <Avatar name={m.person ?? m.fund} size={64} />
                 <div className="mt-2 w-full truncate text-[15px] font-semibold">{m.person ?? m.fund}</div>
                 <div className="mt-1 num-lg">
-                  {m.sharedCount} <span className="font-sans text-xs font-medium text-subtle">von {depotCount} deiner Werte</span>
+                  {m.sharedCount} <span className="font-sans text-xs font-medium text-subtle">of your {depotCount} stocks</span>
                 </div>
                 <div className="mt-3 flex items-center gap-1.5">
                   {m.sharedTickers.slice(0, 4).map((t) => (
@@ -241,7 +241,7 @@ export default function HomePage() {
 
       {/* Spotlight */}
       <section className="space-y-3">
-        <SectionHeader title="Im Rampenlicht" href="/discover?tab=investors" />
+        <SectionHeader title="In the spotlight" href="/discover?tab=investors" />
         {errors.includes("investors") ? <ErrorRetry onRetry={retry} /> : spotlight.length === 0 ? <SkeletonList n={2} /> : (
           <SwipeRow className="gap-4">
             {spotlight.map((iv) => (
@@ -262,12 +262,12 @@ export default function HomePage() {
 
       {/* Recent disclosures */}
       {[
-        { key: "pols", title: "Neu von Abgeordneten", type: "politician", rows: pols, empty: "Noch keine Meldungen aus dem Repräsentantenhaus." },
-        { key: "insiders", title: "Neu von Insidern", type: "corporate_insider", rows: insiders, empty: "Noch keine Insider-Meldungen." },
-        { key: "inst", title: "Neu von Investoren", type: "institution", rows: inst, empty: "Noch keine Investoren-Meldungen." },
+        { key: "pols", title: "New from politicians", type: "politician", rows: pols, empty: "No filings from the House yet." },
+        { key: "insiders", title: "New from insiders", type: "corporate_insider", rows: insiders, empty: "No insider filings yet." },
+        { key: "inst", title: "New from investors", type: "institution", rows: inst, empty: "No investor filings yet." },
       ].map((section) => (
         <section key={section.key} className="space-y-3">
-          <SectionHeader title={section.title} href={`/feed?type=${section.type}`} more="Alle" />
+          <SectionHeader title={section.title} href={`/feed?type=${section.type}`} />
           {errors.includes(section.key) ? <ErrorRetry onRetry={retry} /> : section.rows === null ? (
             <SwipeRow className="gap-4">{[0, 1, 2].map((i) => <TradeCardSkeleton key={i} />)}</SwipeRow>
           ) : section.rows.length === 0 ? (

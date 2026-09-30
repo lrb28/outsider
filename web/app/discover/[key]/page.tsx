@@ -16,28 +16,28 @@ import { DetailTopBar } from "@/components/ui";
 
 const STOCK_META: Record<string, { title: string; blurb: string; pick: (d: DiscoverData) => CollectionItem[] }> = {
   boughtq: {
-    title: "Häufige Aufstockungen",
-    blurb: "Bestandserhöhungen im jüngsten verfügbaren Quartalsbericht jedes Investors. Keine exakten Kaufzeitpunkte.",
+    title: "Most added to",
+    blurb: "Positions raised in each investor’s latest available quarterly report. No exact purchase dates.",
     pick: (d) => d.mostBoughtQ,
   },
   insiderbuys: {
-    title: "Insider kaufen",
-    blurb: "Börsenkäufe von Insidern (Form 4, Code P, ohne Derivate) aus allen US-Unternehmen, offengelegt in den letzten 90 Tagen. Sortiert nach Zahl der kaufenden Insider und investiertem Betrag.",
+    title: "Insiders buying",
+    blurb: "Open-market purchases by insiders (Form 4, code P, no derivatives) across all US companies, disclosed in the last 90 days. Sorted by the number of insiders buying and the amount invested.",
     pick: (d) => d.insiderBuys,
   },
   mostheld: {
-    title: "Am meisten gehalten",
-    blurb: "Die Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben.",
+    title: "Most held",
+    blurb: "The stocks most of the tracked investors hold.",
     pick: (d) => d.mostHeld,
   },
   conviction: {
-    title: "Höchste Gewichtung",
-    blurb: "Aktien, in die ein einzelner Investor den größten Anteil seiner gemeldeten Bestände ohne Optionen steckt.",
+    title: "Highest conviction",
+    blurb: "Stocks into which a single investor puts the largest share of their reported holdings, options excluded.",
     pick: (d) => d.highestConviction,
   },
   biggest: {
-    title: "Größte Einzelpositionen",
-    blurb: "Die wertmäßig größten Aktienpositionen unter den verfolgten Investoren.",
+    title: "Biggest positions",
+    blurb: "The largest stock positions by value among the tracked investors.",
     pick: (d) => d.biggest,
   },
 };
@@ -47,20 +47,20 @@ const INV_META: Record<
   { title: string; blurb: string; base: string; pick: (d: DiscoverData) => CollectionInvestor[] }
 > = {
   biggestfunds: {
-    title: "Größte Fonds",
-    blurb: "Die verfolgten Investoren mit dem größten gemeldeten Portfolio.",
+    title: "Biggest funds",
+    blurb: "The tracked investors with the largest reported portfolios.",
     base: "/investor",
     pick: (d) => d.biggestFunds,
   },
   concentrated: {
-    title: "Am konzentriertesten",
-    blurb: "Investoren, die den größten Anteil in eine einzige Aktie stecken.",
+    title: "Most concentrated",
+    blurb: "Investors who put the biggest share into a single stock.",
     base: "/investor",
     pick: (d) => d.mostConcentrated,
   },
   politicians: {
-    title: "Aktivste Politiker",
-    blurb: "Abgeordnete des US-Repräsentantenhauses mit den meisten gemeldeten Aktien-Trades in den letzten zwölf Monaten.",
+    title: "Most active politicians",
+    blurb: "Members of the US House with the most reported stock trades in the last twelve months.",
     base: "/politician",
     pick: (d) => d.topPoliticians,
   },
@@ -80,9 +80,9 @@ export default function CollectionPage() {
   if (!meta)
     return (
       <div className="py-16 text-center text-[15px] text-subtle">
-        Sammlung nicht gefunden.{" "}
+        Collection not found.{" "}
         <Link href="/discover" className="text-ink underline">
-          Zu Entdecken
+          Back to Discover
         </Link>
       </div>
     );
@@ -96,7 +96,7 @@ export default function CollectionPage() {
   return (
     <div className="space-y-6">
       <div className="aura-header space-y-4" style={{ ["--aura" as string]: `var(--aura-${aura})` }}>
-        <DetailTopBar back="/discover" label="Entdecken" />
+        <DetailTopBar back="/discover" label="Discover" />
         <div className="fade-up">
           <h1 className="large-title">{meta.title}</h1>
           <p className="mt-1.5 max-w-2xl text-[15px] leading-snug text-subtle">{meta.blurb}</p>
@@ -146,7 +146,7 @@ export default function CollectionPage() {
               <div key={`${it.company}-${i}`}>{inner}</div>
             );
           })}
-          {stockItems.length === 0 && <div className="px-4 py-10 text-center text-[15px] text-subtle">Noch keine Daten.</div>}
+          {stockItems.length === 0 && <div className="px-4 py-10 text-center text-[15px] text-subtle">No data yet.</div>}
         </div>
       )}
 
@@ -167,7 +167,7 @@ export default function CollectionPage() {
               <div className="text-right text-[14px] font-semibold tabular-nums">{p.metric}</div>
             </Link>
           ))}
-          {invItems.length === 0 && <div className="px-4 py-10 text-center text-[15px] text-subtle">Noch keine Daten.</div>}
+          {invItems.length === 0 && <div className="px-4 py-10 text-center text-[15px] text-subtle">No data yet.</div>}
         </div>
       )}
     </div>

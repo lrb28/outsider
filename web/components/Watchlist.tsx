@@ -56,9 +56,9 @@ export function Watchlist() {
       <section className="card flex items-start gap-3 p-5 text-[15px] text-subtle">
         <span className="icon-ring h-10 w-10"><Icon name="star" className="h-5 w-5" /></span>
         <p>
-          <span className="font-semibold text-ink">Deine Beobachtungsliste ist leer.</span>{" "}
-          Folge Investoren, Abgeordneten oder Aktien, um sie hier zu sammeln.{" "}
-          <Link href="/?willkommen=1" className="font-medium text-ink underline underline-offset-2">Jetzt einrichten</Link>
+          <span className="font-semibold text-ink">Your watchlist is empty.</span>{" "}
+          Follow investors, politicians or stocks to collect them here.{" "}
+          <Link href="/?welcome=folgen" className="font-medium text-ink underline underline-offset-2">Set up now</Link>
         </p>
       </section>
     );
@@ -72,7 +72,7 @@ export function Watchlist() {
 
   return (
     <section className="space-y-3">
-      <SectionHeader title="Deine Beobachtungsliste" />
+      <SectionHeader title="Your watchlist" />
       {failed && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
 
       {people.length > 0 && (
@@ -94,7 +94,7 @@ export function Watchlist() {
               <div className="min-w-0">
                 <div className="truncate text-[15px] font-semibold">{s.company}</div>
                 <div className="text-[13px] text-subtle">
-                  {s.investors} {s.investors === 1 ? "Investor" : "Investoren"}
+                  {s.investors} {s.investors === 1 ? "investor" : "investors"}
                 </div>
               </div>
             </Link>

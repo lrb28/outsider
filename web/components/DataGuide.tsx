@@ -11,32 +11,32 @@ type Kind = "investor" | "insider" | "politician";
 const SOURCES: { kind: Kind; title: string; form: string; lines: string[] }[] = [
   {
     kind: "investor",
-    title: "Investoren",
-    form: "Form 13F · vierteljährlich",
+    title: "Investors",
+    form: "Form 13F · quarterly",
     lines: [
-      "Bestände zum Quartalsende, bis zu 45 Tage später gemeldet.",
-      "ĀURA vergleicht zwei Quartale: aufgestockt, reduziert, neu oder verkauft.",
-      "Handelstag und Kaufkurs stehen nicht im Bericht.",
+      "Holdings at quarter end, filed up to 45 days later.",
+      "ĀURA compares two quarters: added to, reduced, new or sold.",
+      "The report shows neither the trade date nor the price paid.",
     ],
   },
   {
     kind: "insider",
-    title: "Insider",
-    form: "Form 4 · binnen 2 Werktagen",
+    title: "Insiders",
+    form: "Form 4 · within 2 business days",
     lines: [
-      "Vorstände, Direktoren und Großaktionäre melden eigene Trades.",
-      "Nur Code P (Kauf) und S (Verkauf) zählen als Kauf oder Verkauf.",
-      "Zuteilungen, Steuer-Einbehalte und Optionsausübungen sind eigene Vorgänge.",
+      "Officers, directors and large shareholders report their own trades.",
+      "Only code P (purchase) and S (sale) count as a buy or sell.",
+      "Grants, tax withholding and option exercises are separate transactions.",
     ],
   },
   {
     kind: "politician",
-    title: "Politiker",
-    form: "STOCK Act · bis zu 45 Tage",
+    title: "Politicians",
+    form: "STOCK Act · up to 45 days",
     lines: [
-      "Abgeordnete des US-Repräsentantenhauses, täglich beim Clerk abgerufen.",
-      "Beträge sind Spannen wie $1.001–$15.000, keine exakten Summen.",
-      "Eingescannte PDFs fehlen noch; der Senat ist nicht enthalten.",
+      "Members of the US House of Representatives, fetched daily from the Clerk.",
+      "Amounts are ranges like $1,001–$15,000, not exact sums.",
+      "Scanned PDFs are still missing; the Senate is not included.",
     ],
   },
 ];
@@ -44,13 +44,13 @@ const SOURCES: { kind: Kind; title: string; form: string; lines: string[] }[] = 
 const NOTES: { icon: IconName; title: string; text: string }[] = [
   {
     icon: "chart",
-    title: "„seit Meldung“",
-    text: "Vergleicht den ersten Schlusskurs nach der Offenlegung mit dem letzten. Das ist nicht die Rendite des Akteurs; ohne aktuellen Kurs steht keine Zahl da.",
+    title: "“since filing”",
+    text: "Compares the first close after the disclosure with the latest one. It is not the filer’s return; without a current price there is no number.",
   },
   {
     icon: "info",
-    title: "Keine Anlageberatung",
-    text: "Eine Meldung ist kein Kaufsignal. Fonds können Absicherungen halten, die im Bericht nicht auftauchen.",
+    title: "Not investment advice",
+    text: "A filing is not a buy signal. Funds can hold hedges that don’t appear in the report.",
   },
 ];
 
@@ -58,12 +58,12 @@ const NOTES: { icon: IconName; title: string; text: string }[] = [
 export function DataGuideSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet
-      title="So liest du die Daten"
-      subtitle="Drei Meldearten, drei Fristen – was jede Zeile aussagt und was nicht."
+      title="How to read the data"
+      subtitle="Three kinds of filing, three deadlines — what each row says and what it doesn’t."
       onClose={onClose}
       footer={
         <Link href="/methodik" onClick={onClose} className="flex min-h-11 items-center justify-between text-[15px] font-medium text-ink">
-          Quellen, Methodik & Bildnachweise
+          Sources, methodology & image credits
           <Icon name="chevronRight" className="h-4 w-4 text-subtle" />
         </Link>
       }
@@ -102,7 +102,7 @@ export function DataGuideSheet({ onClose }: { onClose: () => void }) {
 }
 
 /** Inline link that opens the explainer instead of leaving the page. */
-export function DataGuideLink({ children = "So liest du die Daten", className = "" }: { children?: ReactNode; className?: string }) {
+export function DataGuideLink({ children = "How to read the data", className = "" }: { children?: ReactNode; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>

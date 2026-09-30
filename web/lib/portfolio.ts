@@ -87,7 +87,7 @@ function readRaw(): Txn[] {
     const raw = JSON.parse(window.localStorage.getItem(KEY) || "null");
     if (Array.isArray(raw)) {
       const valid = raw.filter(isTxn);
-      if (valid.length !== raw.length) window.dispatchEvent(new CustomEvent("storage-error", {detail:"Einige gespeicherte Depotzeilen haben ein ungültiges Format. Sichere deine Browserdaten, bevor du das Depot bearbeitest."}));
+      if (valid.length !== raw.length) window.dispatchEvent(new CustomEvent("storage-error", {detail:"Some saved portfolio rows have an invalid format. Back up your browser data before you edit the portfolio."}));
       return valid;
     }
   } catch {
@@ -135,7 +135,7 @@ export function getTxns(): Txn[] {
 function write(t: Txn[]) {
   if (typeof window === "undefined") return;
   try { window.localStorage.setItem(KEY, JSON.stringify(t)); } catch (error) {
-    window.dispatchEvent(new CustomEvent("storage-error", {detail:"Dein Depot konnte nicht gespeichert werden. Bitte exportiere eine Sicherung und prüfe den Browserspeicher."}));
+    window.dispatchEvent(new CustomEvent("storage-error", {detail:"Your portfolio couldn’t be saved. Please export a backup and check the browser storage."}));
     throw error;
   }
   window.dispatchEvent(new CustomEvent(EVENT));
@@ -430,17 +430,17 @@ export function parseCsv(text: string): ImportResult {
 }
 
 export const KIND_LABEL: Record<TxnKind, string> = {
-  buy: "Kauf",
-  sell: "Verkauf",
-  dividend: "Dividende",
-  deposit: "Einzahlung",
-  withdrawal: "Auszahlung",
-  interest: "Zinsen",
-  split: "Bestandsänderung",
+  buy: "Buy",
+  sell: "Sell",
+  dividend: "Dividend",
+  deposit: "Deposit",
+  withdrawal: "Withdrawal",
+  interest: "Interest",
+  split: "Split",
 };
 
 export function toCsv(txns: Txn[]): string {
-  const head = "Typ;Datum;ISIN;Name;Anzahl;Kurs;Betrag;Gebuehr;Waehrung";
+  const head = "Type;Date;ISIN;Name;Shares;Price;Amount;Fee;Currency";
   const rows = txns.map((t) =>
     [
       KIND_LABEL[t.kind],

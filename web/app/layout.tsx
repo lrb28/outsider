@@ -17,12 +17,12 @@ import { Wordmark } from "@/components/Wordmark";
 import { THEME_BOOT } from "@/lib/theme";
 
 const DESC =
-  "Was Investoren, Unternehmensinsider und US-Abgeordnete offenlegen – verständlich, mit Quelle und transparentem Datenstand.";
+  "What investors, corporate insiders and members of the US House disclose — clear, sourced and with a transparent data status.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://outsider-tracker.vercel.app"),
   title: {
-    default: "ĀURA — Investoren, Insider und Politiker",
+    default: "ĀURA — investors, insiders and politicians",
     template: "%s · ĀURA",
   },
   description: DESC,
@@ -38,15 +38,15 @@ export const metadata: Metadata = {
   },
   appleWebApp: { capable: true, title: "AURA", statusBarStyle: "default" },
   openGraph: {
-    title: "ĀURA — öffentliche Meldungen verstehen",
+    title: "ĀURA — understand public disclosures",
     description: DESC,
     siteName: "AURA",
     type: "website",
-    locale: "de_DE",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ĀURA — öffentliche Meldungen verstehen",
+    title: "ĀURA — understand public disclosures",
     description: DESC,
   },
 };
@@ -65,13 +65,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen text-ink">
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
-        <a href="#main" className="skip-link">Zum Inhalt springen</a>
+        <a href="#main" className="skip-link">Skip to content</a>
         {/* Floating navigation layer (HIG): separate glass elements over a
             soft scroll-edge fade, no full-width bar. */}
         <header className="sticky top-0 z-20">
           <div aria-hidden="true" className="scroll-edge-top pointer-events-none absolute inset-x-0 top-0 h-24" />
           <div className="relative mx-auto flex max-w-5xl items-center gap-3 px-4 py-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
-            <Link href="/" aria-label="AURA – Startseite" className="press-sm flex min-h-11 items-center text-ink">
+            <Link href="/" aria-label="AURA – home" className="press-sm flex min-h-11 items-center text-ink">
               <Wordmark height={17} />
             </Link>
             <div className="ml-auto flex items-center gap-2.5">
@@ -95,11 +95,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="flex flex-col gap-5 border-t border-hair pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <Wordmark height={13} className="text-subtle" />
-                <nav aria-label="Informationen" className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-subtle">
-                  <Link href="/methodik" className="hover:text-ink">Quellen & Methodik</Link>
-                  <Link href="/status" className="hover:text-ink">Datenstand</Link>
-                  <Link href="/datenschutz" className="hover:text-ink">Datenschutz</Link>
-                  <Link href="/?willkommen=1" className="hover:text-ink">Einführung</Link>
+                <nav aria-label="Information" className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-subtle">
+                  <Link href="/methodik" className="hover:text-ink">Sources & methodology</Link>
+                  <Link href="/status" className="hover:text-ink">Data status</Link>
+                  <Link href="/datenschutz" className="hover:text-ink">Privacy</Link>
+                  <Link href="/?welcome=1" className="hover:text-ink">Introduction</Link>
                 </nav>
               </div>
               <Disclaimer />

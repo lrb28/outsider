@@ -12,6 +12,6 @@ export async function GET(req: NextRequest) {
     value = textParam(req.nextUrl.searchParams, "ticker", 160) ?? "";
     value = value.toUpperCase();
     if (!SYMBOL_RE.test(value)) throw new Error();
-  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  } catch { return NextResponse.json({ error: "Invalid identifier." }, { status: 400 }); }
   return dataResponse(async () => ({ stock: await getStock(value) }), () => ({ stock: sampleStock(value) }));
 }

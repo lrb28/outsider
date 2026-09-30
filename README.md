@@ -1,6 +1,6 @@
 # ĀURA
 
-Deutschsprachige Rechercheansicht für öffentliche Meldungen von institutionellen Investoren (SEC 13F), Unternehmensinsidern (SEC Form 4) und Abgeordneten des US-Repräsentantenhauses (STOCK Act). Next.js liegt ausschließlich unter `web/`, Python-Ingestion unter `ingestion/`. Designsystem: [`docs/brand.md`](docs/brand.md). (Früher „Outsider“; Repository, Domain, Umgebungsvariablen und Browser-Speicherschlüssel behalten den alten Namen, damit nichts bricht.)
+Englischsprachige Rechercheansicht (seit 30.09.2026, vorher Deutsch) für öffentliche Meldungen von institutionellen Investoren (SEC 13F), Unternehmensinsidern (SEC Form 4) und Abgeordneten des US-Repräsentantenhauses (STOCK Act). Next.js liegt ausschließlich unter `web/`, Python-Ingestion unter `ingestion/`. Designsystem: [`docs/brand.md`](docs/brand.md). (Früher „Outsider“; Repository, Domain, Umgebungsvariablen und Browser-Speicherschlüssel behalten den alten Namen, damit nichts bricht.)
 
 ## Lokal starten
 

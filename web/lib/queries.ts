@@ -735,29 +735,29 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   });
 
   return {
-    mostHeld: mostHeld.rows.map((r) => item(r, `${Number(r.n)} Investoren`)),
+    mostHeld: mostHeld.rows.map((r) => item(r, `${Number(r.n)} investors`)),
     highestConviction: conviction.rows.map((r) =>
-      item(r, `${pctOf(Number(r.mw) || 0, 0, false)} Gewicht`),
+      item(r, `${pctOf(Number(r.mw) || 0, 0, false)} weight`),
     ),
     biggest: biggest.rows.map((r) => {
       const mv = Number(r.mv) || 0;
       return item(r, abbrevMoney(mv));
     }),
-    mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} Aufstockungen`)),
+    mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} added`)),
     insiderBuys: insiderBuys.rows.map((r) => {
       const insiders = Number(r.insiders);
       const value = r.value == null ? null : Number(r.value);
-      return item(r, `${insiders} Insider${value ? ` · ${abbrevMoney(value)}` : ""}`);
+      return item(r, `${insiders} ${insiders === 1 ? "insider" : "insiders"}${value ? ` · ${abbrevMoney(value)}` : ""}`);
     }),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
-      inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} Top-Position`),
+      inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} top position`),
     ),
     topPoliticians: pols.rows.map((r) => ({
       slug: r.slug as string,
-      fund: [r.party, seatOf(r.role)].filter(Boolean).join("-") || "US-Repräsentantenhaus",
+      fund: [r.party, seatOf(r.role)].filter(Boolean).join("-") || "US House",
       person: (r.name as string) ?? null,
-      metric: `${Number(r.n)} Trades`,
+      metric: `${Number(r.n)} trades`,
       photo: (r.photo as string) ?? null,
     })),
   };

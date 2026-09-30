@@ -2,32 +2,32 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PORTRAITS } from "@/lib/portraits";
-export const metadata: Metadata = { title: "Quellen & Methodik" };
+export const metadata: Metadata = { title: "Sources & methodology" };
 export default function Methodik() {
   return <article className="prose-copy lcard mx-auto max-w-3xl p-6 sm:p-10">
-    <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-subtle">Daten verstehen</span>
-    <h1 className="mt-3 text-3xl font-semibold tracking-tight">Was eine Meldung aussagt.</h1>
-    <p>ĀURA macht öffentliche Finanzmeldungen durchsuchbar. Jede Meldungsart hat andere Fristen und Grenzen. Ein gemeldeter Bestand oder eine Zuteilung ist keine automatische Kaufempfehlung.</p>
-    <h2>Investoren: Quartalsbestände aus Form 13F</h2>
-    <p>13F-Berichte enthalten meldepflichtige Wertpapierbestände zum Quartalsende. ĀURA vergleicht zwei Berichtsstände und zeigt Bestandserhöhungen oder -reduzierungen. Daraus lassen sich weder ein genauer Handelstag noch ein Ausführungskurs ableiten. Optionspositionen werden gesondert als Put oder Call gekennzeichnet. Ein Fonds kann weitere, hier nicht sichtbare Anlagen oder Absicherungen halten.</p>
-    <p>Die Angaben erscheinen mit Verzögerung. Berichtszeitraum und Veröffentlichungsdatum werden getrennt angezeigt. Mehrere Fonds können zur selben Person gehören; ein Ranking ist keine vollständige Vermögensübersicht.</p>
-    <h2>Unternehmensinsider: Form 4</h2>
-    <p>Nur die Transaktionscodes P und S werden als Kauf beziehungsweise Verkauf eingeordnet. Zuteilungen (A), steuerbedingte Einbehalte (F), Geschenke (G) und Optionsausübungen (M) sind eigene Vorgänge. Fehlt bei älteren importierten Daten der Originalcode, verwendet ĀURA eine neutrale Beschreibung. Derivate werden gekennzeichnet.</p>
-    <p>Ein Insider kann aus vielen Gründen handeln. Die Größenangabe nennt gemeldete Stückzahlen; Bruchteile bleiben sichtbar.</p>
-    <h2>US-Abgeordnete: gemeldete Transaktionen</h2>
-    <p>Die Politikerdaten stammen aus den Periodic Transaction Reports (STOCK Act) des US-Repräsentantenhauses, die ĀURA täglich direkt beim Clerk of the House abruft und ausliest. Jede Meldung wird dem offiziellen Mitgliederverzeichnis zugeordnet (Name, Partei, Wahlkreis). Beträge werden als Spanne gemeldet und sind keine exakten Handelsvolumina; gemeldet wird bis zu 45 Tage nach dem Trade. Eingescannte Meldungen (Bild-PDFs) lassen sich noch nicht automatisch auslesen und fehlen. Der US-Senat ist nicht enthalten.</p>
-    <h2>Kurse und Veränderung seit Offenlegung</h2>
-    <p>Die Prozentangabe vergleicht den ersten verfügbaren Schlusskurs innerhalb von sieben Kalendertagen nach Offenlegung mit dem jüngsten gespeicherten Schlusskurs. Fehlt einer dieser Werte oder ist der letzte Kurs älter als sieben Tage, wird keine Prozentzahl berechnet. Sie ist weder die Rendite des meldenden Akteurs noch eine Rendite einschließlich Dividenden, Kosten oder Steuern.</p>
-    <p>Charts zeigen verfügbare Kursdaten. Bei Datenlücken werden keine Kurse erfunden. Kurse im eigenen Depot werden bei Yahoo Finance angefragt und können verzögert sein. Der angezeigte Kursstand ist entscheidend; automatische Aktualisierung bedeutet keine garantierten Echtzeitkurse.</p>
-    <h2>Abdeckung und Ausfälle</h2>
-    <p>Der <Link href="/status">Datenstand</Link> zeigt die jeweils jüngste Offenlegung, die Kursabdeckung und Meldungen ohne Offenlegungsdatum. Ein technisch erfolgreicher Import garantiert nicht, dass alle Quellen aktuelle Daten liefern. Bei Datenbankfehlern zeigt die Anwendung einen Fehler mit Wiederholen-Aktion. Beispieldaten stehen ausschließlich im ausdrücklich aktivierten Demomodus zur Verfügung.</p>
-    <h2>Primärquellen</h2>
-    <p><a href="https://www.sec.gov/divisions/investment/13ffaq" target="_blank" rel="noopener noreferrer">SEC: Form 13F</a> · <a href="https://www.sec.gov/files/form4.pdf" target="_blank" rel="noopener noreferrer">SEC: Form 4 und Transaktionscodes</a> · <a href="https://disclosures-clerk.house.gov/" target="_blank" rel="noopener noreferrer">US-Repräsentantenhaus</a> · <a href="https://github.com/unitedstates/congress-legislators" target="_blank" rel="noopener noreferrer">@unitedstates/congress-legislators</a></p>
-    <h2 id="bildnachweise">Bildnachweise</h2>
-    <p>Porträts stammen von Wikimedia Commons und stehen unter den genannten freien Lizenzen. Für Investoren ohne frei lizenziertes Foto zeigt ĀURA das Logo ihres Fonds – aus dem Website-Symbol der Gesellschaft oder aus ihrem gemeinfreien Schriftlogo auf Wikimedia Commons (D1 Capital, Glenview, Coatue, Tiger Global, Trian, Scion, Himalaya Capital), zugeschnitten auf die Bildmarke –, sonst ein Aura-Monogramm mit Initialen. Unternehmensinsider erscheinen mit dem Logo ihres Unternehmens, weil es von ihnen keine freien Fotos gibt. Abgeordnete zeigen ihr offizielles, gemeinfreies Kongress-Porträt (bereitgestellt vom Projekt @unitedstates/images); Partei und Wahlkreis stammen aus @unitedstates/congress-legislators. Firmenlogos: Parqet (nach ISIN, sonst Kürzel) und Financial Modeling Prep; sie bleiben Marken der jeweiligen Unternehmen.</p>
+    <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-subtle">About the data</span>
+    <h1 className="mt-3 text-3xl font-semibold tracking-tight">What a filing tells you.</h1>
+    <p>ĀURA makes public financial disclosures searchable. Each kind of filing has its own deadlines and limits. A reported holding or a grant is never an automatic recommendation to buy.</p>
+    <h2>Investors: quarterly holdings from Form 13F</h2>
+    <p>13F reports list reportable securities held at quarter end. ĀURA compares two reports and shows which positions were raised or reduced. Neither the exact trade date nor the execution price can be derived from them. Option positions are marked separately as puts or calls. A fund can hold other investments or hedges that are not visible here.</p>
+    <p>The data arrives with a delay. The reporting period and the publication date are shown separately. Several funds can belong to the same person; a ranking is not a complete picture of anyone’s wealth.</p>
+    <h2>Corporate insiders: Form 4</h2>
+    <p>Only transaction codes P and S count as a buy or a sell. Grants (A), tax withholding (F), gifts (G) and option exercises (M) are separate transactions. Where older imported data lacks the original code, ĀURA uses a neutral description. Derivatives are marked.</p>
+    <p>An insider can trade for many reasons. The size shows the reported number of shares; fractions stay visible.</p>
+    <h2>Members of Congress: reported transactions</h2>
+    <p>The politician data comes from the Periodic Transaction Reports (STOCK Act) of the US House of Representatives, which ĀURA fetches and reads daily straight from the Clerk of the House. Each filing is matched to the official member directory (name, party, district). Amounts are reported as ranges, not exact trade sizes, and are filed up to 45 days after the trade. Scanned filings (image PDFs) can’t be read automatically yet and are missing. The US Senate is not included.</p>
+    <h2>Prices and change since disclosure</h2>
+    <p>The percentage compares the first available close within seven calendar days after the disclosure with the latest stored close. If either is missing, or the latest price is older than seven days, no percentage is calculated. It is neither the filer’s return nor a return including dividends, costs or taxes.</p>
+    <p>Charts show the price data that is available. Gaps are never filled with invented prices. Prices in your own portfolio come from Yahoo Finance and can be delayed. The price date shown is what counts; automatic refreshes do not mean guaranteed real-time prices.</p>
+    <h2>Coverage and outages</h2>
+    <p>The <Link href="/status">data status</Link> shows the latest disclosure, the price coverage and filings without a disclosure date. A technically successful import does not guarantee that every source delivered current data. On database errors the app shows an error with a retry. Sample data only appears in an explicitly enabled demo mode.</p>
+    <h2>Primary sources</h2>
+    <p><a href="https://www.sec.gov/divisions/investment/13ffaq" target="_blank" rel="noopener noreferrer">SEC: Form 13F</a> · <a href="https://www.sec.gov/files/form4.pdf" target="_blank" rel="noopener noreferrer">SEC: Form 4 and transaction codes</a> · <a href="https://disclosures-clerk.house.gov/" target="_blank" rel="noopener noreferrer">US House of Representatives</a> · <a href="https://github.com/unitedstates/congress-legislators" target="_blank" rel="noopener noreferrer">@unitedstates/congress-legislators</a></p>
+    <h2 id="bildnachweise">Image credits</h2>
+    <p>Portraits come from Wikimedia Commons under the free licences listed. For investors without a freely licensed photo, ĀURA shows their fund’s logo — from the firm’s website icon or its public-domain text logo on Wikimedia Commons (D1 Capital, Glenview, Coatue, Tiger Global, Trian, Scion, Himalaya Capital), cut down to the mark — or else an aura monogram with initials. Corporate insiders appear with their company’s logo, because there are no free photos of them. Members of Congress show their official, public-domain congressional portrait (provided by the @unitedstates/images project); party and district come from @unitedstates/congress-legislators. Company logos: Parqet (by ISIN, otherwise ticker) and Financial Modeling Prep; they remain trademarks of their companies.</p>
     <ul className="mt-3 space-y-1.5 text-sm text-zinc-700">
-      {Object.values(PORTRAITS).map(p => <li key={p.name}><a href={p.page} target="_blank" rel="noopener noreferrer">{p.name}</a>: {p.author || "unbekannt"}, {p.license}</li>)}
+      {Object.values(PORTRAITS).map(p => <li key={p.name}><a href={p.page} target="_blank" rel="noopener noreferrer">{p.name}</a>: {p.author || "unknown"}, {p.license}</li>)}
     </ul>
-    <p>Stand der Beschreibung: 13. September 2026. Die Originalmeldung ist maßgeblich. ĀURA dient der Information und erteilt keine Anlageberatung.</p>
+    <p>Description as of September 30, 2026. The original filing is authoritative. ĀURA is for information only and does not give investment advice.</p>
   </article>;
 }

@@ -11,7 +11,7 @@ import { abbrevMoney, formatDate } from "@/lib/format";
 import { CAT } from "@/lib/palette";
 import type { PriceBar } from "@/lib/types";
 
-const fmtPct = (v: number) => `${v >= 0 ? "▲" : "▼"} ${Math.abs(v).toLocaleString("de-DE", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`;
+const fmtPct = (v: number) => `${v >= 0 ? "▲" : "▼"} ${Math.abs(v).toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
 
 export function CompareChart({
   a,
@@ -33,7 +33,7 @@ export function CompareChart({
   if (!a || a.length < 2) {
     return (
       <div style={{ height }} className="flex items-center justify-center rounded-2xl bg-surface2 text-[13px] text-subtle">
-        Noch nicht genug Kursdaten für einen Verlauf.
+        Not enough price data for a chart yet.
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function CompareChart({
         tabIndex={0}
         onKeyDown={onKey}
         onBlur={() => setIdx(null)}
-        aria-label={`${labelA}: ${fmtPct(endA)} seit ${formatDate(a[0].date)}${nb && labelB && endB != null ? `, ${labelB}: ${fmtPct(endB)}` : ""}.`}
+        aria-label={`${labelA}: ${fmtPct(endA)} since ${formatDate(a[0].date)}${nb && labelB && endB != null ? `, ${labelB}: ${fmtPct(endB)}` : ""}.`}
         className="relative cursor-crosshair touch-none select-none rounded-xl"
         style={{ height }}
         onPointerMove={(e) => move(e.clientX, e.currentTarget.getBoundingClientRect())}
@@ -109,7 +109,7 @@ export function CompareChart({
           {ticks.map((t) => (
             <g key={t}>
               <line x1={0} x2={plotW} y1={yAt(t)} y2={yAt(t)} className={t === 100 ? "stroke-ink/25" : "stroke-hair"} strokeWidth="1" />
-              <text x={plotW + 8} y={yAt(t)} dy="0.32em" className="fill-subtle text-[11px] tabular-nums">{t === 100 ? "0 %" : `${t > 100 ? "+" : "−"}${Math.abs(t - 100).toLocaleString("de-DE", { maximumFractionDigits: 1 })} %`}</text>
+              <text x={plotW + 8} y={yAt(t)} dy="0.32em" className="fill-subtle text-[11px] tabular-nums">{t === 100 ? "0%" : `${t > 100 ? "+" : "−"}${Math.abs(t - 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`}</text>
             </g>
           ))}
           <path d={areaA} fill={`url(#${gid}-a)`} className="fade-in" />

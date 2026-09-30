@@ -28,9 +28,9 @@ type Tab = "highlights" | "investors" | "stocks" | "politicians";
 
 const TABS = [
   { key: "highlights", label: "Highlights" },
-  { key: "investors", label: "Investoren", aura: "investor" },
-  { key: "politicians", label: "Politiker", aura: "politician" },
-  { key: "stocks", label: "Aktien" },
+  { key: "investors", label: "Investors", aura: "investor" },
+  { key: "politicians", label: "Politicians", aura: "politician" },
+  { key: "stocks", label: "Stocks" },
 ] as const;
 
 /** Three logos side by side: overlapping tiles cut each other's marks off. */
@@ -96,9 +96,9 @@ function Discover() {
 
   return (
     <div className="space-y-6">
-      <PageTitle title="Entdecken" subtitle="Was Investoren halten, Insider kaufen und Abgeordnete handeln – aus den Originalmeldungen." />
+      <PageTitle title="Discover" subtitle="What investors hold, insiders buy and politicians trade — straight from the original filings." />
 
-      <ChipBar label="Bereiche" items={TABS} value={tab} onChange={setTab} className="fade-up" />
+      <ChipBar label="Sections" items={TABS} value={tab} onChange={setTab} className="fade-up" />
 
       {error && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
 
@@ -108,22 +108,22 @@ function Discover() {
         ) : (
           <div className="fade-up space-y-8">
             <section className="space-y-3">
-              <h2 className="eyebrow">Aktien</h2>
+              <h2 className="eyebrow">Stocks</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <AuraCard href="/discover/boughtq" aura="investor" title="Häufige Aufstockungen" blurb="Bestandserhöhungen im jüngsten Quartalsbericht jedes Investors." visual={<LogoTrio items={data.mostBoughtQ} />} />
-                <AuraCard href="/discover/insiderbuys" aura="insider" title="Insider kaufen" blurb="Käufe von Vorständen und Direktoren mit eigenem Geld (Form 4, Code P), letzte 90 Tage." visual={<LogoTrio items={data.insiderBuys} />} />
-                <AuraCard href="/discover/mostheld" aura="neutral" title="Am meisten gehalten" blurb="Aktien, die die meisten verfolgten Investoren gemeinsam im Depot haben." visual={<LogoTrio items={data.mostHeld} />} />
-                <AuraCard href="/discover/conviction" aura="neutral" title="Höchste Gewichtung" blurb="Die größten Aktiengewichte innerhalb der gemeldeten Bestände, ohne Optionen." visual={<LogoTrio items={data.highestConviction} />} />
-                <AuraCard href="/discover/biggest" aura="neutral" title="Größte Positionen" blurb="Die wertvollsten gemeldeten Einzelpositionen in US-Dollar." visual={<LogoTrio items={data.biggest} />} />
+                <AuraCard href="/discover/boughtq" aura="investor" title="Most added to" blurb="Positions raised in each investor’s latest quarterly report." visual={<LogoTrio items={data.mostBoughtQ} />} />
+                <AuraCard href="/discover/insiderbuys" aura="insider" title="Insiders buying" blurb="Officers and directors buying with their own money (Form 4, code P), last 90 days." visual={<LogoTrio items={data.insiderBuys} />} />
+                <AuraCard href="/discover/mostheld" aura="neutral" title="Most held" blurb="The stocks most of the tracked investors hold." visual={<LogoTrio items={data.mostHeld} />} />
+                <AuraCard href="/discover/conviction" aura="neutral" title="Highest conviction" blurb="The largest single-stock weights in the reported holdings, options excluded." visual={<LogoTrio items={data.highestConviction} />} />
+                <AuraCard href="/discover/biggest" aura="neutral" title="Biggest positions" blurb="The most valuable single positions reported, in US dollars." visual={<LogoTrio items={data.biggest} />} />
               </div>
             </section>
 
             <section className="space-y-3">
-              <h2 className="eyebrow">Menschen</h2>
+              <h2 className="eyebrow">People</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <AuraCard href="/discover/politicians" aura="politician" title="Aktivste Politiker" blurb="Abgeordnete des US-Repräsentantenhauses mit den meisten Aktien-Trades im letzten Jahr." visual={<FaceTrio people={data.topPoliticians} kind="politician" />} />
-                <AuraCard href="/discover/biggestfunds" aura="investor" title="Größte Fonds" blurb="Die verfolgten Investoren mit dem größten gemeldeten Portfolio." visual={<FaceTrio people={data.biggestFunds} />} />
-                <AuraCard href="/discover/concentrated" aura="investor" title="Am konzentriertesten" blurb="Investoren, die den größten Anteil in eine einzige Aktie stecken." visual={<FaceTrio people={data.mostConcentrated} />} />
+                <AuraCard href="/discover/politicians" aura="politician" title="Most active politicians" blurb="Members of the US House with the most stock trades in the last year." visual={<FaceTrio people={data.topPoliticians} kind="politician" />} />
+                <AuraCard href="/discover/biggestfunds" aura="investor" title="Biggest funds" blurb="The tracked investors with the largest reported portfolios." visual={<FaceTrio people={data.biggestFunds} />} />
+                <AuraCard href="/discover/concentrated" aura="investor" title="Most concentrated" blurb="Investors who put the biggest share into a single stock." visual={<FaceTrio people={data.mostConcentrated} />} />
               </div>
             </section>
           </div>
@@ -133,7 +133,7 @@ function Discover() {
         (investors === null ? (
           error ? null : <SkeletonList n={8} />
         ) : investors.length === 0 ? (
-          <EmptyState title="Noch keine Investoren-Daten" />
+          <EmptyState title="No investor data yet" />
         ) : (
           <ListCard className="fade-up">
             {investors.map((iv) => (
@@ -146,7 +146,7 @@ function Discover() {
                 trailing={
                   <>
                     <div className="text-[15px] font-semibold tabular-nums">{abbrevMoney(iv.value)}</div>
-                    <div className="text-[13px] text-subtle">{iv.positions} Positionen</div>
+                    <div className="text-[13px] text-subtle">{iv.positions} positions</div>
                   </>
                 }
                 chevron={false}
@@ -160,7 +160,7 @@ function Discover() {
         (politicians === null ? (
           error ? null : <SkeletonList n={6} />
         ) : politicians.length === 0 ? (
-          <EmptyState icon="people" title="Noch keine Politiker-Trades">Die Meldungen des Repräsentantenhauses werden gerade eingelesen.</EmptyState>
+          <EmptyState icon="people" title="No politician trades yet">The House filings are being read in right now.</EmptyState>
         ) : (
           <ListCard className="fade-up">
             {politicians.map((p) => (
@@ -172,7 +172,7 @@ function Discover() {
                 subtitle={politicianLine(p.party, p.seat)}
                 trailing={
                   <>
-                    <div className="text-[15px] font-semibold tabular-nums">{p.trades} Trades</div>
+                    <div className="text-[15px] font-semibold tabular-nums">{p.trades} trades</div>
                     <div className="text-[13px] text-subtle">{formatDate(p.lastTrade)}</div>
                   </>
                 }
@@ -185,7 +185,7 @@ function Discover() {
         (sortedStocks === null ? (
           error ? null : <SkeletonList n={8} />
         ) : sortedStocks.length === 0 ? (
-          <EmptyState title="Noch keine Aktien-Daten" />
+          <EmptyState title="No stock data yet" />
         ) : (
           <ListCard className="fade-up">
             {sortedStocks.map((s) => (
@@ -194,7 +194,7 @@ function Discover() {
                 href={stockHref(s.ticker ?? "")}
                 leading={<CompanyLogo ticker={s.ticker} company={s.company} size={44} />}
                 title={s.company}
-                subtitle={`${s.investors} ${s.investors === 1 ? "Investor" : "Investoren"} · ${abbrevMoney(s.value)}`}
+                subtitle={`${s.investors} ${s.investors === 1 ? "investor" : "investors"} · ${abbrevMoney(s.value)}`}
                 trailing={<FaceStack names={s.holderNames} />}
                 chevron={false}
                 after={s.ticker ? <FollowButton kind="stock" id={s.ticker} variant="star" /> : null}

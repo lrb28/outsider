@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("symbols") || "";
   const symbols = [...new Set(raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))];
   if (symbols.length > 60 || symbols.some((s) => !SYMBOL_RE.test(s)))
-    return NextResponse.json({ error: "Maximal 60 gültige Symbole pro Anfrage." }, { status: 400 });
+    return NextResponse.json({ error: "At most 60 valid symbols per request." }, { status: 400 });
 
   const meta: Record<string, ListingMeta> = {};
   const CHUNK = 10;

@@ -19,7 +19,7 @@ function read(k: FollowKind): string[] {
 function write(k: FollowKind, v: string[]) {
   if (typeof window === "undefined") return;
   try { window.localStorage.setItem(KEY(k), JSON.stringify(v)); } catch (error) {
-    window.dispatchEvent(new CustomEvent("storage-error", {detail:"Die Watchlist konnte nicht gespeichert werden. Prüfe den freien Speicher und deine Browsereinstellungen."}));
+    window.dispatchEvent(new CustomEvent("storage-error", {detail:"The watchlist couldn’t be saved. Check the free storage and your browser settings."}));
     throw error;
   }
   window.dispatchEvent(new CustomEvent("watchlist", { detail: { kind: k } }));

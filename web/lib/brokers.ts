@@ -378,18 +378,18 @@ export function importCsv(text: string): ImportReport {
   const notes: string[] = [];
   if (counts.notPortfolio > 0)
     notes.push(
-      `${counts.notPortfolio} Kartenzahlungen und sonstige Kontobewegungen gehören nicht ins Depot und wurden übersprungen.`,
+      `${counts.notPortfolio} card payments and other account movements don’t belong in the portfolio and were skipped.`,
     );
   if (counts.corporate > 0)
-    notes.push(`${counts.corporate} Bestandsänderungen (Splits, Überträge, Gratisstücke) verarbeitet.`);
+    notes.push(`${counts.corporate} holding changes (splits, transfers, free shares) processed.`);
   if (counts.unknown > 0)
     notes.push(
-      `${counts.unknown} Zeilen mit unbekannter Buchungsart: ${[...unknownTypes].slice(0, 6).join(", ")}`,
+      `${counts.unknown} rows with an unknown transaction type: ${[...unknownTypes].slice(0, 6).join(", ")}`,
     );
 
   return {
     txns,
-    format: isTradeRepublic ? "Trade Republic / Parqet" : "Transaktionsexport",
+    format: isTradeRepublic ? "Trade Republic / Parqet" : "Transaction export",
     currency,
     counts,
     unknownTypes: [...unknownTypes],
@@ -437,24 +437,24 @@ function importSimple(lines: string[], sep: string): ImportReport {
 
   return {
     txns,
-    format: "Bestandsliste",
+    format: "Holdings list",
     currency: "USD",
     counts: { trades: txns.length, dividends: 0, cash: 0, corporate: 0, notPortfolio: 0, unusable, unknown: 0 },
     unknownTypes: [],
     dated: txns.filter((t) => t.date).length,
     instruments: [...instruments.entries()].map(([key, v]) => ({ key, ...v })),
     notes: txns.some((t) => !t.date)
-      ? ["Ohne Kaufdatum werden Positionen als „seit Beginn gehalten“ gerechnet."]
+      ? ["Without a purchase date, positions count as “held from the start”."]
       : [],
   };
 }
 
 export function summarize(r: ImportReport): string {
   const parts: string[] = [];
-  if (r.counts.trades) parts.push(`${r.counts.trades} Trades`);
-  if (r.counts.dividends) parts.push(`${r.counts.dividends} Dividenden`);
-  if (r.counts.corporate) parts.push(`${r.counts.corporate} Bestandsänderungen`);
-  if (r.counts.cash) parts.push(`${r.counts.cash} Geldbewegungen`);
-  const head = parts.length ? parts.join(" · ") : "keine verwertbaren Buchungen";
-  return `${r.format} erkannt (${r.currency}): ${head}.`;
+  if (r.counts.trades) parts.push(`${r.counts.trades} trades`);
+  if (r.counts.dividends) parts.push(`${r.counts.dividends} dividends`);
+  if (r.counts.corporate) parts.push(`${r.counts.corporate} holding changes`);
+  if (r.counts.cash) parts.push(`${r.counts.cash} cash movements`);
+  const head = parts.length ? parts.join(" · ") : "no usable transactions";
+  return `${r.format} recognised (${r.currency}): ${head}.`;
 }

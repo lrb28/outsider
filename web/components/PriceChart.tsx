@@ -19,9 +19,9 @@ import type { PriceBar } from "@/lib/types";
 export function PriceChart({
   bars,
   height = 200,
-  formatVal = (v: number) => `$${v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+  formatVal = (v: number) => `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   markDate,
-  markLabel = "Meldung",
+  markLabel = "Filed",
   size = "lg",
 }: {
   bars: PriceBar[];
@@ -41,7 +41,7 @@ export function PriceChart({
   if (!data || data.length < 2) {
     return (
       <div style={{ height }} className="flex items-center justify-center rounded-2xl bg-surface2 text-[13px] text-subtle">
-        Kein Kursverlauf verfügbar.
+        No price history available.
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function PriceChart({
   };
 
   const tipX = idx != null ? Math.min(Math.max(x(idx), 38), plotW - 38) : 0;
-  const summary = `Kursverlauf ${formatDate(data[0].date)} bis ${formatDate(data[n - 1].date)}: von ${formatVal(first)} auf ${formatVal(last)} (${up ? "plus" : "minus"} ${Math.abs(((last - first) / (first || 1)) * 100).toFixed(1)} Prozent), Tief ${formatVal(lo)}, Hoch ${formatVal(hi)}.`;
+  const summary = `Price from ${formatDate(data[0].date)} to ${formatDate(data[n - 1].date)}: from ${formatVal(first)} to ${formatVal(last)} (${up ? "up" : "down"} ${Math.abs(((last - first) / (first || 1)) * 100).toFixed(1)} percent), low ${formatVal(lo)}, high ${formatVal(hi)}.`;
 
   return (
     <div>
@@ -98,7 +98,7 @@ export function PriceChart({
         <RollingNumber value={formatVal(cur.close)} duration={idx != null ? 280 : 650} className={size === "lg" ? "num-xl" : "num-lg"} />
         <span className={`flex items-baseline gap-1 text-[15px] font-semibold transition-colors duration-200 ${chg >= 0 ? "text-bull" : "text-bear"}`}>
           <span aria-hidden="true" className="text-[12px]">{chg >= 0 ? "▲" : "▼"}</span>
-          <RollingNumber value={`${Math.abs(chg * 100).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\u00a0%`} duration={idx != null ? 280 : 650} label={`${chg >= 0 ? "plus" : "minus"} ${Math.abs(chg * 100).toFixed(2)} Prozent`} />
+          <RollingNumber value={`${Math.abs(chg * 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`} duration={idx != null ? 280 : 650} label={`${chg >= 0 ? "up" : "down"} ${Math.abs(chg * 100).toFixed(2)} percent`} />
         </span>
       </div>
 
@@ -134,7 +134,7 @@ export function PriceChart({
           {ticks.map((t) => (
             <g key={t}>
               <line x1={0} x2={plotW} y1={y(t)} y2={y(t)} className="stroke-hair" strokeWidth="1" />
-              <text x={plotW + 8} y={y(t)} dy="0.32em" className="fill-subtle text-[11px] tabular-nums">{formatVal(t).replace(/,00(?=\D*$)/, "")}</text>
+              <text x={plotW + 8} y={y(t)} dy="0.32em" className="fill-subtle text-[11px] tabular-nums">{formatVal(t).replace(/\.00(?=\D*$)/, "")}</text>
             </g>
           ))}
 

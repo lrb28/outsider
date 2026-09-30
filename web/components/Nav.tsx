@@ -12,7 +12,7 @@ const TABS: { href: string; label: string; icon: IconName; fill: IconName }[] = 
   { href: "/", label: "Home", icon: "home", fill: "homeFill" },
   { href: "/discover", label: "Discover", icon: "discovery", fill: "discoveryFill" },
   { href: "/feed", label: "Feed", icon: "notification", fill: "notificationFill" },
-  { href: "/me", label: "Depot", icon: "graph", fill: "graphFill" },
+  { href: "/me", label: "Portfolio", icon: "graph", fill: "graphFill" },
   { href: "/settings", label: "Settings", icon: "setting", fill: "settingFill" },
 ];
 

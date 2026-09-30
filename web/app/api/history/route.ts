@@ -141,8 +141,8 @@ export async function GET(req: NextRequest) {
   const raw = p.get("tickers") || p.get("ticker") || "";
   const range = p.get("range") || "5y";
   let tickers: string[];
-  try { if (!RANGES.has(range)) throw new InputError("Ungültiger Zeitraum"); tickers = symbolList(raw,40); }
-  catch (error) { return NextResponse.json({error: error instanceof InputError ? error.message : "Ungültige Anfrage"}, {status:400}); }
+  try { if (!RANGES.has(range)) throw new InputError("Invalid range"); tickers = symbolList(raw,40); }
+  catch (error) { return NextResponse.json({error: error instanceof InputError ? error.message : "Invalid request"}, {status:400}); }
 
   if (tickers.length === 0) {
     return NextResponse.json({ range, entries: {} as Record<string, HistoryEntry> });

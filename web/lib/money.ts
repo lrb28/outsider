@@ -36,7 +36,7 @@ export function currencySymbol(c: string = current): string {
 export function cMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
   const s = currencySymbol();
-  const n = v.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const n = v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return current === "EUR" ? `${n}\u00A0${s}` : `${s}${n}`;
 }
 
@@ -46,7 +46,7 @@ export function cAbbrev(v: number | null | undefined): string {
   const s = currencySymbol();
   const a = Math.abs(v);
   const sign = v < 0 ? "−" : "";
-  const de1 = (x: number) => x.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const de1 = (x: number) => x.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const num =
     a >= 1e9
       ? `${de1(a / 1e9)}\u00A0Mrd.`
@@ -55,8 +55,8 @@ export function cAbbrev(v: number | null | undefined): string {
       : a >= 1e4
       ? `${de1(a / 1e3)}K`
       : a >= 1e3
-      ? a.toLocaleString("de-DE", { maximumFractionDigits: 0 })
-      : a.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      ? a.toLocaleString("en-US", { maximumFractionDigits: 0 })
+      : a.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return current === "EUR" ? `${sign}${num}\u00A0${s}` : `${sign}${s}${num}`;
 }
 
