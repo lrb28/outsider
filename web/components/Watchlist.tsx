@@ -68,7 +68,13 @@ export function Watchlist() {
     ...investors.filter((i) => follow.investor.includes(i.slug)).map((i) => ({ key: `i-${i.slug}`, href: `/investor/${i.slug}`, name: i.person ?? i.fund, src: null as string | null, kind: "investor" as const })),
     ...politicians.filter((p) => follow.politician.includes(p.slug)).map((p) => ({ key: `p-${p.slug}`, href: `/politician/${p.slug}`, name: p.name, src: p.photo ?? null, kind: "politician" as const })),
   ];
-  const myStk = stocks.filter((s) => s.ticker && follow.stock.includes(s.ticker));
+  // Two share classes of one company (GOOGL, GOOG) made two identical
+  // "Alphabet" tiles: one tile per company, the class most investors hold.
+  const myStk = [...stocks]
+    .filter((s) => s.ticker && follow.stock.includes(s.ticker))
+    .sort((a, b) => b.investors - a.investors)
+    .filter((s, i, all) => all.findIndex((o) => o.company === s.company) === i)
+    .sort((a, b) => follow.stock.indexOf(a.ticker!) - follow.stock.indexOf(b.ticker!));
 
   return (
     <section className="space-y-3">
@@ -80,7 +86,8 @@ export function Watchlist() {
           {people.map((p) => (
             <Link key={p.key} href={p.href} className="card lcard-hover press flex w-28 shrink-0 flex-col items-center p-3 text-center">
               <Avatar name={p.name} src={p.src} kind={p.kind} size={56} />
-              <div className="mt-2 w-full truncate text-[13px] font-semibold">{p.name}</div>
+              {/* Two lines, so "Warren Buffett" is not cut to "Warren Buff…". */}
+              <div className="mt-2 line-clamp-2 flex min-h-[2.1rem] w-full items-start justify-center text-[13px] font-semibold leading-[1.05rem]">{p.name}</div>
             </Link>
           ))}
         </SwipeRow>

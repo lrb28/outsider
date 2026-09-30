@@ -11,6 +11,7 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
+import { MatchSheet, matchPct, myHoldings, normTicker } from "@/components/MatchSheet";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
@@ -29,6 +30,10 @@ export default function InvestorPage() {
   // Point72 reports almost 2,000 positions; rendering them all at once made
   // the page stutter on phones. The list grows on request.
   const [shown, setShown] = useState(40);
+  // Your Portfolio (on this device), for the match with this investor.
+  const [mine, setMine] = useState<Map<string, string>>(new Map());
+  const [showMatch, setShowMatch] = useState(false);
+  useEffect(() => setMine(myHoldings()), []);
 
   useEffect(() => {
     if (!slug) return;
@@ -53,6 +58,13 @@ export default function InvestorPage() {
     return h;
   }, [inv, sort]);
 
+  // Stocks in both portfolios (options are not a stake in the company).
+  const shared = useMemo(() => {
+    if (!inv || !mine.size) return [];
+    const theirs = inv.holdings.filter((h) => h.ticker && !h.putCall).map((h) => normTicker(fixTicker(h.ticker, h.company) ?? h.ticker!));
+    return [...new Set(theirs)].filter((t) => mine.has(t));
+  }, [inv, mine]);
+
   if (loading) return <SkeletonPage />;
   if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
   if (!inv)
@@ -65,11 +77,19 @@ export default function InvestorPage() {
       </div>
     );
 
-  const stats = [
+  const stats: { label: string; value: string; cls?: string; onClick?: () => void; hint?: string }[] = [
     { label: "Portfolio value", value: shortMoney(inv.value) },
     { label: "Positions", value: inv.positions.toLocaleString("en-US") },
     { label: "As of", value: shortDate(inv.asOf) },
   ];
+  if (mine.size > 0)
+    stats.unshift({
+      label: `Match · ${shared.length} shared`,
+      value: `${matchPct(shared.length, mine.size)}%`,
+      cls: "text-[rgb(var(--aura-investor))]",
+      onClick: shared.length ? () => setShowMatch(true) : undefined,
+      hint: "Show the stocks you both hold",
+    });
 
   const buys = inv.moves?.buys ?? inv.trades.filter((t) => t.txnType === "buy").length;
   const sells = inv.moves?.sells ?? inv.trades.filter((t) => t.txnType === "sell").length;
@@ -185,6 +205,8 @@ export default function InvestorPage() {
           empty="No reported changes yet."
         />
       </section>
+
+      {showMatch && <MatchSheet slug={inv.slug} who={inv.person ?? inv.fund} shared={shared} total={mine.size} names={mine} onClose={() => setShowMatch(false)} />}
 
       <p className="text-[13px] leading-relaxed text-subtle">13F reports show quarterly holdings. Changes are not dated trades. Stock values and weights exclude option positions. People are an editorial attribution to the fund, not a confirmation of who manages the money today.</p>
     </div>

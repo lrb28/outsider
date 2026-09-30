@@ -9,6 +9,7 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { CountUp } from "@/components/CountUp";
 import { DataStatus } from "@/components/DataStatus";
 import { ErrorRetry } from "@/components/ErrorRetry";
+import { MatchSheet, matchPct, myHoldings } from "@/components/MatchSheet";
 import { Icon } from "@/components/Icon";
 import { Skeleton, SkeletonList } from "@/components/Skeleton";
 import { SwipeRow } from "@/components/SwipeRow";
@@ -16,8 +17,7 @@ import { TradeDetailModal } from "@/components/TradeDetailModal";
 import { AuraCard, SectionHeader } from "@/components/ui";
 import { Watchlist } from "@/components/Watchlist";
 import { fetchCatalogue, fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, auraOf, companyName, formatDate, investorPerson, pct, tradeSignal } from "@/lib/format";
-import { getTxns, positionsFrom } from "@/lib/portfolio";
+import { abbrevMoney, auraOf, companyName, formatDate, investorPerson, pct, shortDate, tradeSignal } from "@/lib/format";
 import type { StatsResponse } from "@/lib/stats";
 import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, MatchResponse, MatchRow, PoliticianRow, PoliticiansResponse, TradesResponse } from "@/lib/types";
 
@@ -144,7 +144,9 @@ export default function HomePage() {
   const [depotCount, setDepotCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [attempt, setAttempt] = useState(0);
-  const [selected, setSelected] = useState<FeedRow | null>(null);
+  const [selected, setSelected] = useState<{ row: FeedRow; rows: FeedRow[] } | null>(null);
+  const [match, setMatch] = useState<MatchRow | null>(null);
+  const [holdingNames, setHoldingNames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,10 +160,11 @@ export default function HomePage() {
     fetchJson<TradesResponse>("/api/trades?type=institution&limit=120", { signal: controller.signal }).then((d) => setInst(d.rows)).catch(() => fail("inst"));
     fetchJson<TradesResponse>("/api/trades?type=corporate_insider&limit=60", { signal: controller.signal }).then((d) => setInsiders(d.rows)).catch(() => fail("insiders"));
     fetchJson<TradesResponse>("/api/trades?type=politician&limit=60", { signal: controller.signal }).then((d) => setPols(d.rows)).catch(() => fail("pols"));
-    const holdings = positionsFrom(getTxns()).filter((p) => p.shares > 0);
-    setDepotCount(holdings.length);
-    if (holdings.length) {
-      const tickers = holdings.map((p) => p.ticker).filter((t) => /^[A-Z0-9.\-]{1,12}$/.test(t)).slice(0, 200).join(",");
+    const holdings = myHoldings();
+    setDepotCount(holdings.size);
+    setHoldingNames(holdings);
+    if (holdings.size) {
+      const tickers = [...holdings.keys()].filter((t) => /^[A-Z0-9.\-]{1,12}$/.test(t)).slice(0, 200).join(",");
       fetchJson<MatchResponse>(`/api/match?tickers=${encodeURIComponent(tickers)}`, { signal: controller.signal }).then((d) => setMatches(d.rows.slice(0, 5))).catch(() => {});
     }
     return () => controller.abort();
@@ -219,25 +222,27 @@ export default function HomePage() {
 
       {depotCount > 0 && matches.length > 0 && (
         <section className="space-y-3">
-          <SectionHeader title="Who holds what you hold" href="/me" more="My portfolio" />
-          <SwipeRow className="gap-4">
+          {/* After Eaves: the investors whose latest 13F holds most of what
+              you hold, as a match in percent; a card opens the shared stocks. */}
+          <SectionHeader title="Portfolio matches" href="/me" more="Portfolio" />
+          <SwipeRow className="gap-3">
             {matches.map((m) => (
-              <Link key={m.slug} href={`/investor/${m.slug}`} className="card lcard-hover press flex w-56 shrink-0 snap-start flex-col items-center p-5 text-center">
-                <Avatar name={m.person ?? m.fund} size={64} />
-                <div className="mt-2 w-full truncate text-[15px] font-semibold">{m.person ?? m.fund}</div>
-                <div className="mt-1 num-lg">
-                  {m.sharedCount} <span className="font-sans text-xs font-medium text-subtle">of your {depotCount} stocks</span>
-                </div>
+              <button key={m.slug} onClick={() => setMatch(m)} className="card lcard-hover press flex w-44 shrink-0 snap-start flex-col items-center px-3 pb-4 pt-5 text-center">
+                <Avatar name={m.person ?? m.fund} size={60} />
+                <div className="mt-2.5 w-full truncate text-[15px] font-semibold">{m.person ?? m.fund}</div>
+                <div className="text-[14px] font-semibold text-[rgb(var(--aura-investor))]">{matchPct(m.sharedCount, depotCount)}% match</div>
                 <div className="mt-3 flex items-center gap-1.5">
-                  {m.sharedTickers.slice(0, 4).map((t) => (
+                  {m.sharedTickers.slice(0, 3).map((t) => (
                     <CompanyLogo key={t} ticker={t} company={t} size={28} rounded="rounded-[9px]" />
                   ))}
+                  {m.sharedTickers.length > 3 && <span className="text-[12px] font-medium text-subtle">+{m.sharedTickers.length - 3}</span>}
                 </div>
-              </Link>
+              </button>
             ))}
           </SwipeRow>
         </section>
       )}
+      {match && <MatchSheet slug={match.slug} who={match.person ?? match.fund} shared={match.sharedTickers} total={depotCount} names={holdingNames} onClose={() => setMatch(null)} />}
 
       {/* Spotlight */}
       <section className="space-y-3">
@@ -252,7 +257,7 @@ export default function HomePage() {
                 </div>
                 <div className="mt-2 px-1">
                   <div className="truncate text-[15px] font-semibold">{iv.person ?? iv.fund}</div>
-                  <div className="text-[13px] text-subtle">{abbrevMoney(iv.value)} · {formatDate(iv.asOf)}</div>
+                  <div className="truncate text-[13px] text-subtle">{abbrevMoney(iv.value)} · {shortDate(iv.asOf)}</div>
                 </div>
               </Link>
             ))}
@@ -274,7 +279,7 @@ export default function HomePage() {
             <div className="card p-8 text-center text-[15px] text-subtle">{section.empty}</div>
           ) : (
             <SwipeRow className="gap-4">
-              {varied(section.rows).map((row) => <TradeCard key={row.id} row={row} onOpen={() => setSelected(row)} />)}
+              {varied(section.rows).map((row, _i, shown) => <TradeCard key={row.id} row={row} onOpen={() => setSelected({ row, rows: shown })} />)}
             </SwipeRow>
           )}
         </section>
@@ -282,7 +287,7 @@ export default function HomePage() {
 
       <DataStatus />
 
-      {selected && <TradeDetailModal row={selected} onClose={() => setSelected(null)} />}
+      {selected && <TradeDetailModal row={selected.row} rows={selected.rows} onClose={() => setSelected(null)} />}
     </div>
   );
 }

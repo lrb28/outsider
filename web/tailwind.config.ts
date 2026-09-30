@@ -13,6 +13,9 @@ const neutral = Object.fromEntries(
 
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  // hover: only where there is a real pointer. On iPhone a tapped button
+  // kept its hover colour (the black "Continue" stayed grey after a tap).
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       colors: {

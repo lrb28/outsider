@@ -95,11 +95,22 @@ column names and decimal commas.
   2026-09-30); detail pages swipe from the tab they belong to. Rows that
   scroll sideways, charts, the 3D allocation (`data-noswipe`), fields, open
   sheets and the outer 24 px (system back gesture) are left alone.
+- Portfolio matches (after Eaves, needs a Portfolio): an investor's match is
+  the share of your open positions their latest 13F holds too
+  (`matchPct`, `components/MatchSheet.tsx`). Home shows the best as cards
+  ("67% match" in the investor aura), the investor page as the first key
+  figure; both open "It's a 67% match" with the shared stocks.
 - Anything that answers "who/what is behind this?" opens a `Sheet` instead of
   a new page: key figures (Investors holding, Bought/Sold this quarter), legend
   rows, the "How to read the data" explainer; a trade opens the trade card
-  (`TradeDetailModal`) with the same interactive price chart as the stock
-  page. The page stays visible behind it as frosted glass (blurred, milky
+  (`TradeDetailModal`, after Eaves): logo with the filer's face, the trade as
+  a sentence ("Kevin Hern **sold** Vuzix", verb from `tradeVerb`: bought and
+  sold in bull/bear, 13F changes and Form 4 codes neutral), "Politician · Sep
+  25, 2026" (13F: "Investor · 13F for Q2 2026"), the same interactive price
+  chart as the stock page, then the figures as one plain list, label left and
+  value right. Opened from a list, it swipes sideways to the next and
+  previous filing ("2 of 24" with small chevrons under the grip, arrow keys
+  too; `useSwipePager`), giving only a little at either end. The page stays visible behind it as frosted glass (blurred, milky
   tint, `dialog::backdrop`) and does not scroll (`useScrollLock` pins the
   body, which iOS needs). A downward swipe on the header, or anywhere while
   the content is at its top, drags the sheet and dismisses it
@@ -123,8 +134,41 @@ column names and decimal commas.
   Appearance (System/Light/Dark) is stored as `aura:theme` and set as
   `data-theme` before the first paint (`lib/theme.ts`).
 - Search is a round glass loupe in the header (no placeholder text); it
-  widens into a field when tapped.
+  widens into a field when tapped. With nothing typed it lists the last six
+  results opened ("Recent", with "Clear"; after Eaves), kept on the device
+  (`aura:recent-searches`). The field shows focus with its own ring, not
+  the global blue outline (a tapped text field counts as `:focus-visible`).
+- `hover:` styles only apply where there is a real pointer
+  (`future.hoverOnlyWhenSupported`): on iPhone a tapped button kept its
+  hover colour, so the black "Continue" stayed grey.
 - Key figures that can be opened carry a chevron (`StatRow` with `onClick`).
+
+## Onboarding
+
+Welcome screen first (see Motion), then the set-up, after the Fuse wallet's
+"Secure your wallet" (user's recording of 2026-09-29):
+
+- A soft glow in the step's colour fills the top and runs out just above the
+  steps (`.setup-glow`, its height measured, so finished steps sit on the
+  page): investors azure, politicians magenta to violet, stocks orange to
+  amber. A new step cross-fades the colour.
+- "Set up / your ĀURA" top left and "Close" top right in white on the glow.
+- Finished steps are grey rows above the current one (their own glyph and
+  "· 3" chosen), coming steps lighter rows below. The current step: its
+  glyph in the aura colour (no tile), 28 px title, one line of text, the
+  picker (4 columns, full names in two lines; on small phones it scrolls and
+  its cut-off row fades).
+- Moving on, the finished title shrinks into its row and the next row grows
+  into the title (FLIP, `useFlip`), while the new picker fades up.
+- One full-width button carries the step: "Follow 3 investors", "Watch 2
+  stocks", or "Continue" with nothing chosen. No "Skip": "Close" leaves.
+- At the end the glow clears and a row "Setting up your ĀURA" (dashed
+  spinner, a highlight running over the words) turns into "Your ĀURA is
+  ready!" with a green check while Home's data loads, then the set-up fades
+  (content first, so no half-drawn text shows over the page) into the app.
+- "Close" and Escape slide it down like a sheet; opened from the "+" menu
+  ("Follow people") it rises like one. Nothing is focused on arrival (a
+  focus ring on "Get started" read as a pressed button).
 
 ## Liquid Glass
 
@@ -180,7 +224,8 @@ exited (each fund's latest 13F against the quarter before).
 ## Pictures
 
 People: official congressional portraits; credited Commons photos for
-investors (`web/lib/portraits.ts`, matched by fund or person name); else the
+investors (`web/lib/portraits.ts`, matched by fund or person name; no
+caricatures: Stephen Mandel shows Lone Pine's mark); else the
 fund's logo (`FUND_LOGOS`, files in `web/public/funds`: website icons or the
 public-domain text logos on Commons cut down to the mark; `tile` files are
 finished round tiles); insiders show their company's logo. Company logos load

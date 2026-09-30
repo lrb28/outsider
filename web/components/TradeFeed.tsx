@@ -162,12 +162,16 @@ export function TradeFeed({
                       {r.sizeDisplay} · {formatDate(r.disclosedAt)}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <div className={`${disc.muted ? "max-w-[5.5rem] text-[11px] leading-tight" : "text-[15px] font-semibold tabular-nums"} ${perfCls}`}>
-                      {perfText}
+                  {/* Without a price there is nothing to show on the phone:
+                      "no price on file" on every other row was noise. */}
+                  {(!disc.muted || perfText !== "no price on file") && (
+                    <div className="shrink-0 text-right">
+                      <div className={`${disc.muted ? "max-w-[5.5rem] text-[11px] leading-tight" : "text-[15px] font-semibold tabular-nums"} ${perfCls}`}>
+                        {perfText}
+                      </div>
+                      {!disc.muted && <div className={`text-[11px] ${subCls}`}>since filing</div>}
                     </div>
-                    {!disc.muted && <div className={`text-[11px] ${subCls}`}>since filing</div>}
-                  </div>
+                  )}
                 </div>
 
                 <div className={`hidden ${grid} items-center gap-3 md:grid`}>
@@ -220,7 +224,7 @@ export function TradeFeed({
         })}
       </div>
 
-      {selected && <TradeDetailModal row={selected} onClose={() => setSelected(null)} />}
+      {selected && <TradeDetailModal row={selected} rows={rows} onClose={() => setSelected(null)} />}
     </>
   );
 }

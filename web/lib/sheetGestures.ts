@@ -157,3 +157,104 @@ export function useDragDismiss(sheet: RefObject<HTMLElement>, scroller: RefObjec
     };
   }, [sheet, scroller]);
 }
+
+const PAGE_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+
+/**
+ * Slides a sheet out to one side, lets `go` swap its content and brings it
+ * back in from the other side (paging between neighbouring items).
+ */
+export function slideSheet(el: HTMLElement, dir: 1 | -1, go: () => void) {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return go();
+  const w = el.getBoundingClientRect().width;
+  el.style.transition = "transform 0.18s ease-in, opacity 0.18s ease-in";
+  el.style.transform = `translateX(${-dir * w * 1.05}px)`;
+  el.style.opacity = "0";
+  window.setTimeout(() => {
+    go();
+    el.style.transition = "none";
+    el.style.transform = `translateX(${dir * w * 0.6}px)`;
+    void el.getBoundingClientRect();
+    el.style.transition = `transform 0.4s ${PAGE_EASE}, opacity 0.3s ease-out`;
+    el.style.transform = "";
+    el.style.opacity = "";
+  }, 180);
+}
+
+/**
+ * Swipe sideways to the next or previous item (the trade card, after Eaves):
+ * the sheet follows the finger, a far or quick swipe pages, a short one
+ * springs back, and at either end it only gives a little. Vertical swipes
+ * stay with scrolling and `useDragDismiss`; charts (`[data-sheet-nodrag]`)
+ * keep their own touches.
+ */
+export function useSwipePager(sheet: RefObject<HTMLElement>, pager: { can: (dir: 1 | -1) => boolean; go: (dir: 1 | -1) => void } | null) {
+  const ref = useRef(pager);
+  ref.current = pager;
+
+  useEffect(() => {
+    const el = sheet.current;
+    if (!el) return;
+    let x0 = 0;
+    let y0 = 0;
+    let t0 = 0;
+    let dx = 0;
+    let state: "idle" | "track" | "swipe" = "idle";
+
+    const onStart = (e: TouchEvent) => {
+      if (!ref.current || e.touches.length !== 1) return;
+      if ((e.target as Element | null)?.closest("[data-sheet-nodrag]")) return;
+      x0 = e.touches[0].clientX;
+      y0 = e.touches[0].clientY;
+      t0 = performance.now();
+      dx = 0;
+      state = "track";
+    };
+    const onMove = (e: TouchEvent) => {
+      if (state === "idle") return;
+      const x = e.touches[0].clientX - x0;
+      const y = e.touches[0].clientY - y0;
+      if (state === "track") {
+        if (Math.abs(x) < 8 && Math.abs(y) < 8) return;
+        if (Math.abs(x) < Math.abs(y) * 1.3) {
+          state = "idle";
+          return;
+        }
+        state = "swipe";
+        el.style.transition = "none";
+      }
+      dx = ref.current?.can(x < 0 ? 1 : -1) ? x : x * 0.22;
+      el.style.transform = `translateX(${dx}px)`;
+      el.style.opacity = String(1 - Math.min(0.3, Math.abs(dx) / 1000));
+      e.preventDefault();
+    };
+    const onEnd = () => {
+      if (state !== "swipe") {
+        state = "idle";
+        return;
+      }
+      state = "idle";
+      const dir: 1 | -1 = dx < 0 ? 1 : -1;
+      const speed = Math.abs(dx) / Math.max(1, performance.now() - t0);
+      const p = ref.current;
+      if (p?.can(dir) && (Math.abs(dx) > 80 || (Math.abs(dx) > 30 && speed > 0.5))) {
+        slideSheet(el, dir, () => p.go(dir));
+      } else {
+        el.style.transition = `transform 0.35s ${PAGE_EASE}, opacity 0.35s ${PAGE_EASE}`;
+        el.style.transform = "";
+        el.style.opacity = "";
+      }
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [sheet]);
+}

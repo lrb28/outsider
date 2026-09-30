@@ -297,9 +297,17 @@ h1, h2, h3 {
     background: rgb(var(--surface));
     box-shadow: 0 0 0 2px rgb(var(--ink) / 0.12), 0 8px 24px rgb(0 0 0 / 0.08);
   }
-  .btn-glass:hover,
-  .btn-capsule:hover {
-    background: linear-gradient(180deg, rgb(var(--glass-fill) / 0.86), rgb(var(--glass-fill) / 0.66));
+  /* A text field counts as :focus-visible even when tapped, so the global
+     blue outline sat on the capsule on iPhone; its own ring shows focus. */
+  .search-capsule:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(var(--ink) / 0.28), 0 8px 24px rgb(0 0 0 / 0.08);
+  }
+  @media (hover: hover) {
+    .btn-glass:hover,
+    .btn-capsule:hover {
+      background: linear-gradient(180deg, rgb(var(--glass-fill) / 0.86), rgb(var(--glass-fill) / 0.66));
+    }
   }
 
   /* Filter chips: quiet fills; the selected one turns solid. */
@@ -455,6 +463,82 @@ h1, h2, h3 {
   position: absolute;
   inset: 0;
   overflow: hidden;
+}
+
+/* Onboarding panel: the welcome fades in, the set-up opened from the "+"
+   menu rises like a sheet; "Close" slides it down again. */
+.onboarding-panel[data-entry="fade"] { animation: fadeIn 0.35s ease-out backwards; }
+.onboarding-panel[data-entry="rise"] { animation: sheetUp 0.5s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+.onboarding-slide-away {
+  transform: translateY(100%);
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (min-width: 640px) {
+  .onboarding-slide-away {
+    transform: translateY(24px) scale(0.97);
+    opacity: 0;
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  }
+}
+
+/* Set-up glow (after the reference wallet's "Secure your wallet"): the top
+   of the page in the step's colour, softly running out into the page. One
+   layer per step; the current one is lit, so a new step cross-fades. */
+.setup-glow {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 44%;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease-out, height 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+  /* backwards only: a kept end state would pin the opacity at 1. */
+  animation: fadeIn 0.9s ease-out backwards;
+}
+.setup-glow i {
+  position: absolute;
+  inset: -12% -12% 0 -12%;
+  opacity: 0;
+  transition: opacity 0.7s cubic-bezier(0.32, 0.72, 0, 1);
+  background:
+    radial-gradient(60% 42% at 22% 10%, rgb(var(--g2) / 0.95), transparent 72%),
+    radial-gradient(55% 40% at 88% 26%, rgb(var(--g2) / 0.55), transparent 72%),
+    linear-gradient(to bottom, rgb(var(--g1)) 0%, rgb(var(--g1) / 0.95) 24%, rgb(var(--g1) / 0.62) 48%, rgb(var(--g1) / 0.22) 70%, rgb(var(--g1) / 0) 94%);
+  animation: glowDrift 9s ease-in-out infinite alternate;
+}
+.setup-glow i[data-on] { opacity: 1; }
+/* The set-up's choices scroll on small phones: the cut-off row fades. */
+.pick-grid[data-more] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+}
+.setup-glow i[data-glow="investor"] { --g1: 24 132 230; --g2: 70 196 255; }
+.setup-glow i[data-glow="politician"] { --g1: 184 62 162; --g2: 138 92 246; }
+.setup-glow i[data-glow="insider"] { --g1: 238 102 32; --g2: 255 178 36; }
+@keyframes glowDrift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(2.5%, 1.5%, 0) scale(1.05); }
+}
+.setup-header { text-shadow: 0 1px 10px rgb(0 0 0 / 0.14); }
+.step-in { animation: fadeUp 0.5s cubic-bezier(0.32, 0.72, 0, 1) 0.06s both; }
+.setup-spinner { animation: setupSpin 2.6s linear infinite; }
+@keyframes setupSpin { to { transform: rotate(360deg); } }
+.check-pop { animation: checkPop 0.45s cubic-bezier(0.32, 0.72, 0, 1) both; }
+@keyframes checkPop {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: none; }
+}
+/* A highlight runs over "Setting up your ĀURA" while it works. */
+.text-sweep {
+  background: linear-gradient(90deg, rgb(var(--subtle)) 0%, rgb(var(--ink)) 35%, rgb(var(--ink)) 50%, rgb(var(--subtle)) 85%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: textSweep 1.8s linear infinite;
+}
+@keyframes textSweep {
+  from { background-position: 100% 0; }
+  to { background-position: -150% 0; }
 }
 @keyframes welcomeMark {
   from { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }
