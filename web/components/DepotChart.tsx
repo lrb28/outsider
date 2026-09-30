@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { useWidth } from "@/lib/chart";
 
-import { formatDate, pctOf } from "@/lib/format";
+import { formatDate, pctOf, shortDate } from "@/lib/format";
 
 export interface ChartSeries {
   key: string;
@@ -120,7 +120,7 @@ export function DepotChart({
   if (!main || !geom || dates.length < 2) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-subtle">
-        Nicht genug Kursdaten für einen Verlauf.
+        Not enough price data for a chart.
       </div>
     );
   }
@@ -226,7 +226,7 @@ export function DepotChart({
           />
         )}
 
-        {/* Flächen + Linien, Hauptserie zuletzt damit sie obenauf liegt */}
+        {/* Areas and lines, the main series last so it lies on top */}
         {series
           .map((s, si) => ({ s, si }))
           .sort((a, b) => b.si - a.si)
@@ -298,7 +298,7 @@ export function DepotChart({
             fill="rgb(var(--n-400))"
             textAnchor={i === 0 ? "start" : "middle"}
           >
-            {d.slice(8, 10)}.{d.slice(5, 7)}.{d.slice(2, 4)}
+            {shortDate(d)}
           </text>
         ))}
       </svg>
@@ -318,7 +318,7 @@ export function ReturnBars({
 }) {
   const [hover, setHover] = useState<number | null>(null);
   if (data.length === 0) {
-    return <div className="py-8 text-center text-sm text-subtle">Noch keine volle Periode.</div>;
+    return <div className="py-8 text-center text-sm text-subtle">No full period yet.</div>;
   }
   // The baseline sits where the data needs it: at the bottom when every
   // period gained, in between only when there are losses to show.

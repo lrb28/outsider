@@ -159,13 +159,13 @@ const RETIRED: Record<string, string> = {
   // Am 21.02.2025 auf den irischen Nachfolger verschmolzen. Der letzte Kurs
   // unter LCUW.DE stammt vom Verschmelzungstag und ist seither eingefroren.
   LU1781541179:
-    "Fonds am 21.02.2025 verschmolzen — Nachfolger: Amundi Core MSCI World UCITS ETF Acc (IE000BI8OT95)",
+    "Fund merged on Feb 21, 2025 — successor: Amundi Core MSCI World UCITS ETF Acc (IE000BI8OT95)",
   // Hyundai hat seine Global Depositary Receipts zum 19.12.2024 von den Börsen
   // London und Luxemburg genommen; der außerbörsliche US-Handel unter HYMTF
   // ist damit ebenfalls versiegt. Die Stammaktie in Seoul (005380.KS) ist ein
   // anderes Papier mit anderer Stückelung — sie hier einzusetzen ergäbe einen
   // Depotwert, der um ein Vielfaches danebenläge.
-  USY384721251: "Hinterlegungsschein zum 19.12.2024 eingestellt — kein Kurs mehr",
+  USY384721251: "Depositary receipt discontinued on Dec 19, 2024 — no price any more",
 };
 
 /**
@@ -182,14 +182,14 @@ export function unpriceableReason(
   const n = (name ?? "").toLowerCase();
   const retired = RETIRED[isin.trim().toUpperCase()];
   if (retired) return retired;
-  if (ac === "DERIVATIVE") return "Optionsschein / Zertifikat — kein öffentlicher Kurs";
-  if (ac === "PRIVATE_FUND" || ac === "PRIVATE_EQUITY") return "Privatmarkt-Fonds — nicht börsennotiert";
-  if (/^US84615Q/.test(isin) || n.includes("spacex")) return "Nicht börsennotiert";
+  if (ac === "DERIVATIVE") return "Warrant / certificate — no public price";
+  if (ac === "PRIVATE_FUND" || ac === "PRIVATE_EQUITY") return "Private-market fund — not listed";
+  if (/^US84615Q/.test(isin) || n.includes("spacex")) return "Not listed";
   if (/\b(call|put|faktor|optionsschein|turbo|knock)\b/.test(n) && !isIsin(isin))
-    return "Derivat — kein öffentlicher Kurs";
+    return "Derivative — no public price";
   // Typische Emittenten-Kennungen für Optionsscheine/Zertifikate
   if (/^(DE000[A-Z]{2}\d|CH\d{10})/.test(isin) && /\b(call|put|long|short|faktor)\b/.test(n))
-    return "Optionsschein / Zertifikat — kein öffentlicher Kurs";
+    return "Warrant / certificate — no public price";
   return null;
 }
 
@@ -208,12 +208,15 @@ export function priceMismatch(
 ): string | null {
   if (!avgPrice || !lastPrice || avgPrice <= 0 || lastPrice <= 0) return null;
   const ratio = lastPrice / avgPrice;
+  // Genau um Faktor 1.000 daneben: fast immer ein Kaufkurs, dessen Komma beim
+  // Import als Tausenderpunkt gelesen wurde ("217,425" → 217.425).
+  if (ratio > 1 / 2500 && ratio < 1 / 400) return "Purchase price probably shifted by a factor of 1,000 on import";
   // Grenze wächst mit der Haltedauer, aber langsam: 7,2× nach einem Jahr,
   // 8,4× nach zwei, 15× nach acht Jahren. Ein Zuordnungsfehler liegt fast immer
   // um den Faktor 10 daneben; eine echte Vervielfachung braucht Zeit.
   const limit = Math.min(15, 6 * (1 + Math.max(0, years) / 5));
-  if (ratio > limit) return `Kurs ist ${ratio.toFixed(0)}× so hoch wie dein Einstand`;
-  if (ratio < 1 / limit) return `Kurs ist nur ${(ratio * 100).toFixed(1)} % deines Einstands`;
+  if (ratio > limit) return `Price is ${ratio.toFixed(0)}× your cost`;
+  if (ratio < 1 / limit) return `Price is only ${(ratio * 100).toFixed(1)}% of your cost`;
   return null;
 }
 

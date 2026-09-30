@@ -201,17 +201,17 @@ console.log("\nSpalte „Seit Offenlegung“");
   const F = await import("../.tmp-format.mjs");
   const heute = "2026-08-07";
   let r = F.disclosureLabel(0.045, "2026-06-17", heute);
-  ok("Rendite wird gezeigt", r.text === "+4,5\u00A0%" && !r.muted, r.text, "+4,5\u00A0%");
+  ok("Rendite wird gezeigt", r.text === "+4.5%" && !r.muted, r.text, "+4.5%");
   r = F.disclosureLabel(-0.009, "2026-05-29", heute);
-  ok("negative Rendite", r.text === "-0,9\u00A0%" && !r.muted, r.text, "-0,9\u00A0%");
+  ok("negative Rendite", r.text === "-0.9%" && !r.muted, r.text, "-0.9%");
   r = F.disclosureLabel(null, "2026-08-07", heute);
-  ok("heute gemeldet", r.text === "heute gemeldet" && r.muted, r.text, "heute gemeldet");
+  ok("heute gemeldet", r.text === "filed today" && r.muted, r.text, "filed today");
   r = F.disclosureLabel(null, "2026-05-01", heute);
-  ok("ohne Kursreihe", r.text === "kein Kurs hinterlegt" && r.muted, r.text, "kein Kurs hinterlegt");
+  ok("ohne Kursreihe", r.text === "no price on file" && r.muted, r.text, "no price on file");
   r = F.disclosureLabel(null, null, heute);
   ok("ohne Datum", r.muted === true, r.text, "grauer Hinweis");
   r = F.disclosureLabel(0, "2026-05-01", heute);
-  ok("null Prozent ist eine Zahl", r.text === "+0,0\u00A0%" && !r.muted, r.text, "+0,0\u00A0%");
+  ok("null Prozent ist eine Zahl", r.text === "+0.0%" && !r.muted, r.text, "+0.0%");
 }
 
 // ── Feed: Meldeserien bündeln ──────────────────────────────────────────────
@@ -303,12 +303,12 @@ console.log("\nAusweichbörsen und stillgelegte Papiere");
   // Kürzel, immer eine Begründung — sonst greift die Suche und rät.
   const world = r("LU1781541179");
   ok("verschmolzener Fonds bekommt kein Kürzel", world.symbol === null, world.symbol, "null");
-  ok("Verschmelzung wird begründet", /verschmolzen/i.test(world.unpriceable ?? ""), world.unpriceable, "Text");
+  ok("Verschmelzung wird begründet", /merged/i.test(world.unpriceable ?? ""), world.unpriceable, "Text");
   ok("Nachfolger wird genannt", (world.unpriceable ?? "").includes("IE000BI8OT95"), world.unpriceable, "IE000BI8OT95");
 
   const gdr = r("USY384721251");
   ok("eingestellter GDR bekommt kein Kürzel", gdr.symbol === null, gdr.symbol, "null");
-  ok("Einstellung wird begründet", /eingestellt/i.test(gdr.unpriceable ?? ""), gdr.unpriceable, "Text");
+  ok("Einstellung wird begründet", /discontinued/i.test(gdr.unpriceable ?? ""), gdr.unpriceable, "Text");
 
   // Eigene Zuordnung schlägt weiterhin alles — auch ein stillgelegtes Papier.
   const eigen = I.resolveInstrument("LU1781541179", null, null, { LU1781541179: "MWRD.DE" }, {});
@@ -348,6 +348,37 @@ if (real) {
   const open = pos.filter((p) => p.shares > 1e-9);
   console.log(`     ${open.length} offene Positionen, ${r.instruments.length} Papiere insgesamt`);
 }
+
+// ── Drei Nachkommastellen in einer deutschen Datei ──────────────────────────
+// "217,425" wurde als Tausendertrenner gelesen: Visa kostete 217.425 €, aus
+// 344,683 Stück wurden 344.683 und das Depot stand bei 91 Mio. €.
+console.log("\nDezimalkomma je Datei");
+{
+  const csv =
+    "Name;ISIN;Anzahl;Kurs\n" +
+    "Visa Inc Class A;US92826C8394;40,7301;217,425\n" +
+    "SPDR S&P US Dividend Aristocrats UCITS ETF;IE00B6YX5D40;344,683;61,234\n" +
+    "Wise PLC Class A;GB00BL9YR756;100;7,82\n";
+  const r = B.importCsv(csv);
+  const visa = r.txns.find((t) => t.ticker === "US92826C8394");
+  const spdr = r.txns.find((t) => t.ticker === "IE00B6YX5D40");
+  ok("217,425 bleibt 217,425", near(visa?.price, 217.425), visa?.price, 217.425);
+  ok("344,683 Stück bleiben 344,683", near(spdr?.shares, 344.683), spdr?.shares, 344.683);
+  ok("61,234 bleibt 61,234", near(spdr?.price, 61.234), spdr?.price, 61.234);
+}
+{
+  const r = B.importCsv('symbol,shares,price\nAAPL,1,234\nMSFT,2,"1,234.50"\nNVDA,3,88.50\n');
+  const msft = r.txns.find((t) => t.ticker === "MSFT");
+  ok("US-Datei: 1,234.50 bleibt 1234,5", near(msft?.price, 1234.5), msft?.price, 1234.5);
+}
+{
+  const r = B.importCsv("AAPL;2,5;217,425\nMSFT;1;88,50\n");
+  ok("Bestandsliste DE: 217,425 bleibt 217,425", near(r.txns[0]?.price, 217.425), r.txns[0]?.price, 217.425);
+}
+ok("detectDecimal DE", P.detectDecimal(["217,425", "7,82"]) === ",", P.detectDecimal(["217,425", "7,82"]), ",");
+ok("detectDecimal US", P.detectDecimal(["1,234", "7.82"]) === ".", P.detectDecimal(["1,234", "7.82"]), ".");
+ok("detectDecimal mehrdeutig", P.detectDecimal(["217,425", "12"]) === null, P.detectDecimal(["217,425", "12"]), "null");
+ok("Faktor 1.000 wird als Importfehler benannt", /import/i.test(I.priceMismatch(217425, 290, 1) ?? ""), I.priceMismatch(217425, 290, 1), "import");
 
 console.log(`\n${pass} bestanden, ${fail} fehlgeschlagen\n`);
 process.exit(fail === 0 ? 0 : 1);

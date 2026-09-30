@@ -16,27 +16,27 @@ import type { FeedRow, StockHolder, StockMove, StockMoveKind } from "@/lib/types
 // grey for no change, light rose for trimming, deep rose for selling out.
 // Lightness carries the order too, so it reads without colour vision.
 export const MOVES: Record<StockMoveKind, { label: string; short: string; color: string; tone: "bull" | "bear" | "flat" }> = {
-  new: { label: "Neu eingestiegen", short: "Neu eingestiegen", color: "rgb(var(--move-new))", tone: "bull" },
-  added: { label: "Aufgestockt", short: "Aufgestockt", color: "rgb(var(--move-added))", tone: "bull" },
-  held: { label: "Unverändert", short: "Unverändert", color: "rgb(var(--move-held))", tone: "flat" },
-  reduced: { label: "Reduziert", short: "Reduziert", color: "rgb(var(--move-reduced))", tone: "bear" },
-  exited: { label: "Komplett verkauft", short: "Ausgestiegen", color: "rgb(var(--move-exited))", tone: "bear" },
+  new: { label: "New position", short: "New", color: "rgb(var(--move-new))", tone: "bull" },
+  added: { label: "Added to", short: "Added", color: "rgb(var(--move-added))", tone: "bull" },
+  held: { label: "Unchanged", short: "Unchanged", color: "rgb(var(--move-held))", tone: "flat" },
+  reduced: { label: "Reduced", short: "Reduced", color: "rgb(var(--move-reduced))", tone: "bear" },
+  exited: { label: "Sold out", short: "Exited", color: "rgb(var(--move-exited))", tone: "bear" },
 };
 const ORDER: StockMoveKind[] = ["new", "added", "held", "reduced", "exited"];
 export const INFLOW: StockMoveKind[] = ["new", "added"];
 export const OUTFLOW: StockMoveKind[] = ["reduced", "exited"];
 
-const shares = (v: number | null) => (v === null ? "—" : v >= 1e6 ? `${num(v / 1e6)}${NBSP}Mio. St.` : `${Math.round(v).toLocaleString("de-DE")}${NBSP}St.`);
-const plural = (n: number, one: string, many: string) => `${n.toLocaleString("de-DE")} ${n === 1 ? one : many}`;
+const shares = (v: number | null) => (v === null ? "—" : v >= 1e6 ? `${num(v / 1e6)}M sh.` : `${Math.round(v).toLocaleString("en-US")}${NBSP}sh.`);
+const plural = (n: number, one: string, many: string) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
-/** "+12,4 %" / "−94,2 %" share change, "Neu", "Verkauft". */
+/** "+12.4%" / "−94.2%" share change, "New", "Sold". */
 function changeLabel(m: StockMove): string {
-  if (m.kind === "new") return "Neu";
-  if (m.kind === "exited") return "Verkauft";
-  if (m.kind === "held" || !m.prevShares || m.shares === null) return "±0 %";
+  if (m.kind === "new") return "New";
+  if (m.kind === "exited") return "Sold";
+  if (m.kind === "held" || !m.prevShares || m.shares === null) return "±0%";
   const c = (m.shares - m.prevShares) / m.prevShares;
   const pct = Math.abs(c * 100);
-  return `${c >= 0 ? "+" : "−"}${num(pct, pct >= 100 ? 0 : 1)}${NBSP}%`;
+  return `${c >= 0 ? "+" : "−"}${num(pct, pct >= 100 ? 0 : 1)}%`;
 }
 
 // ── Sheets ──────────────────────────────────────────────────────────────────
@@ -70,8 +70,8 @@ export function HoldersSheet({ holders, company, value, asOf, onClose }: { holde
   const funds = new Set(holders.map((h) => h.slug)).size;
   return (
     <Sheet
-      title="Investoren mit Bestand"
-      subtitle={`${plural(funds, "Fonds hält", "Fonds halten")} ${company}${value ? ` im Wert von ${abbrevMoney(value)}` : ""}${asOf ? ` · 13F zum ${formatDate(asOf)}` : ""}.`}
+      title="Investors holding"
+      subtitle={`${plural(funds, "fund holds", "funds hold")} ${company}${value ? ` worth ${abbrevMoney(value)}` : ""}${asOf ? ` · 13F as of ${formatDate(asOf)}` : ""}.`}
       onClose={onClose}
     >
       <div className="pb-3">
@@ -80,7 +80,7 @@ export function HoldersSheet({ holders, company, value, asOf, onClose }: { holde
             key={`${h.slug}-${h.putCall ?? "stock"}`}
             href={h.slug ? `/investor/${h.slug}` : null}
             name={h.person ?? h.fund}
-            sub={`${h.fund}${h.putCall ? ` · ${h.putCall}-Option` : ""}`}
+            sub={`${h.fund}${h.putCall ? ` · ${h.putCall} option` : ""}`}
             trailing={h.putCall ? h.putCall : weightPct(h.weight)}
             meta={abbrevMoney(h.value)}
             onNavigate={onClose}
@@ -98,11 +98,11 @@ export function MovesSheet({ title, kinds, moves, company, onClose }: { title: s
   return (
     <Sheet
       title={title}
-      subtitle={`${plural(n, "Investor", "Investoren")} · ${company}, letzter 13F-Bericht${asOf ? ` (${formatDate(asOf)})` : ""} gegenüber dem Vorquartal.`}
+      subtitle={`${plural(n, "investor", "investors")} · ${company}, latest 13F${asOf ? ` (${formatDate(asOf)})` : ""} against the quarter before.`}
       onClose={onClose}
     >
       <div className="pb-3">
-        {groups.length === 0 && <p className="px-5 py-8 text-center text-[15px] text-subtle">Keine Bewegung in diesem Quartal.</p>}
+        {groups.length === 0 && <p className="px-5 py-8 text-center text-[15px] text-subtle">No moves this quarter.</p>}
         {groups.map((g) => (
           <section key={g.kind}>
             <h3 className="flex items-center gap-2 px-5 pb-1 pt-3 text-[13px] font-semibold uppercase tracking-[0.06em] text-subtle">
@@ -131,7 +131,7 @@ export function TradesSheet({ title, subtitle, rows, onClose }: { title: string;
   return (
     <Sheet title={title} subtitle={subtitle} onClose={onClose}>
       <div className="pb-3">
-        {rows.length === 0 && <p className="px-5 py-8 text-center text-[15px] text-subtle">Keine Meldungen.</p>}
+        {rows.length === 0 && <p className="px-5 py-8 text-center text-[15px] text-subtle">No filings.</p>}
         {rows.map((r) => {
           const kind = auraOf(r.entityType);
           const base = kind === "investor" ? "investor" : kind === "politician" ? "politician" : "insider";
@@ -140,10 +140,10 @@ export function TradesSheet({ title, subtitle, rows, onClose }: { title: string;
               key={r.id}
               href={r.entitySlug ? `/${base}/${r.entitySlug}` : null}
               name={r.entityName}
-              sub={`${kind === "investor" ? "Investor" : kind === "politician" ? "Politiker" : "Insider"} · ${formatDate(r.disclosedAt ?? r.txnDate)}`}
+              sub={`${kind === "investor" ? "Investor" : kind === "politician" ? "Politician" : "Insider"} · ${formatDate(r.disclosedAt ?? r.txnDate)}`}
               kind={kind}
               ticker={kind === "insider" ? r.ticker : null}
-              trailing={<span className={r.txnType === "buy" ? "text-bull" : r.txnType === "sell" ? "text-bear" : ""}>{r.txnType === "buy" ? "Kauf" : r.txnType === "sell" ? "Verkauf" : "Vorgang"}</span>}
+              trailing={<span className={r.txnType === "buy" ? "text-bull" : r.txnType === "sell" ? "text-bear" : ""}>{r.txnType === "buy" ? "Buy" : r.txnType === "sell" ? "Sell" : "Other"}</span>}
               meta={r.sizeDisplay}
               onNavigate={onClose}
             />
@@ -215,8 +215,8 @@ export function StockActivity({ company, moves, trades, onOpenMoves, onOpenTrade
   const insBuys = [...latest.values()].filter((t) => t.transactionCode === "P");
   const insSells = [...latest.values()].filter((t) => t.transactionCode === "S");
   const ins: Legend[] = [
-    { key: "buy", label: "Gekauft", value: insBuys.length, color: "rgb(var(--bull-fill))", open: () => onOpenTrades(insBuys, "Insider-Käufe", `Jüngster Kauf je Insider bei ${company}.`) },
-    { key: "sell", label: "Verkauft", value: insSells.length, color: "rgb(var(--bear-fill))", open: () => onOpenTrades(insSells, "Insider-Verkäufe", `Jüngster Verkauf je Insider bei ${company}.`) },
+    { key: "buy", label: "Bought", value: insBuys.length, color: "rgb(var(--bull-fill))", open: () => onOpenTrades(insBuys, "Insider buys", `Latest buy per insider at ${company}.`) },
+    { key: "sell", label: "Sold", value: insSells.length, color: "rgb(var(--bear-fill))", open: () => onOpenTrades(insSells, "Insider sells", `Latest sale per insider at ${company}.`) },
   ];
 
   const invTotal = inv.reduce((a, s) => a + s.value, 0);
@@ -224,7 +224,7 @@ export function StockActivity({ company, moves, trades, onOpenMoves, onOpenTrade
   if (invTotal === 0 && insTotal === 0) return null;
   const cur = tab === "inv" ? inv : ins;
   const total = tab === "inv" ? invTotal : insTotal;
-  const unit: [string, string] = tab === "inv" ? ["Investor", "Investoren"] : ["Insider", "Insider"];
+  const unit: [string, string] = tab === "inv" ? ["investor", "investors"] : ["insider", "insiders"];
   const active = hover !== null ? cur[hover] : null;
   const asOf = moves?.find((m) => m.asOf)?.asOf;
 
@@ -232,19 +232,19 @@ export function StockActivity({ company, moves, trades, onOpenMoves, onOpenTrade
     <section className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-[14rem] flex-1">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Aktivität</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Activity</h2>
           <p className="text-[13px] leading-snug text-subtle">
             {tab === "inv"
-              ? `Letzter 13F-Bericht je Investor${asOf ? ` (${formatDate(asOf)})` : ""} gegenüber dem Vorquartal. Ohne Optionen.`
-              : "Jüngster bestätigter Kauf oder Verkauf je Insider (Form 4, Code P/S)."}
+              ? `Each investor’s latest 13F${asOf ? ` (${formatDate(asOf)})` : ""} against the quarter before. Options excluded.`
+              : "Latest confirmed buy or sale per insider (Form 4, code P/S)."}
           </p>
         </div>
-        <SegmentedControl label="Aktivität von" size="sm" options={[["inv", "Investoren"], ["ins", "Insider"]] as const} value={tab} onChange={(v) => { setHover(null); setTab(v); }} />
+        <SegmentedControl label="Activity of" size="sm" options={[["inv", "Investors"], ["ins", "Insiders"]] as const} value={tab} onChange={(v) => { setHover(null); setTab(v); }} />
       </div>
 
       {total === 0 ? (
         <div className="card p-6 text-center text-[15px] text-subtle">
-          {tab === "inv" ? "Keine Investoren-Bewegung im letzten Quartal." : "Keine Insider-Käufe oder -Verkäufe in den geladenen Meldungen."}
+          {tab === "inv" ? "No investor moves last quarter." : "No insider buys or sales in the loaded filings."}
         </div>
       ) : (
         <div className="card flex flex-col items-center gap-5 p-5 sm:flex-row sm:gap-8">

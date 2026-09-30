@@ -19,11 +19,11 @@ type Action = { label: string; icon: IconName; colour: string; href?: string; ru
 export const openSearch = () => window.dispatchEvent(new CustomEvent("aura:search"));
 
 const ACTIONS: Action[] = [
-  { label: "Suchen", icon: "search", colour: "var(--ink)", run: openSearch },
-  { label: "Insider-Käufe", icon: "work", colour: "var(--aura-insider)", href: "/discover/insiderbuys" },
-  { label: "Politiker-Trades", icon: "people", colour: "var(--aura-politician)", href: "/feed?type=politician" },
-  { label: "Folgen einrichten", icon: "star", colour: "var(--aura-investor)", href: "/?willkommen=folgen" },
-  { label: "Mein Depot", icon: "wallet", colour: "var(--bull-fill)", href: "/me" },
+  { label: "Search", icon: "search", colour: "var(--ink)", run: openSearch },
+  { label: "Insider buys", icon: "work", colour: "var(--aura-insider)", href: "/discover/insiderbuys" },
+  { label: "Politician trades", icon: "people", colour: "var(--aura-politician)", href: "/feed?type=politician" },
+  { label: "Follow people", icon: "star", colour: "var(--aura-investor)", href: "/?welcome=folgen" },
+  { label: "My portfolio", icon: "wallet", colour: "var(--bull-fill)", href: "/me" },
 ];
 
 export function ActionMenu({ compact = false }: { compact?: boolean }) {
@@ -56,7 +56,7 @@ export function ActionMenu({ compact = false }: { compact?: boolean }) {
       <div aria-hidden="true" onClick={() => setOpen(false)} data-open={open ? "" : undefined} className="menu-scrim fixed inset-0 z-30" />
       <div className="relative z-40">
         {items && (
-          <ul id="action-menu" role="menu" aria-label="Aktionen" data-closing={open ? undefined : ""} className="action-list absolute bottom-[calc(100%+1.25rem)] right-1 flex flex-col items-end gap-5">
+          <ul id="action-menu" role="menu" aria-label="Actions" data-closing={open ? undefined : ""} className="action-list absolute bottom-[calc(100%+1.25rem)] right-1 flex flex-col items-end gap-5">
             {ACTIONS.map((a, i) => {
               const body = (
                 <>
@@ -81,7 +81,7 @@ export function ActionMenu({ compact = false }: { compact?: boolean }) {
         )}
         <button
           ref={button}
-          aria-label={open ? "Aktionen schließen" : "Aktionen"}
+          aria-label={open ? "Close actions" : "Actions"}
           aria-expanded={open}
           aria-controls="action-menu"
           onClick={() => setOpen((o) => !o)}

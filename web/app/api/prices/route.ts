@@ -5,7 +5,7 @@ import { getPrices } from "@/lib/queries";
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const ticker = (req.nextUrl.searchParams.get("ticker") || "").trim().toUpperCase();
-  if (!SYMBOL_RE.test(ticker)) return NextResponse.json({ error: "Ungültiges Börsenkürzel." }, { status: 400 });
+  if (!SYMBOL_RE.test(ticker)) return NextResponse.json({ error: "Invalid ticker." }, { status: 400 });
   return dataResponse(async () => {
     const bars = await getPrices(ticker);
     const asOf = bars.at(-1)?.date ?? null;

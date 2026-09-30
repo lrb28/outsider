@@ -2,16 +2,16 @@
 
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { Icon } from "@/components/Icon";
 import { useDragDismiss, useScrollLock } from "@/lib/sheetGestures";
 
 /**
  * A sheet that slides up over the page (iOS "page sheet"). The page behind
  * stays visible but frosted: blurred and softly tinted, so the sheet reads as
  * a layer on top rather than a new page. Bottom sheet on phones, a centred
- * card on wider screens. Closes with the button, a tap outside, Escape or a
- * downward swipe (on the header, or anywhere while the content is at its
- * top). The page behind does not scroll while it is open.
+ * card on wider screens. There is no close button (the user asked for none):
+ * it closes with a downward swipe (on the header, or anywhere while the
+ * content is at its top; the header can be dragged with a mouse too), a tap
+ * outside or Escape. The page behind does not scroll while it is open.
  *
  * Mount it only while open (`{open && <Sheet …/>}`); it animates out itself
  * and calls `onClose` once the animation is done.
@@ -79,24 +79,15 @@ export function Sheet({
       }}
       className={`sheet bottom-0 top-auto mx-auto my-0 flex max-h-[88dvh] w-full max-w-[100vw] flex-col overflow-hidden rounded-t-[2rem] border-0 bg-card p-0 text-ink shadow-float sm:top-0 sm:m-auto sm:max-h-[80dvh] sm:rounded-[2rem] ${size === "lg" ? "sm:w-[36rem]" : "sm:w-[28rem]"}`}
     >
-      <div className="shrink-0 touch-none select-none">
-        <div aria-hidden="true" className="mx-auto mt-2 h-[5px] w-9 rounded-full bg-ink/15 sm:hidden" />
-        <div className="flex items-start gap-3 px-5 pb-3 pt-3 sm:pt-5">
-          <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="font-display text-[22px] font-bold leading-tight tracking-[-0.01em]">{title}</h2>
-            {subtitle && <p className="mt-1 text-[14px] leading-snug text-subtle">{subtitle}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Schließen"
-            className="press-sm group -mr-2 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface2 text-subtle transition-colors group-hover:text-ink">
-              <Icon name="xmark" className="h-[15px] w-[15px]" />
-            </span>
-          </button>
+      <div className="shrink-0 cursor-grab touch-none select-none active:cursor-grabbing" data-sheet-grip="">
+        <div aria-hidden="true" className="mx-auto mt-2 h-[5px] w-9 rounded-full bg-ink/15" />
+        <div className="px-5 pb-3 pt-3">
+          <h2 id={titleId} className="font-display text-[22px] font-bold leading-tight tracking-[-0.01em]">{title}</h2>
+          {subtitle && <p className="mt-1 text-[14px] leading-snug text-subtle">{subtitle}</p>}
         </div>
+        {/* No visible close button: the sheet slides away. VoiceOver and
+            keyboard users still get one. */}
+        <button type="button" onClick={close} className="sr-only focus:not-sr-only">Close</button>
       </div>
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
       {footer && <div className="shrink-0 border-t border-hair px-5 pt-3" style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}>{footer}</div>}

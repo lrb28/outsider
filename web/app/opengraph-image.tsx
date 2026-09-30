@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 import { WORDMARK_HEIGHT, WORDMARK_PATH, WORDMARK_WIDTH } from "@/lib/wordmark";
 
-export const alt = "ĀURA – was Investoren, Insider und Politiker offenlegen";
+export const alt = "ĀURA – what investors, insiders and politicians disclose";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -27,9 +27,9 @@ export default function Image() {
         <path fill="#ffffff" d={WORDMARK_PATH} />
       </svg>
       <div style={{ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.02, letterSpacing: -3 }}>
-        <span>Sieh, was die Mächtigen kaufen.</span>
+        <span>See what the powerful buy.</span>
       </div>
-      <div style={{ fontSize: 26, letterSpacing: 3, color: "rgba(255,255,255,0.78)" }}>INVESTOREN · INSIDER · US-ABGEORDNETE</div>
+      <div style={{ fontSize: 26, letterSpacing: 3, color: "rgba(255,255,255,0.78)" }}>INVESTORS · INSIDERS · CONGRESS</div>
     </div>,
     size,
   );

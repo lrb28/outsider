@@ -11,6 +11,6 @@ export async function GET(req: NextRequest) {
   try {
     value = textParam(req.nextUrl.searchParams, "slug", 160) ?? "";
     if (!/^[a-z0-9-]+$/.test(value)) throw new Error();
-  } catch { return NextResponse.json({ error: "Ungültige Kennung." }, { status: 400 }); }
+  } catch { return NextResponse.json({ error: "Invalid identifier." }, { status: 400 }); }
   return dataResponse(async () => ({ politician: await getPolitician(value) }), () => ({ politician: samplePolitician(value) }));
 }

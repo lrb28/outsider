@@ -44,16 +44,16 @@ export function RiskReturnMap({ points }: { points: RiskPoint[] }) {
     <div className="lcard p-5">
       <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">Risiko gegen Ertrag</div>
+          <div className="text-sm font-semibold">Risk against return</div>
           <p className="text-[11px] text-subtle">
-            Waagerecht die Schwankung, senkrecht die Rendite. Links oben ist der beste Platz.
+            Swings across, return up. Top left is the best place.
           </p>
         </div>
         {hover !== null && points[hover] && (
           <div className="text-right">
             <div className="text-sm font-semibold">{points[hover].name}</div>
             <div className="text-[11px] tabular-nums text-subtle">
-              Schwankung {pctOf(points[hover].vol, 0, false)} · Rendite{" "}
+              Volatility {pctOf(points[hover].vol, 0, false)} · return{" "}
               <span className={points[hover].ret >= 0 ? "text-bull" : "text-bear"}>
                 {pctStr(points[hover].ret)}
               </span>
@@ -78,16 +78,16 @@ export function RiskReturnMap({ points }: { points: RiskPoint[] }) {
         ))}
         <line x1={0} x2={W} y1={zeroY} y2={zeroY} stroke="rgb(var(--n-400))" strokeWidth={0.7} />
         <text x={W + 2} y={zeroY + 2} fontSize={4} fill="rgb(var(--n-400))">
-          0 %
+          0%
         </text>
         <text x={W + 2} y={4} fontSize={4} fill="rgb(var(--n-400))">
           {pctStr(maxRet)}
         </text>
         <text x={0} y={H + 8} fontSize={4} fill="rgb(var(--n-400))">
-          ruhig
+          calm
         </text>
         <text x={W - 16} y={H + 8} fontSize={4} fill="rgb(var(--n-400))">
-          schwankend
+          volatile
         </text>
 
         {points.map((p, i) => {

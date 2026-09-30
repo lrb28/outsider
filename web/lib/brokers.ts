@@ -14,7 +14,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { isIsin, isinValid, SYMBOL_RE } from "./instruments";
-import { Txn, TxnKind, makeTxn, parseDate, parseNum } from "./portfolio";
+import { Txn, TxnKind, detectDecimal, makeTxn, parseDate, parseNum as parseAny } from "./portfolio";
 
 export interface ImportReport {
   txns: Txn[];
@@ -43,6 +43,10 @@ export interface ImportReport {
 // ── CSV-Grundlagen ──────────────────────────────────────────────────────────
 
 function detectSep(line: string): string {
+  // German exports separate with ";" because the comma is the decimal mark:
+  // when every comma sits between digits, ";" wins even on a tie
+  // ("AAPL;2,5;217,425").
+  if (line.includes(";") && !/(^|[^\d]),|,($|[^\d])/.test(line)) return ";";
   const counts = [",", ";", "\t"].map((s) => [s, (line.match(new RegExp(`\\${s}`, "g")) || []).length] as const);
   counts.sort((a, b) => b[1] - a[1]);
   return counts[0][1] > 0 ? counts[0][0] : ",";
@@ -245,6 +249,13 @@ export function importCsv(text: string): ImportReport {
 
   const at = (cols: string[], i: number) => (i >= 0 && i < cols.length ? cols[i] : "");
 
+  // One decimal separator for the whole file, read from all its numbers:
+  // guessing per number turned German "217,425" (three decimals) into 217.425.
+  const numCols = [col.shares, col.price, col.amount, col.fee, col.tax].filter((i) => i >= 0);
+  const rows = lines.slice(1).map((l) => splitLine(l, sep));
+  const decimal = detectDecimal(rows.flatMap((cols) => numCols.map((i) => at(cols, i))));
+  const parseNum = (s: string) => parseAny(s, decimal);
+
   for (let li = 1; li < lines.length; li++) {
     const cols = splitLine(lines[li], sep);
     if (cols.every((c) => !c)) continue;
@@ -367,18 +378,18 @@ export function importCsv(text: string): ImportReport {
   const notes: string[] = [];
   if (counts.notPortfolio > 0)
     notes.push(
-      `${counts.notPortfolio} Kartenzahlungen und sonstige Kontobewegungen gehören nicht ins Depot und wurden übersprungen.`,
+      `${counts.notPortfolio} card payments and other account movements don’t belong in the portfolio and were skipped.`,
     );
   if (counts.corporate > 0)
-    notes.push(`${counts.corporate} Bestandsänderungen (Splits, Überträge, Gratisstücke) verarbeitet.`);
+    notes.push(`${counts.corporate} holding changes (splits, transfers, free shares) processed.`);
   if (counts.unknown > 0)
     notes.push(
-      `${counts.unknown} Zeilen mit unbekannter Buchungsart: ${[...unknownTypes].slice(0, 6).join(", ")}`,
+      `${counts.unknown} rows with an unknown transaction type: ${[...unknownTypes].slice(0, 6).join(", ")}`,
     );
 
   return {
     txns,
-    format: isTradeRepublic ? "Trade Republic / Parqet" : "Transaktionsexport",
+    format: isTradeRepublic ? "Trade Republic / Parqet" : "Transaction export",
     currency,
     counts,
     unknownTypes: [...unknownTypes],
@@ -395,6 +406,8 @@ function importSimple(lines: string[], sep: string): ImportReport {
   const txns: Txn[] = [];
   const instruments = new Map<string, { name: string; assetClass: string; count: number }>();
   let unusable = 0;
+  const decimal = detectDecimal(lines.flatMap((l) => splitLine(l, sep).slice(1, 3)));
+  const parseNum = (s: string) => parseAny(s, decimal);
 
   for (const line of lines) {
     const cols = splitLine(line, sep);
@@ -424,24 +437,24 @@ function importSimple(lines: string[], sep: string): ImportReport {
 
   return {
     txns,
-    format: "Bestandsliste",
+    format: "Holdings list",
     currency: "USD",
     counts: { trades: txns.length, dividends: 0, cash: 0, corporate: 0, notPortfolio: 0, unusable, unknown: 0 },
     unknownTypes: [],
     dated: txns.filter((t) => t.date).length,
     instruments: [...instruments.entries()].map(([key, v]) => ({ key, ...v })),
     notes: txns.some((t) => !t.date)
-      ? ["Ohne Kaufdatum werden Positionen als „seit Beginn gehalten“ gerechnet."]
+      ? ["Without a purchase date, positions count as “held from the start”."]
       : [],
   };
 }
 
 export function summarize(r: ImportReport): string {
   const parts: string[] = [];
-  if (r.counts.trades) parts.push(`${r.counts.trades} Trades`);
-  if (r.counts.dividends) parts.push(`${r.counts.dividends} Dividenden`);
-  if (r.counts.corporate) parts.push(`${r.counts.corporate} Bestandsänderungen`);
-  if (r.counts.cash) parts.push(`${r.counts.cash} Geldbewegungen`);
-  const head = parts.length ? parts.join(" · ") : "keine verwertbaren Buchungen";
-  return `${r.format} erkannt (${r.currency}): ${head}.`;
+  if (r.counts.trades) parts.push(`${r.counts.trades} trades`);
+  if (r.counts.dividends) parts.push(`${r.counts.dividends} dividends`);
+  if (r.counts.corporate) parts.push(`${r.counts.corporate} holding changes`);
+  if (r.counts.cash) parts.push(`${r.counts.cash} cash movements`);
+  const head = parts.length ? parts.join(" · ") : "no usable transactions";
+  return `${r.format} recognised (${r.currency}): ${head}.`;
 }

@@ -25,7 +25,7 @@ import { TradeDetailModal } from "./TradeDetailModal";
 const TYP: Record<string, string> = {
   institution: "Investor",
   corporate_insider: "Insider",
-  politician: "Politiker",
+  politician: "Politician",
 };
 
 export function TradeFeed({
@@ -33,7 +33,7 @@ export function TradeFeed({
   showActor = true,
   loading = false,
   dark = false,
-  empty = "Keine Meldungen für diese Auswahl.",
+  empty = "No filings for this selection.",
 }: {
   rows: FeedRow[];
   showActor?: boolean;
@@ -60,16 +60,16 @@ export function TradeFeed({
 
   return (
     <>
-      {opened.size > 0 && <button className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-ink underline underline-offset-2" onClick={() => setOpened(new Set())}>Serien wieder zusammenfassen</button>}
+      {opened.size > 0 && <button className="mb-2 inline-flex min-h-11 items-center text-sm font-medium text-ink underline underline-offset-2" onClick={() => setOpened(new Set())}>Fold series again</button>}
       <div className={`overflow-hidden rounded-[22px] ${container}`}>
         <div
           className={`hidden ${grid} gap-3 border-b px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide md:grid ${headBorder}`}
         >
-          {showActor && <div>Akteur</div>}
-          <div>Unternehmen</div>
-          <div>Vorgang</div>
-          <div>Größe · Offenlegung</div>
-          <div className="text-right">Seit Offenlegung</div>
+          {showActor && <div>Filer</div>}
+          <div>Company</div>
+          <div>Transaction</div>
+          <div>Size · disclosed</div>
+          <div className="text-right">Since disclosure</div>
         </div>
 
         {rows.length === 0 && (
@@ -77,19 +77,19 @@ export function TradeFeed({
         )}
 
         {groupSeries(rows).map((g) => {
-          // Serie zusammengefasst, solange sie nicht aufgeklappt ist.
+          // A series stays folded until it is opened.
           if (g.rows.length >= SERIES_MIN && !opened.has(g.key)) {
             const first = g.rows[0];
             const company = companyName(first.ticker, first.securityName);
             const sig = tradeSignal(first);
             const verb =
-              first.txnType === "buy" ? "kauften" : first.txnType === "sell" ? "verkauften" : "meldeten";
+              first.txnType === "buy" ? "bought" : first.txnType === "sell" ? "sold" : "filed";
             const who =
               first.entityType === "corporate_insider"
-                ? "Insider"
+                ? "Insiders"
                 : first.entityType === "politician"
-                ? "Politiker"
-                : "Investoren";
+                ? "Politicians"
+                : "Investors";
             return (
               <button
                 key={g.key}
@@ -100,13 +100,13 @@ export function TradeFeed({
                 <CompanyLogo ticker={first.ticker} company={company} size={34} />
                 <div className="min-w-0 flex-1">
                   <div className={`truncate text-sm font-medium ${nameCls}`}>
-                    {g.rows.length} Meldungen zu {company}
+                    {g.rows.length} filings on {company}
                   </div>
                   <div className={`text-xs ${subCls}`}>
                     {sig.text} · {formatDate(first.disclosedAt)}
                   </div>
                 </div>
-                <div className={`flex shrink-0 items-center gap-0.5 text-[11px] ${subCls}`}>Einzeln zeigen<Icon name="chevronDown" className="h-3.5 w-3.5" /></div>
+                <div className={`flex shrink-0 items-center gap-0.5 text-[11px] ${subCls}`}>Show each<Icon name="chevronDown" className="h-3.5 w-3.5" /></div>
               </button>
             );
           }
@@ -127,7 +127,7 @@ export function TradeFeed({
             const actor = r.entityType === "institution" ? investorPerson(r.entityName) ?? r.entityName : r.entityName;
             const insider = r.entityType === "corporate_insider";
             const toneCls = sig.tone === "bull" ? "text-bull" : sig.tone === "bear" ? "text-bear" : nameCls;
-            const perfText = r.priceAsOf && isStaleDate(r.priceAsOf) ? "Kurs veraltet" : disc.text;
+            const perfText = r.priceAsOf && isStaleDate(r.priceAsOf) ? "price out of date" : disc.text;
             return (
               <button
                 key={r.id}
@@ -151,7 +151,7 @@ export function TradeFeed({
                   <div className="min-w-0 flex-1">
                     <div className={`flex items-center gap-1 truncate text-[15px] font-semibold leading-tight ${nameCls}`}>
                       <span className="truncate">{showActor ? actor : company}</span>
-                      {showActor && r.highlight && <Icon name="star" className="h-3.5 w-3.5 shrink-0 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
+                      {showActor && r.highlight && <Icon name="star" className="h-3.5 w-3.5 shrink-0 text-warn [&_path]:fill-current" aria-label="Highlighted" />}
                     </div>
                     <div className={`mt-0.5 truncate text-[13px] ${subCls}`}>
                       <span className={`font-medium ${toneCls}`}>{sig.text}</span>
@@ -166,7 +166,7 @@ export function TradeFeed({
                     <div className={`${disc.muted ? "max-w-[5.5rem] text-[11px] leading-tight" : "text-[15px] font-semibold tabular-nums"} ${perfCls}`}>
                       {perfText}
                     </div>
-                    {!disc.muted && <div className={`text-[11px] ${subCls}`}>seit Meldung</div>}
+                    {!disc.muted && <div className={`text-[11px] ${subCls}`}>since filing</div>}
                   </div>
                 </div>
 
@@ -177,7 +177,7 @@ export function TradeFeed({
                     <div className="min-w-0">
                       <div className={`flex items-center gap-1.5 text-sm font-medium ${nameCls}`}>
                         <span className="truncate">{actor}</span>
-                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Hervorgehoben" />}
+                        {r.highlight && <Icon name="star" className="h-3.5 w-3.5 text-warn [&_path]:fill-current" aria-label="Highlighted" />}
                       </div>
                       <div className={`flex items-center gap-1 text-xs ${subCls}`}><i className="h-1.5 w-1.5 rounded-full" style={{ background: `rgb(var(--aura-${auraOf(r.entityType)}))` }} />{TYP[r.entityType]}</div>
                     </div>

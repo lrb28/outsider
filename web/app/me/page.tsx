@@ -114,14 +114,14 @@ const BENCHMARKS = [
   { key: "BTC-USD", label: "Bitcoin" },
 ] as const;
 
-type RangeKey = "1M" | "3M" | "6M" | "YTD" | "1J" | "3J" | "Max";
+type RangeKey = "1M" | "3M" | "6M" | "YTD" | "1Y" | "3Y" | "Max";
 const RANGES: readonly (readonly [RangeKey, string])[] = [
   ["1M", "1M"],
   ["3M", "3M"],
   ["6M", "6M"],
   ["YTD", "YTD"],
-  ["1J", "1J"],
-  ["3J", "3J"],
+  ["1Y", "1Y"],
+  ["3Y", "3Y"],
   ["Max", "Max"],
 ];
 
@@ -135,30 +135,30 @@ type Tab =
   | "investors";
 
 const TABS: readonly (readonly [Tab, string])[] = [
-  ["overview", "Übersicht"],
-  ["positions", "Positionen"],
+  ["overview", "Overview"],
+  ["positions", "Positions"],
   ["performance", "Performance"],
-  ["allocation", "Aufteilung"],
-  ["dividends", "Dividenden"],
-  ["activity", "Aktivitäten"],
-  ["investors", "Investoren"],
+  ["allocation", "Allocation"],
+  ["dividends", "Dividends"],
+  ["activity", "Activity"],
+  ["investors", "Investors"],
 ];
 
 type ChartMode = "value" | "return" | "drawdown";
 
 type PerfView = "verlauf" | "positionen" | "risiko" | "kapital";
 const PERF_VIEWS: readonly (readonly [PerfView, string])[] = [
-  ["verlauf", "Verlauf"],
-  ["positionen", "Positionen"],
-  ["risiko", "Risiko"],
-  ["kapital", "Kapital"],
+  ["verlauf", "History"],
+  ["positionen", "Positions"],
+  ["risiko", "Risk"],
+  ["kapital", "Capital"],
 ];
 
 // Fixed categorical order (lib/palette); positions past the eighth share the
-// "Übrige" grey instead of reusing a hue.
+// "Others" grey instead of reusing a hue.
 const posColor = (i: number) => (i < CAT.length ? CAT[i] : OTHER);
 
-// ── Hilfen ──────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 const usd = cMoney;
 const abbrevMoney = cAbbrev;
@@ -174,7 +174,7 @@ function cutoffFor(range: RangeKey, series: { date: string }[]): string {
   const last = series[series.length - 1].date;
   if (range === "Max") return "0000-00-00";
   if (range === "YTD") return `${last.slice(0, 4)}-01-01`;
-  const days: Record<string, number> = { "1M": 30, "3M": 91, "6M": 182, "1J": 365, "3J": 1095 };
+  const days: Record<string, number> = { "1M": 30, "3M": 91, "6M": 182, "1Y": 365, "3Y": 1095 };
   const d = new Date(last);
   d.setDate(d.getDate() - (days[range] ?? 365));
   return d.toISOString().slice(0, 10);
@@ -232,7 +232,7 @@ export default function MePage() {
   const [histFailed, setHistFailed] = useState(false);
   const [matches, setMatches] = useState<MatchRow[] | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
-  const [range, setRange] = useState<RangeKey>("1J");
+  const [range, setRange] = useState<RangeKey>("1Y");
   const [benchIdx, setBenchIdx] = useState(0);
   const [mode, setMode] = useState<ChartMode>("value");
   const [perfView, setPerfView] = useState<PerfView>("verlauf");
@@ -827,7 +827,7 @@ export default function MePage() {
     return out;
   }, [normTxns]);
 
-  // ── Chartserien ───────────────────────────────────────────────────────────
+  // ── Chart series ──────────────────────────────────────────────────────────
   // The depot line wears the colour of its result over the chosen range, like
   // a stock chart: emerald when it gained, rose when it lost.
   const lineColor = perfPortfolio != null && perfPortfolio < 0 ? "rgb(var(--bear-fill))" : "rgb(var(--bull-fill))";
@@ -837,7 +837,7 @@ export default function MePage() {
       return [
         {
           key: "dd",
-          label: "Rückgang vom Hoch",
+          label: "Drop from the high",
           color: "rgb(var(--bear-fill))",
           fill: true,
           points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
@@ -848,7 +848,7 @@ export default function MePage() {
       const out: ChartSeries[] = [
         {
           key: "twr",
-          label: "Dein Depot",
+          label: "Your portfolio",
           color: lineColor,
           fill: true,
           points: twrCurve(seriesR),
@@ -868,14 +868,14 @@ export default function MePage() {
     const out: ChartSeries[] = [
       {
         key: "value",
-        label: "Depotwert",
+        label: "Portfolio value",
         color: lineColor,
         fill: true,
         points: seriesR.map((p) => ({ date: p.date, value: p.value })),
       },
       {
         key: "invested",
-        label: hasCashFlows ? "Netto eingezahlt" : "In Wertpapieren gebunden",
+        label: hasCashFlows ? "Net paid in" : "Invested in securities",
         color: "rgb(var(--n-400))",
         step: true,
         points: seriesR.map((p) => ({
@@ -887,7 +887,7 @@ export default function MePage() {
     if (benchR.length > 1 && seriesR[0].value > 0) {
       out.push({
         key: "bench",
-        label: `${bench.label} (gleicher Einsatz)`,
+        label: `${bench.label} (same money)`,
         color: "rgb(var(--n-400))",
         dashed: true,
         points: indexTo(benchR, seriesR[0].value).map((b) => ({ date: b.date, value: b.close })),
@@ -896,7 +896,7 @@ export default function MePage() {
     return out;
   }, [seriesR, benchR, mode, bench.label, hasCashFlows, lineColor]);
 
-  // ── Aufteilungen ──────────────────────────────────────────────────────────
+  // ── Allocation ────────────────────────────────────────────────────────────
   // Sector, region and class from the curated list, the fund's name, the
   // ISIN's country and Yahoo's sector for everything else.
   const classOf = (r: Row): AssetMeta =>
@@ -909,7 +909,7 @@ export default function MePage() {
     });
   // Groups take the categorical palette by size, like positions do. Fixed
   // hex colours per sector used to include near-black, which vanished on the
-  // dark card ("Technologie", "USA", "Aktie").
+  // dark card ("Technology", "USA", "Stock").
   const groupSegs = (pick: (m: AssetMeta) => string): Segment[] => {
     const m = new Map<string, number>();
     for (const r of rows) {
@@ -919,11 +919,11 @@ export default function MePage() {
     }
     let i = 0;
     return [...m.entries()]
-      .sort((a, b) => (a[0] === "Sonstige" ? 1 : b[0] === "Sonstige" ? -1 : b[1] - a[1]))
+      .sort((a, b) => (a[0] === "Other" ? 1 : b[0] === "Other" ? -1 : b[1] - a[1]))
       .map(([label, value]) => ({
         label,
         value,
-        color: label === "Sonstige" ? OTHER : CAT[i++] ?? OTHER,
+        color: label === "Other" ? OTHER : CAT[i++] ?? OTHER,
       }));
   };
 
@@ -934,7 +934,7 @@ export default function MePage() {
 
   const weights = posSegs.map((s) => s.value / (total || 1));
 
-  // ── Aktionen ──────────────────────────────────────────────────────────────
+  // ── Actions ───────────────────────────────────────────────────────────────
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = (f: File | null) => {
@@ -945,16 +945,16 @@ export default function MePage() {
       if (res.txns.length === 0) {
         setReport(null);
         setMsg(
-          "Keine verwertbaren Buchungen gefunden. Einfachster Fall: eine Zeile pro Position, z. B. AAPL,10,180",
+          "No usable transactions found. The simplest case is one line per position, e.g. AAPL,10,180",
         );
         return;
       }
-      // Ein zweiter Import derselben Datei würde jede Position verdoppeln.
+      // Importing the same file twice would double every position.
       if (txns.length > 0) {
         const replace = confirm(
-          `Es sind bereits ${txns.length} Buchungen gespeichert.\n\n` +
-            "OK = ersetzen (empfohlen bei einem vollständigen Broker-Export)\n" +
-            "Abbrechen = die neuen Buchungen zusätzlich hinzufügen",
+          `${txns.length} transactions are already saved.\n\n` +
+            "OK = replace them (recommended for a full broker export)\n" +
+            "Cancel = add the new transactions as well",
         );
         if (replace) clearTxns();
       }
@@ -973,7 +973,7 @@ export default function MePage() {
     const blob = new Blob([toCsv(txns)], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "aura-depot.csv";
+    a.download = "aura-portfolio.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -984,39 +984,39 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
-      {/* Kopf */}
+      {/* Header */}
       <div className="fade-up space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="large-title">Mein Depot</h1>
+          <h1 className="large-title">My portfolio</h1>
           {liveCount > 0 && (
             <span className="flex items-center gap-1.5 rounded-full bg-bull/10 px-2.5 py-1 text-[12px] font-medium text-bull">
               <span className="animate-live h-1.5 w-1.5 rounded-full bg-bull-fill" />
-              Live-Kurse
+              Live prices
             </span>
           )}
         </div>
         {!empty && (
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             {pricesPending ? (
-              <span aria-label="Depotwert wird geladen" className="inline-block h-9 w-52 animate-pulse rounded-xl bg-surface2 sm:h-12" />
+              <span aria-label="Loading portfolio value" className="inline-block h-9 w-52 animate-pulse rounded-xl bg-surface2 sm:h-12" />
             ) : (
               <LiveValue value={total} format={(v) => cMoney(v)} className="num-xl sm:text-5xl" />
             )}
             {dayPctSum != null && (
               <span className={`text-[15px] font-semibold tabular-nums ${dayPctSum >= 0 ? "text-bull" : "text-bear"}`}>
                 {dayAbsSum >= 0 ? "▲ +" : "▼ −"}
-                {cMoney(Math.abs(dayAbsSum))} ({pct2(dayPctSum)}) heute
+                {cMoney(Math.abs(dayAbsSum))} ({pct2(dayPctSum)}) today
               </span>
             )}
           </div>
         )}
         {empty && (
           <p className="max-w-xl text-[15px] leading-snug text-subtle">
-            Lade dein Portfolio hoch und vergleiche es mit den Star-Investoren und dem Markt.
-            Gespeichert wird nur lokal in deinem Browser.
+            Upload your portfolio and compare it with the star investors and the market.
+            It is only stored locally in your browser.
           </p>
         )}
-        {!empty && <ChipBar items={TABS.map(([key, label]) => ({ key, label }))} value={tab} onChange={setTab} label="Depotbereiche" className="!mt-4" />}
+        {!empty && <ChipBar items={TABS.map(([key, label]) => ({ key, label }))} value={tab} onChange={setTab} label="Portfolio sections" className="!mt-4" />}
       </div>
 
       {empty && <EmptyState onPick={() => fileRef.current?.click()} />}
@@ -1044,37 +1044,37 @@ export default function MePage() {
         histFailed && !loadingHist ? (
           <div role="alert" className="card flex flex-col items-center gap-3 px-6 py-10 text-center">
             <span className="icon-ring h-12 w-12"><Icon name="danger" className="h-6 w-6 text-subtle" /></span>
-            <div className="text-[17px] font-semibold">Kurse gerade nicht erreichbar</div>
-            <p className="max-w-sm text-[15px] leading-snug text-subtle">Deine Buchungen sind sicher gespeichert. Ohne Kurse lässt sich das Depot nur nicht bewerten.</p>
-            <button type="button" onClick={retryPrices} className="btn-primary mt-1">Erneut versuchen</button>
+            <div className="text-[17px] font-semibold">Prices are unavailable right now</div>
+            <p className="max-w-sm text-[15px] leading-snug text-subtle">Your transactions are saved safely. Without prices the portfolio just can’t be valued.</p>
+            <button type="button" onClick={retryPrices} className="btn-primary mt-1">Try again</button>
           </div>
         ) : (
           <div className="card flex items-center justify-center gap-3 p-8 text-[15px] text-subtle">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-subtle/30 border-t-subtle" aria-hidden="true" />
-            Kurse werden geladen …
+            Loading prices …
           </div>
         )
       )}
 
       {!empty && !pricesPending && (
         <>
-          {/* ── Übersicht ───────────────────────────────────────────────── */}
+          {/* ── Overview ────────────────────────────────────────────────── */}
           {tab === "overview" && (
             <>
               <KpiGrid
                 items={[
                   {
-                    label: "Gewinn gesamt",
+                    label: "Total gain",
                     value: signed(gainTotal),
                     tone: tone(gainTotal),
-                    sub: gainBase > 0 ? `${pct2(gainTotal / gainBase)} auf ${cAbbrev(gainBase)}` : undefined,
-                    hint: `Kursgewinn der offenen Positionen + realisierte Gewinne + Dividenden, bezogen auf ${hasCashFlows ? "das eingezahlte Geld" : "den Einstand"}`,
+                    sub: gainBase > 0 ? `${pct2(gainTotal / gainBase)} on ${cAbbrev(gainBase)}` : undefined,
+                    hint: `Price gain of the open positions + realised gains + dividends, relative to ${hasCashFlows ? "the money paid in" : "the cost basis"}`,
                   },
-                  { label: "Kursgewinn offen", value: signed(unrealTotal), tone: tone(unrealTotal), sub: costTotal > 0 ? pct2(unrealTotal / costTotal) : undefined },
-                  { label: "Investiert", value: abbrevMoney(costTotal || null), sub: `${rows.length} ${rows.length === 1 ? "Position" : "Positionen"}` },
-                  { label: "Dividenden", value: abbrevMoney(dividendsTotal || null), tone: dividendsTotal > 0 ? "bull" : null, sub: dividendsBooked ? "laut Buchungen" : "geschätzt" },
-                  { label: "Realisiert", value: signed(realizedTotal), tone: realizedTotal === 0 ? null : tone(realizedTotal), sub: "aus Verkäufen" },
-                  { label: "Depotwert", value: abbrevMoney(total || null), sub: liveCount > 0 ? "mit Live-Kursen" : "letzte Schlusskurse" },
+                  { label: "Unrealised gain", value: signed(unrealTotal), tone: tone(unrealTotal), sub: costTotal > 0 ? pct2(unrealTotal / costTotal) : undefined },
+                  { label: "Invested", value: abbrevMoney(costTotal || null), sub: `${rows.length} ${rows.length === 1 ? "position" : "positions"}` },
+                  { label: "Dividends", value: abbrevMoney(dividendsTotal || null), tone: dividendsTotal > 0 ? "bull" : null, sub: dividendsBooked ? "as booked" : "estimated" },
+                  { label: "Realised", value: signed(realizedTotal), tone: realizedTotal === 0 ? null : tone(realizedTotal), sub: "from sales" },
+                  { label: "Portfolio value", value: abbrevMoney(total || null), sub: liveCount > 0 ? "with live prices" : "latest closes" },
                 ]}
               />
 
@@ -1093,21 +1093,21 @@ export default function MePage() {
                   tone={perfPortfolio >= perfBench ? "bull" : "bear"}
                   title={
                     perfPortfolio >= perfBench
-                      ? `${num((perfPortfolio - perfBench) * 100)} Prozentpunkte vor dem ${bench.label}`
-                      : `${num((perfBench - perfPortfolio) * 100)} Prozentpunkte hinter dem ${bench.label}`
+                      ? `${num((perfPortfolio - perfBench) * 100)} percentage points ahead of the ${bench.label}`
+                      : `${num((perfBench - perfPortfolio) * 100)} percentage points behind the ${bench.label}`
                   }
-                  text={`Zeitraum ${range}: dein Depot ${pct(perfPortfolio)}, Index ${pct(perfBench)}. Zeitgewichtet, Ein- und Auszahlungen herausgerechnet.`}
+                  text={`Range ${range}: your portfolio ${pct(perfPortfolio)}, index ${pct(perfBench)}. Time-weighted, deposits and withdrawals taken out.`}
                 />
               )}
 
               <TopMovers rows={rows} loading={liveCount === 0} />
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <AllocView segments={posSegs} total={total} title="Aufteilung nach Position" />
+                <AllocView segments={posSegs} total={total} title="By position" />
                 <AllocView
                   segments={groupSegs((m) => m.sector)}
                   total={total}
-                  title="Aufteilung nach Sektor"
+                  title="By sector"
                  
                 />
               </div>
@@ -1119,15 +1119,15 @@ export default function MePage() {
                   className="press-sm w-full rounded-xl bg-slate-50 px-4 py-3 text-left text-sm text-subtle hover:bg-slate-100"
                 >
                   <span className="font-semibold text-ink">
-                    {noPrice} {noPrice === 1 ? "Position ohne Kurs" : "Positionen ohne Kurs"}
+                    {noPrice} {noPrice === 1 ? "position without a price" : "positions without a price"}
                   </span>{" "}
-                  — Optionsscheine und Privatmarkt-Anteile. Kurs eintragen und mitzählen lassen <Icon name="chevronRight" className="inline h-4 w-4 align-[-3px]" />
+                  — warrants and private-market shares. Enter a price to include them <Icon name="chevronRight" className="inline h-4 w-4 align-[-3px]" />
                 </button>
               )}
             </>
           )}
 
-          {/* ── Positionen ──────────────────────────────────────────────── */}
+          {/* ── Positions ───────────────────────────────────────────────── */}
           {tab === "positions" && (
             <>
               <PositionsTable rows={rows} total={total} onRemove={(t) => removeTicker(t)} />
@@ -1137,9 +1137,9 @@ export default function MePage() {
               {dustRows.length > 0 && (
                 <p className="text-[11px] text-subtle">
                   {dustRows.length}{" "}
-                  {dustRows.length === 1 ? "Restbestand" : "Restbestände"} unter {cAbbrev(0.5)} (
-                  {dustRows.map((r) => r.company).join(", ")}) werden ausgeblendet — das sind
-                  Rundungsreste aus Teilverkäufen, die die Prozentwerte sonst verzerren.
+                  {dustRows.length === 1 ? "leftover" : "leftovers"} under {cAbbrev(0.5)} (
+                  {dustRows.map((r) => r.company).join(", ")}) are hidden — rounding remains from
+                  partial sales that would otherwise distort the percentages.
                 </p>
               )}
             </>
@@ -1148,24 +1148,24 @@ export default function MePage() {
           {/* ── Performance ─────────────────────────────────────────────── */}
           {tab === "performance" && (
             <>
-              {/* Kopf: die drei Renditezahlen, die wirklich zählen */}
+              {/* Header: the three return figures that really count */}
               <div className="space-y-2">
-                <Pills label="Performance-Ansicht" options={PERF_VIEWS} value={perfView} onChange={setPerfView} />
+                <Pills label="Performance view" options={PERF_VIEWS} value={perfView} onChange={setPerfView} />
                 <div className="flex flex-wrap items-center gap-2">
-                  <Pills label="Zeitraum" options={RANGES} value={range} onChange={setRange} size="sm" />
+                  <Pills label="Range" options={RANGES} value={range} onChange={setRange} size="sm" />
                   <BenchSelect value={benchIdx} onChange={setBenchIdx} />
                 </div>
               </div>
               <div className="lcard grid overflow-hidden sm:grid-cols-3">
                 <BigStat
-                  label="Zeitgewichtet"
+                  label="Time-weighted"
                   value={perfPortfolio}
-                  sub="Wie gut deine Auswahl war — unabhängig davon, wann du eingezahlt hast."
+                  sub="How good your picks were, no matter when you paid in."
                 />
                 <BigStat
-                  label="Geldgewichtet (IZF)"
+                  label="Money-weighted (IRR)"
                   value={izf}
-                  sub="Was dein Geld tatsächlich verdient hat, inklusive Timing der Einzahlungen."
+                  sub="What your money actually earned, including the timing of deposits."
                   divider
                 />
                 <BigStat
@@ -1173,31 +1173,31 @@ export default function MePage() {
                   value={perfBench}
                   sub={
                     perfPortfolio != null && perfBench != null
-                      ? `Du liegst ${num(Math.abs((perfPortfolio - perfBench) * 100))} Prozentpunkte ${
-                          perfPortfolio >= perfBench ? "davor" : "dahinter"
+                      ? `You are ${num(Math.abs((perfPortfolio - perfBench) * 100))} percentage points ${
+                          perfPortfolio >= perfBench ? "ahead" : "behind"
                         }.`
-                      : "Gleicher Zeitraum, reine Kursentwicklung."
+                      : "Same range, price change only."
                   }
                   muted
                   divider
                 />
               </div>
 
-              {/* ── Verlauf ─────────────────────────────────────────────── */}
+              {/* ── History ─────────────────────────────────────────────── */}
               {perfView === "verlauf" && (
                 <>
                   <div className="lcard p-4 sm:p-5">
-                    <div className="mb-0.5 text-[15px] font-semibold">Monatsrenditen</div>
+                    <div className="mb-0.5 text-[15px] font-semibold">Monthly returns</div>
                     <p className="mb-3 text-[12px] text-subtle">
-                      Jede Kachel ein Monat, jede Zeile ein Jahr.
+                      Each tile a month, each row a year.
                     </p>
                     <MonthHeatmap months={monthsAll} years={years} />
                   </div>
 
                   <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Rendite je Kalenderjahr</div>
+                    <div className="mb-1 text-sm font-semibold">Return per calendar year</div>
                     <p className="mb-3 text-[11px] text-subtle">
-                      Zeitgewichtet — Einzahlungen verfälschen die Zahlen nicht.
+                      Time-weighted — deposits don’t distort the numbers.
                     </p>
                     <ReturnBars data={years} />
                   </div>
@@ -1206,36 +1206,36 @@ export default function MePage() {
                 </>
               )}
 
-              {/* ── Positionen ──────────────────────────────────────────── */}
+              {/* ── Positions ───────────────────────────────────────────── */}
               {perfView === "positionen" && (
                 <>
                   <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Landkarte deines Depots</div>
+                    <div className="mb-1 text-sm font-semibold">Map of your portfolio</div>
                     <p className="mb-3 text-[11px] text-subtle">
-                      Fläche = Anteil am Depot, Farbe = Rendite. Große rote Kacheln kosten am
-                      meisten.
+                      Area = share of the portfolio, colour = return. Big red tiles cost the
+                      most.
                     </p>
                     <ReturnTreemap items={treeItems} />
                   </div>
 
                   <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Wer den Gewinn gemacht hat</div>
+                    <div className="mb-1 text-sm font-semibold">Who made the gain</div>
                     <ContributionBars items={contribItems} />
                   </div>
                 </>
               )}
 
-              {/* ── Risiko ──────────────────────────────────────────────── */}
+              {/* ── Risk ────────────────────────────────────────────────── */}
               {perfView === "risiko" && (
                 <>
                   <RiskReturnMap points={riskPoints} />
 
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-                    <Kpi label="Rendite p. a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
+                    <Kpi label="Return p.a." value={pct(perfAnnual)} tone={tone(perfAnnual)} />
                     <Kpi
-                      label="Volatilität p. a."
+                      label="Volatility p.a."
                       value={pctOf(vol, 1, false)}
-                      hint="Schwankungsbreite der Tagesrenditen"
+                      hint="Range of the daily returns"
                     />
                     <Kpi
                       label="Sharpe Ratio"
@@ -1245,59 +1245,59 @@ export default function MePage() {
                         shp === null
                           ? undefined
                           : shp >= 1
-                          ? "gutes Verhältnis"
+                          ? "good ratio"
                           : shp >= 0.5
-                          ? "solide"
-                          : "viel Risiko je Rendite"
+                          ? "solid"
+                          : "a lot of risk per return"
                       }
                     />
                     <Kpi
                       label="Max. Drawdown"
                       value={mdd ? pctOf(mdd.dd, 1, false) : "—"}
                       tone={mdd ? "bear" : null}
-                      sub={mdd ? `Tief am ${formatDate(mdd.date)}` : undefined}
+                      sub={mdd ? `Low on ${formatDate(mdd.date)}` : undefined}
                     />
                     <Kpi
-                      label={`Beta zu ${bench.label}`}
+                      label={`Beta to ${bench.label}`}
                       value={bta === null ? "—" : num(bta, 2)}
                       sub={
                         bta === null
                           ? undefined
                           : bta > 1.15
-                          ? "schwankt stärker als der Index"
+                          ? "swings more than the index"
                           : bta < 0.85
-                          ? "ruhiger als der Index"
-                          : "läuft wie der Index"
+                          ? "calmer than the index"
+                          : "moves like the index"
                       }
                     />
                     <Kpi
-                      label="Korrelation"
+                      label="Correlation"
                       value={corr === null ? "—" : num(corr, 2)}
-                      hint="1,0 = läuft exakt parallel zum Index"
+                      hint="1.0 = moves exactly in step with the index"
                     />
                     <Kpi
-                      label="Positive Tage"
+                      label="Positive days"
                       value={pctOf(hit, 0, false)}
                     />
                     <Kpi
-                      label="Bester / schwächster Tag"
+                      label="Best / worst day"
                       value={ext ? pct2(ext.best.r) : "—"}
                       tone="bull"
-                      sub={ext ? `${pct2(ext.worst.r)} am ${formatDate(ext.worst.date)}` : undefined}
+                      sub={ext ? `${pct2(ext.worst.r)} on ${formatDate(ext.worst.date)}` : undefined}
                     />
                   </div>
 
                   <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Rückgang vom Höchststand</div>
+                    <div className="mb-1 text-sm font-semibold">Drop from the high</div>
                     <p className="mb-3 text-[11px] text-subtle">
-                      Wie tief das Depot jeweils unter seinem bisherigen Hoch lag — der ehrlichste
-                      Risikoindikator.
+                      How far the portfolio fell below its previous high at each point — the most
+                      honest measure of risk.
                     </p>
                     <DepotChart
                       series={[
                         {
                           key: "dd2",
-                          label: "Rückgang",
+                          label: "Drop",
                           color: "rgb(var(--bear-fill))",
                           fill: true,
                           points: drawdownSeries(seriesR).map((p) => ({ date: p.date, value: p.dd })),
@@ -1311,42 +1311,42 @@ export default function MePage() {
                 </>
               )}
 
-              {/* ── Kapital ─────────────────────────────────────────────── */}
+              {/* ── Capital ─────────────────────────────────────────────── */}
               {perfView === "kapital" && (
                 <>
                   <div className="lcard p-5">
-                    <div className="mb-1 text-sm font-semibold">Kapitalfluss</div>
+                    <div className="mb-1 text-sm font-semibold">Money flows</div>
                     <p className="mb-3 text-[11px] text-subtle">
-                      Grün nach oben: eingezahlt. Rot nach unten: entnommen.
+                      Green up: paid in. Red down: taken out.
                     </p>
                     <CapitalFlow flows={capitalFlows} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     <Kpi
-                      label="Gebühren gesamt"
+                      label="Total fees"
                       value={abbrevMoney(feesTotal || null)}
                       sub={
                         depositedNet > 0
-                          ? `${pctOf(feesTotal / depositedNet, 2, false)} des eingesetzten Geldes`
+                          ? `${pctOf(feesTotal / depositedNet, 2, false)} of the money invested`
                           : undefined
                       }
                     />
                     <Kpi
-                      label="Realisiert"
+                      label="Realised"
                       value={signed(realizedTotal)}
                       tone={realizedTotal === 0 ? null : tone(realizedTotal)}
-                      sub="aus Verkäufen"
+                      sub="from sales"
                     />
                     <Kpi
-                      label="Dividenden"
+                      label="Dividends"
                       value={abbrevMoney(dividendsTotal || null)}
                       tone={dividendsTotal > 0 ? "bull" : null}
                     />
                     <Kpi
-                      label="Buchungen"
-                      value={txns.length.toLocaleString("de-DE")}
-                      sub={`${positions.length} Papiere insgesamt`}
+                      label="Transactions"
+                      value={txns.length.toLocaleString("en-US")}
+                      sub={`${positions.length} securities in total`}
                     />
                   </div>
                 </>
@@ -1354,71 +1354,71 @@ export default function MePage() {
             </>
           )}
 
-          {/* ── Aufteilung ──────────────────────────────────────────────── */}
+          {/* ── Allocation ──────────────────────────────────────────────── */}
           {tab === "allocation" && (
             <>
               <div className="grid gap-4 lg:grid-cols-2">
-                <AllocView segments={posSegs} total={total} title="Nach Position" />
+                <AllocView segments={posSegs} total={total} title="By position" />
                 <Concentration weights={weights} count={rows.length} />
                 <AllocView
                   segments={groupSegs((m) => m.sector)}
                   total={total}
-                  title="Nach Sektor"
+                  title="By sector"
                  
                 />
                 <AllocView
                   segments={groupSegs((m) => m.region)}
                   total={total}
-                  title="Nach Region"
+                  title="By region"
                  
                 />
                 <AllocView
                   segments={groupSegs((m) => m.assetClass)}
                   total={total}
-                  title="Nach Anlageklasse"
+                  title="By asset class"
                 />
                 <div className="lcard p-5">
-                  <div className="mb-1 text-sm font-semibold">Einordnung</div>
+                  <div className="mb-1 text-sm font-semibold">Checklist</div>
                   <p className="mb-3 text-[11px] text-subtle">
-                    Faustregeln aus der Portfoliotheorie — keine Anlageberatung.
+                    Rules of thumb from portfolio theory — not investment advice.
                   </p>
                   <div className="space-y-2 text-sm">
                     <Check
                       ok={weights[0] !== undefined && weights[0] <= 0.25}
-                      text={`Größte Position unter 25${NBSP}% (${pctOf(weights[0] ?? 0, 0, false)})`}
+                      text={`Largest position under 25% (${pctOf(weights[0] ?? 0, 0, false)})`}
                     />
-                    <Check ok={rows.length >= 10} text={`Mindestens 10 Positionen (${rows.length})`} />
+                    <Check ok={rows.length >= 10} text={`At least 10 positions (${rows.length})`} />
                     <Check
                       ok={
                         groupSegs((m) => m.sector).filter((s) => s.value > 0)
                           .length >= 4
                       }
-                      text="Mindestens 4 Sektoren vertreten"
+                      text="At least 4 sectors"
                     />
                     <Check
                       ok={
                         groupSegs((m) => m.region).filter((s) => s.value > 0)
                           .length >= 2
                       }
-                      text="Mehr als eine Region"
+                      text="More than one region"
                     />
                     <Check
                       ok={mdd === null || mdd.dd > -0.35}
-                      text={`Maximaler Rückgang unter 35${NBSP}% (${mdd ? pctOf(mdd.dd, 0, false) : "—"})`}
+                      text={`Largest drop under 35% (${mdd ? pctOf(mdd.dd, 0, false) : "—"})`}
                     />
                   </div>
                 </div>
               </div>
               <p className="text-[11px] text-subtle">
-                Sektor, Region und Anlageklasse stammen aus einer gepflegten Liste der gängigsten
-                Titel, dem Namen des Fonds (etwa „S&amp;P US … ETF“), dem Land der ISIN und für alle
-                übrigen Aktien aus Yahoo Finance. ETFs zählen als ein Block, ihre Einzeltitel werden
-                nicht aufgeschlüsselt.
+                Sector, region and asset class come from a curated list of the most common
+                securities, the fund’s name (such as “S&amp;P US … ETF”), the ISIN’s country and,
+                for all other stocks, Yahoo Finance. ETFs count as one block; their holdings are not
+                broken down.
               </p>
             </>
           )}
 
-          {/* ── Dividenden ──────────────────────────────────────────────── */}
+          {/* ── Dividends ───────────────────────────────────────────────── */}
           {tab === "dividends" && (
             <DividendsTab
               info={divInfo}
@@ -1429,14 +1429,14 @@ export default function MePage() {
             />
           )}
 
-          {/* ── Aktivitäten ─────────────────────────────────────────────── */}
+          {/* ── Activity ────────────────────────────────────────────────── */}
           {tab === "activity" && (
             <ActivityTab
               txns={txns}
               onImport={() => fileRef.current?.click()}
               onExport={exportCsv}
               onClear={() => {
-                if (confirm("Wirklich alle Transaktionen löschen?")) {
+                if (confirm("Really delete all transactions?")) {
                   clearTxns();
                   setMsg(null);
                 }
@@ -1445,22 +1445,22 @@ export default function MePage() {
             />
           )}
 
-          {/* ── Investoren ──────────────────────────────────────────────── */}
+          {/* ── Investors ───────────────────────────────────────────────── */}
           {tab === "investors" && (
             <InvestorsTab matches={matches} rows={rows} total={total} />
           )}
 
           <p className="text-[12px] leading-relaxed text-subtle">
-            Bewertet wird mit den verfügbaren Kursen; fehlende oder über sieben Tage alte Kurse und
-            fehlende Wechselkurse bleiben außen vor. Tagesänderungen enthalten keine
-            Wechselkursbewegungen. <Link href="/datenschutz" className="underline underline-offset-2">Datenschutz & Sicherung</Link>
+            Valued with the prices available; prices that are missing or older than seven days and
+            missing exchange rates are left out. Daily changes don’t include currency
+            moves. <Link href="/datenschutz" className="underline underline-offset-2">Privacy & backups</Link>
             {Object.values(hist).some((e) => e.source === "none") && (
               <button
                 className="ml-2 !min-h-0 underline underline-offset-2"
                 disabled={loadingHist}
                 onClick={retryPrices}
               >
-                Fehlende Kurse erneut laden
+                Reload missing prices
               </button>
             )}
           </p>
@@ -1470,32 +1470,33 @@ export default function MePage() {
   );
 }
 
-// ── Teilkomponenten ─────────────────────────────────────────────────────────
+// ── Parts ───────────────────────────────────────────────────────────────────
 
 function EmptyState({ onPick }: { onPick: () => void }) {
   return (
     <div className="lcard p-8 text-center">
-      <div className="text-lg font-semibold">Depot anlegen</div>
+      <div className="text-lg font-semibold">Set up your portfolio</div>
       <p className="mx-auto mt-2 max-w-md text-sm text-subtle">
-        Lade eine CSV hoch — entweder eine einfache Bestandsliste oder einen vollständigen
-        Transaktionsexport aus deinem Broker. Daraus rechnen wir Rendite, Risiko, Dividenden und
-        den Vergleich zu Indizes und Star-Investoren.
+        Upload a CSV — either a simple list of holdings or a full transaction export from your
+        broker. From it we calculate return, risk, dividends and the comparison with indices and
+        star investors.
       </p>
       <button onClick={onPick} className="btn-primary mt-5">
-        CSV hochladen
+        Upload CSV
       </button>
       <div className="mx-auto mt-5 max-w-lg rounded-xl bg-slate-50 p-4 text-left text-[11px] text-subtle">
-        <div className="font-semibold text-ink">Einfach (nur Bestände):</div>
+        <div className="font-semibold text-ink">Simple (holdings only):</div>
         <pre className="mt-1 font-mono">{`AAPL,10,180\nMSFT,5,320`}</pre>
-        <div className="mt-3 font-semibold text-ink">Vollständig (mit Historie):</div>
-        <pre className="mt-1 overflow-x-auto font-mono">{`Typ;Datum;Ticker;Anzahl;Kurs;Gebuehr\nKauf;17.03.2022;AAPL;10;158,20;1\nKauf;02.11.2023;MSFT;5;338,10;1\nVerkauf;14.06.2025;AAPL;4;201,50;1`}</pre>
+        <div className="mt-3 font-semibold text-ink">Full (with history):</div>
+        <pre className="mt-1 overflow-x-auto font-mono">{`Type,Date,Ticker,Shares,Price,Fee\nBuy,2022-03-17,AAPL,10,158.20,1\nBuy,2023-11-02,MSFT,5,338.10,1\nSell,2025-06-14,AAPL,4,201.50,1`}</pre>
         <p className="mt-3">
-          Punkt oder Komma als Dezimaltrenner, Semikolon oder Komma als Spaltentrenner — beides
-          funktioniert. Ohne Datum nehmen wir an, die Position wurde von Beginn an gehalten.
+          Point or comma as the decimal separator, semicolon or comma between columns — both
+          work, and German broker exports too. Without a date we assume the position was held from
+          the start.
         </p>
       </div>
       <p className="mt-4 text-[11px] text-subtle">
-        Dein Depot wird in diesem Browser gespeichert. Für Kursabfragen werden Ticker oder ISINs an unsere API und gegebenenfalls Yahoo Finance gesendet. Exportiere regelmäßig eine Sicherung.
+        Your portfolio is stored in this browser. To look up prices, tickers or ISINs are sent to our API and possibly Yahoo Finance. Export a backup regularly.
       </p>
     </div>
   );
@@ -1523,11 +1524,11 @@ function ChartCard({
     <div className="lcard p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Pills
-          label="Ansicht"
+          label="View"
           options={[
-            ["value", "Wert"],
-            ["return", "Rendite"],
-            ["drawdown", "Rückgang"],
+            ["value", "Value"],
+            ["return", "Return"],
+            ["drawdown", "Drawdown"],
           ] as const}
           value={mode}
           onChange={setMode}
@@ -1543,15 +1544,15 @@ function ChartCard({
         formatAxis={(v) => (isPct ? pctOf(v, 0, false) : abbrevMoney(v))}
       />
       <div className="mt-3">
-        <Pills label="Zeitraum" options={RANGES} value={range} onChange={setRange} size="sm" />
+        <Pills label="Range" options={RANGES} value={range} onChange={setRange} size="sm" />
       </div>
       <p className="mt-2 text-[12px] leading-snug text-subtle">
         {mode === "value"
-          ? "Graue Treppe = netto eingezahltes Geld. Der Abstand zur Depotlinie ist dein Gewinn."
+          ? "Grey steps = net money paid in. The gap to the portfolio line is your gain."
           : mode === "return"
-          ? "Zeitgewichtete Rendite — Ein- und Auszahlungen verzerren den Vergleich nicht."
-          : "Rückgang vom jeweils höchsten Stand."}{" "}
-        Wischen oder mit der Maus darüberfahren zeigt einzelne Tage.
+          ? "Time-weighted return — deposits and withdrawals don’t distort the comparison."
+          : "Drop from the highest level so far."}{" "}
+        Swipe or hover to see single days.
       </p>
     </div>
   );
@@ -1565,7 +1566,7 @@ function BenchSelect({ value, onChange }: { value: number; onChange: (i: number)
       <span className="font-semibold">{BENCHMARKS[value].label}</span>
       <Icon name="chevronDown" className="h-3.5 w-3.5 text-subtle" />
       <select
-        aria-label="Vergleichsindex"
+        aria-label="Benchmark"
         value={BENCHMARKS[value].key}
         onChange={(e) => onChange(BENCHMARKS.findIndex((b) => b.key === e.target.value))}
         className="absolute inset-0 cursor-pointer opacity-0"
@@ -1623,8 +1624,8 @@ function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
         {items.length === 0 && (
           <div className="text-sm text-subtle">
             {loading
-              ? "Kurse werden geladen …"
-              : "Noch keine Tagesveränderung — die Börse hat seit dem letzten Schlusskurs nicht gehandelt."}
+              ? "Loading prices …"
+              : "No change today yet — the market hasn’t traded since the last close."}
           </div>
         )}
       </div>
@@ -1634,7 +1635,7 @@ function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <List
-        title="Top Mover heute"
+        title="Top movers today"
         items={[...day.slice(0, 3), ...day.slice(-3).reverse()].filter(
           (v, i, a) => a.findIndex((x) => x.ticker === v.ticker) === i,
         )}
@@ -1642,7 +1643,7 @@ function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
         subOf={(r) => signed(r.dayAbs)}
       />
       <List
-        title="Gewinner & Verlierer gesamt"
+        title="Winners & losers overall"
         items={[...all.slice(0, 3), ...all.slice(-3).reverse()].filter(
           (v, i, a) => a.findIndex((x) => x.ticker === v.ticker) === i,
         )}
@@ -1654,14 +1655,14 @@ function TopMovers({ rows, loading }: { rows: Row[]; loading: boolean }) {
 }
 
 type Row = {
-  /** ISIN oder Kürzel aus dem Export — die Identität der Position. */
+  /** ISIN or symbol from the export — the position's identity. */
   ticker: string;
-  /** Aufgelöstes Börsenkürzel für Kurse, Logo und Verlinkung. */
+  /** Resolved ticker for prices, logo and links. */
   symbol: string | null;
   resolution: Resolution | null;
-  /** Vom Nutzer eingetragener Kurs für nicht handelbare Papiere. */
+  /** Price the user entered for a security that doesn't trade. */
   manualPrice: number | null;
-  /** Warnung, wenn Kurs und Einstand nicht zusammenpassen können. */
+  /** Warning when price and cost basis can't belong together. */
   mismatch: string | null;
   company: string;
   assetClass: string;
@@ -1684,8 +1685,8 @@ type SortKey = "value" | "gainPct" | "day" | "name";
 
 /**
  * Positions as a plain list (getquin / Parqet): logo, name, shares × price;
- * value and result on the right. One control sorts, and "Heute" also swaps
- * the result for today's move. Removing lives behind "Bearbeiten", so a row
+ * value and result on the right. One control sorts, and "Today" also swaps
+ * the result for today's move. Removing lives behind "Edit", so a row
  * is never one stray tap away from deletion.
  */
 function PositionsTable({
@@ -1702,21 +1703,21 @@ function PositionsTable({
 
   const sorted = useMemo(() => {
     const val = (r: Row): number => (sort === "gainPct" ? r.unrealPct : sort === "day" ? r.dayPct : r.value) ?? -Infinity;
-    return [...rows].sort((x, y) => (sort === "name" ? x.company.localeCompare(y.company, "de") : val(y) - val(x)));
+    return [...rows].sort((x, y) => (sort === "name" ? x.company.localeCompare(y.company, "en") : val(y) - val(x)));
   }, [rows, sort]);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <Pills
-          label="Sortieren nach"
+          label="Sort by"
           size="sm"
-          options={[["value", "Wert"], ["gainPct", "Gewinn"], ["day", "Heute"], ["name", "A–Z"]] as const}
+          options={[["value", "Value"], ["gainPct", "Gain"], ["day", "Today"], ["name", "A–Z"]] as const}
           value={sort}
           onChange={setSort}
         />
         <button type="button" onClick={() => setEditing((e) => !e)} className="press-sm shrink-0 px-1 text-[15px] font-medium text-ink !min-h-9">
-          {editing ? "Fertig" : "Bearbeiten"}
+          {editing ? "Done" : "Edit"}
         </button>
       </div>
 
@@ -1725,7 +1726,8 @@ function PositionsTable({
           const w = r.value != null && total > 0 ? r.value / total : null;
           const shown = sort === "day" ? r.dayPct : r.unrealPct;
           const shownAbs = sort === "day" ? r.dayAbs : r.unreal;
-          const sub = r.mismatch ? null : `${r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}${NBSP}St.${r.last != null ? ` · ${usd(r.last)}` : ""}`;
+          const importIssue = !!r.mismatch && /import/i.test(r.mismatch);
+          const sub = r.mismatch ? null : `${r.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })}${NBSP}sh.${r.last != null ? ` · ${usd(r.last)}` : ""}`;
           const body = (
             <>
               <CompanyLogo ticker={r.symbol} company={r.company} size={42} />
@@ -1734,19 +1736,19 @@ function PositionsTable({
                 {sub ? (
                   <span className="block truncate text-[13px] tabular-nums text-subtle">
                     {sub}
-                    {r.manualPrice != null ? " · manuell" : ""}
+                    {r.manualPrice != null ? " · manual" : ""}
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 truncate text-[13px] font-medium text-warn" title={`${r.mismatch}. Vermutlich ist die ISIN einer falschen Börsennotierung zugeordnet.`}>
+                  <span className="flex items-center gap-1 truncate text-[13px] font-medium text-warn" title={importIssue ? `${r.mismatch}. Delete the transactions and upload the file again.` : `${r.mismatch}. The ISIN is probably matched to the wrong listing.`}>
                     <Icon name="danger" className="h-3.5 w-3.5 shrink-0" />
-                    Zuordnung prüfen
+                    {importIssue ? "Imported wrongly" : "Check the match"}
                   </span>
                 )}
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-[16px] font-semibold tabular-nums leading-snug">{r.value != null ? cMoney(r.value) : "—"}</span>
                 <span className={`block text-[13px] font-medium tabular-nums ${shown == null ? "text-subtle" : shown >= 0 ? "text-bull" : "text-bear"}`}>
-                  {shown == null ? (r.value == null ? "kein Kurs" : "—") : `${shown >= 0 ? "▲" : "▼"} ${pctOf(Math.abs(shown), 2, false)}`}
+                  {shown == null ? (r.value == null ? "no price" : "—") : `${shown >= 0 ? "▲" : "▼"} ${pctOf(Math.abs(shown), 2, false)}`}
                   {shownAbs != null && shown != null && <span className="sr-only"> ({signed(shownAbs)})</span>}
                 </span>
               </span>
@@ -1759,16 +1761,16 @@ function PositionsTable({
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`${r.company} mit allen Buchungen entfernen?`)) onRemove(r.ticker);
+                    if (confirm(`Remove ${r.company} with all its transactions?`)) onRemove(r.ticker);
                   }}
-                  aria-label={`${r.company} entfernen`}
+                  aria-label={`Remove ${r.company}`}
                   className="fade-in ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bear-fill text-white ![animation-delay:0ms] ![animation-duration:200ms] !min-h-0"
                 >
                   <span className="block h-[2px] w-3 rounded-full bg-white" />
                 </button>
               )}
               {r.symbol && !editing ? (
-                <Link href={stockHref(r.symbol)} className={`${cls} transition-colors active:bg-ink/[0.04]`} title={w != null ? `${pctOf(w, 1, false)} deines Depots` : undefined}>
+                <Link href={stockHref(r.symbol)} className={`${cls} transition-colors active:bg-ink/[0.04]`} title={w != null ? `${pctOf(w, 1, false)} of your portfolio` : undefined}>
                   {body}
                 </Link>
               ) : (
@@ -1777,11 +1779,11 @@ function PositionsTable({
             </li>
           );
         })}
-        {sorted.length === 0 && <li className="px-4 py-10 text-center text-sm text-subtle">Keine offenen Positionen.</li>}
+        {sorted.length === 0 && <li className="px-4 py-10 text-center text-sm text-subtle">No open positions.</li>}
       </ul>
       <p className="text-[12px] leading-snug text-subtle">
-        {sort === "day" ? "Rechts steht die Kursänderung von heute." : "Rechts steht der Kursgewinn der offenen Stücke gegenüber deinem Durchschnittseinstand."} Realisierte
-        Gewinne und Dividenden findest du unter Performance bzw. Dividenden.
+        {sort === "day" ? "On the right: today’s price change." : "On the right: the price gain of the open shares against your average cost."} Realised
+        gains and dividends are under Performance and Dividends.
       </p>
     </div>
   );
@@ -1805,7 +1807,7 @@ function BenchmarkTable({
   }).filter((x) => x.r !== null);
 
   const all = [
-    { key: "me", label: "Dein Depot", r: perfPortfolio },
+    { key: "me", label: "Your portfolio", r: perfPortfolio },
     ...items,
   ]
     .filter((x) => x.r !== null)
@@ -1816,9 +1818,9 @@ function BenchmarkTable({
 
   return (
     <div className="lcard p-5">
-      <div className="mb-1 text-sm font-semibold">Wer hätte besser abgeschnitten?</div>
+      <div className="mb-1 text-sm font-semibold">Who would have done better?</div>
       <p className="mb-4 text-[11px] text-subtle">
-        Gleicher Zeitraum ({formatDate(from)} – {formatDate(to)}), reine Kursentwicklung der Indizes.
+        Same range ({formatDate(from)} – {formatDate(to)}), price change of the indices only.
       </p>
       <div className="space-y-2.5">
         {all.map((x) => {
@@ -1879,11 +1881,11 @@ function DividendsTab({
     yieldOnCost: number | null;
   };
   total: number;
-  /** Summe der tatsächlich importierten Dividendenbuchungen (0 = keine da). */
+  /** Sum of the dividend transactions actually imported (0 = none). */
   booked: number;
-  /** Dividenden je Papier — inklusive längst verkaufter Positionen. */
+  /** Dividends per security — including positions sold long ago. */
   perTicker: { ticker: string; name: string; amount: number; open: boolean }[];
-  /** Einzelne Ausschüttungen für die interaktiven Grafiken. */
+  /** Single payouts for the interactive charts. */
   entries: DivEntry[];
 }) {
   const receivedTotal = booked > 0 ? booked : info.received;
@@ -1893,35 +1895,35 @@ function DividendsTab({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi
-          label="Erhalten (gesamt)"
+          label="Received (total)"
           value={abbrevMoney(receivedTotal || null)}
           tone={receivedTotal > 0 ? "bull" : null}
-          sub={booked > 0 ? "laut deinen Buchungen" : "aus Ausschüttungshistorie"}
+          sub={booked > 0 ? "as booked" : "from the payout history"}
         />
         <Kpi
-          label="Erwartet nächste 12 M"
+          label="Expected next 12 m"
           value={abbrevMoney(info.forecast || null)}
-          sub={info.forecast > 0 ? `≈ ${abbrevMoney(info.forecast / 12)} / Monat` : undefined}
+          sub={info.forecast > 0 ? `≈ ${abbrevMoney(info.forecast / 12)} / month` : undefined}
         />
         <Kpi
-          label="Dividendenrendite"
+          label="Dividend yield"
           value={info.yieldNow ? pctOf(info.yieldNow, 2, false) : "—"}
-          sub="auf aktuellen Kurs"
+          sub="on the current price"
         />
         <Kpi
-          label="Rendite auf Einstand"
+          label="Yield on cost"
           value={info.yieldOnCost ? pctOf(info.yieldOnCost, 2, false) : "—"}
           tone={
             info.yieldOnCost && info.yieldNow && info.yieldOnCost > info.yieldNow ? "bull" : null
           }
-          sub="Yield on Cost"
+          sub="on what you paid"
         />
       </div>
 
       {info.forecast === 0 && receivedTotal === 0 && (
         <div className="lcard p-8 text-center text-sm text-subtle">
-          Für deine Positionen sind keine Ausschüttungen bekannt — viele Wachstumswerte und ETFs
-          thesaurieren oder zahlen schlicht keine Dividende.
+          No payouts are known for your positions — many growth stocks and ETFs reinvest or
+          simply pay no dividend.
         </div>
       )}
 
@@ -1934,14 +1936,14 @@ function DividendsTab({
 
       {info.upcoming.length > 0 && (
         <div className="lcard p-5">
-          <div className="mb-3 text-sm font-semibold">Angekündigte Zahlungen</div>
+          <div className="mb-3 text-sm font-semibold">Announced payments</div>
           <div className="space-y-2">
             {info.upcoming.map((u, i) => (
               <div key={i} className="flex items-center gap-3 text-sm">
                 <CompanyLogo ticker={u.ticker} company={u.ticker} size={26} />
                 <span className="flex-1 font-medium">{u.ticker}</span>
                 <span className="text-xs text-subtle">{formatDate(u.date)}</span>
-                <span className="font-semibold tabular-nums">{usd(u.amount)} / Stück</span>
+                <span className="font-semibold tabular-nums">{usd(u.amount)} / share</span>
               </div>
             ))}
           </div>
@@ -1950,7 +1952,7 @@ function DividendsTab({
 
       {info.perPos.length > 0 && (
         <section className="space-y-2">
-          <h3 className="px-1 text-[17px] font-semibold tracking-[-0.01em]">Je Position</h3>
+          <h3 className="px-1 text-[17px] font-semibold tracking-[-0.01em]">Per position</h3>
           <ul className="card overflow-hidden">
             {info.perPos.map((p) => (
               <li key={p.ticker} className="relative flex items-center gap-3 px-4 py-3 after:absolute after:bottom-0 after:left-[4.25rem] after:right-0 after:h-px after:bg-hair last:after:hidden">
@@ -1958,13 +1960,13 @@ function DividendsTab({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold">{p.company}</span>
                   <span className="block truncate text-[13px] tabular-nums text-subtle">
-                    {p.yieldNow ? `Rendite ${pctOf(p.yieldNow, 2, false)}` : "Rendite —"}
-                    {p.yieldOnCost ? ` · auf Einstand ${pctOf(p.yieldOnCost, 2, false)}` : ""}
+                    {p.yieldNow ? `Yield ${pctOf(p.yieldNow, 2, false)}` : "Yield —"}
+                    {p.yieldOnCost ? ` · on cost ${pctOf(p.yieldOnCost, 2, false)}` : ""}
                   </span>
                 </span>
                 <span className="shrink-0 text-right">
-                  <span className="block text-[15px] font-semibold tabular-nums text-bull">{p.annual > 0 ? `${abbrevMoney(p.annual)} / Jahr` : "—"}</span>
-                  <span className="block text-[13px] tabular-nums text-subtle">{p.received > 0 ? `${abbrevMoney(p.received)} erhalten` : "noch nichts erhalten"}</span>
+                  <span className="block text-[15px] font-semibold tabular-nums text-bull">{p.annual > 0 ? `${abbrevMoney(p.annual)} / year` : "—"}</span>
+                  <span className="block text-[13px] tabular-nums text-subtle">{p.received > 0 ? `${abbrevMoney(p.received)} received` : "nothing received yet"}</span>
                 </span>
               </li>
             ))}
@@ -1974,7 +1976,7 @@ function DividendsTab({
 
       {closed.length > 0 && (
         <Collapse
-          title={`Dividenden aus verkauften Positionen · ${closed.length}`}
+          title={`Dividends from sold positions · ${closed.length}`}
           right={
             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-subtle">
               {abbrevMoney(closed.reduce((a, x) => a + x.amount, 0))}
@@ -1993,18 +1995,18 @@ function DividendsTab({
             ))}
           </div>
           <p className="mt-3 text-[11px] text-subtle">
-            Diese Papiere hältst du nicht mehr. Die Ausschüttungen zählen trotzdem zu deinem
-            Gesamtertrag — sie fehlen nur in der Prognose oben, weil dafür kein Bestand mehr da ist.
+            You no longer hold these. Their payouts still count towards your total return — they
+            are only missing from the forecast above, because there are no shares left.
           </p>
         </Collapse>
       )}
 
       <p className="text-[11px] text-subtle">
         {booked > 0
-          ? "„Erhalten“ stammt aus deinen importierten Dividendenbuchungen — netto nach Quellensteuer. "
-          : "„Erhalten“ ist aus der Ausschüttungshistorie und deiner damaligen Stückzahl rekonstruiert; Quellensteuer ist dabei nicht abgezogen. "}
-        Die Prognose schreibt die Ausschüttungen der letzten zwölf Monate fort. Erhöhungen,
-        Kürzungen und Sonderdividenden sind darin nicht enthalten — eine Orientierung, keine Zusage.
+          ? "“Received” comes from your imported dividend transactions — net of withholding tax. "
+          : "“Received” is rebuilt from the payout history and the shares you held then; withholding tax is not deducted. "}
+        The forecast carries the last twelve months of payouts forward. Raises, cuts and special
+        dividends are not included — a guide, not a promise.
       </p>
     </div>
   );
@@ -2030,8 +2032,8 @@ function ActivityTab({
   const [price, setPrice] = useState("");
   const [amount, setAmount] = useState("");
   const [fee, setFee] = useState("");
-  // Bei über tausend Buchungen kostet es den Browser spürbar Speicher, alle
-  // Zeilen gleichzeitig im Dokument zu halten. Deshalb stückweise nachladen.
+  // With over a thousand transactions, keeping every row in the document at
+  // once costs the browser noticeable memory, so the list grows in steps.
   const [limit, setLimit] = useState(200);
   const shown = useMemo(() => [...txns].reverse().slice(0, limit), [txns, limit]);
 
@@ -2042,7 +2044,7 @@ function ActivityTab({
     e.preventDefault();
     const T = ticker.trim().toUpperCase();
     if (needsTicker && !SYMBOL_RE.test(T)) {
-      setMsg("Bitte einen gültigen Ticker oder eine ISIN eingeben, z. B. AAPL oder US0378331005.");
+      setMsg("Please enter a valid ticker or ISIN, e.g. AAPL or US0378331005.");
       return;
     }
     const d = parseDate(date);
@@ -2050,7 +2052,7 @@ function ActivityTab({
       const s = parseNum(shares);
       const p = parseNum(price);
       if (!Number.isFinite(s) || s <= 0) {
-        setMsg("Bitte eine Stückzahl größer als 0 eingeben.");
+        setMsg("Please enter a number of shares above 0.");
         return;
       }
       addTxn(
@@ -2066,7 +2068,7 @@ function ActivityTab({
     } else {
       const a = Math.abs(parseNum(amount));
       if (!Number.isFinite(a) || a <= 0) {
-        setMsg("Bitte einen Betrag größer als 0 eingeben.");
+        setMsg("Please enter an amount above 0.");
         return;
       }
       addTxn(makeTxn({ kind, ticker: needsTicker ? T : "", date: d, amount: a, fee: Math.abs(parseNum(fee)) || 0 }));
@@ -2096,22 +2098,22 @@ function ActivityTab({
     <div className="space-y-4">
       <div className="lcard p-4 sm:p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[15px] font-semibold">Transaktion erfassen</span>
+          <span className="text-[15px] font-semibold">Add a transaction</span>
           <div className="flex flex-wrap gap-2">
             <button onClick={onImport} className="btn-capsule !min-h-9 !px-3.5 text-[13px]">
               <Icon name="upload" className="h-4 w-4" />
-              CSV importieren
+              Import CSV
             </button>
             <button onClick={onExport} className="btn-capsule !min-h-9 !px-3.5 text-[13px]">
               <Icon name="download" className="h-4 w-4" />
-              Exportieren
+              Export
             </button>
           </div>
         </div>
 
         <form onSubmit={submit} className="space-y-3">
           <Pills
-            label="Art der Buchung"
+            label="Transaction type"
             options={(["buy", "sell", "dividend", "deposit", "withdrawal"] as const).map(
               (k) => [k, label[k]] as const,
             )}
@@ -2123,8 +2125,8 @@ function ActivityTab({
             <input
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              placeholder="Datum, z. B. 17.03.2022"
-              aria-label="Datum"
+              placeholder="Date, e.g. 2022-03-17"
+              aria-label="Date"
               inputMode="numeric"
               className={`col-span-2 sm:col-span-1 ${inputCls}`}
             />
@@ -2132,8 +2134,8 @@ function ActivityTab({
               <input
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
-                placeholder="Ticker oder ISIN"
-                aria-label="Ticker oder ISIN"
+                placeholder="Ticker or ISIN"
+                aria-label="Ticker or ISIN"
                 autoCapitalize="characters"
                 className={`col-span-2 sm:col-span-1 ${inputCls}`}
               />
@@ -2143,16 +2145,16 @@ function ActivityTab({
                 <input
                   value={shares}
                   onChange={(e) => setShares(e.target.value)}
-                  placeholder="Stück"
-                  aria-label="Stück"
+                  placeholder="Shares"
+                  aria-label="Shares"
                   inputMode="decimal"
                   className={inputCls}
                 />
                 <input
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="Kurs $"
-                  aria-label="Kurs in Dollar"
+                  placeholder="Price $"
+                  aria-label="Price in dollars"
                   inputMode="decimal"
                   className={inputCls}
                 />
@@ -2161,8 +2163,8 @@ function ActivityTab({
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="Betrag $"
-                aria-label="Betrag in Dollar"
+                placeholder="Amount $"
+                aria-label="Amount in dollars"
                 inputMode="decimal"
                 className={inputCls}
               />
@@ -2170,31 +2172,31 @@ function ActivityTab({
             <input
               value={fee}
               onChange={(e) => setFee(e.target.value)}
-              placeholder="Gebühr $"
-              aria-label="Gebühr in Dollar"
+              placeholder="Fee $"
+              aria-label="Fee in dollars"
               inputMode="decimal"
               className={inputCls}
             />
             <button className="btn-primary col-span-2 sm:col-span-1">
               <Icon name="plus" className="h-4 w-4" />
-              Hinzufügen
+              Add
             </button>
           </div>
         </form>
         <p className="mt-3 text-[12px] leading-snug text-subtle">
-          Ohne Datum gilt die Position als „von Anfang an gehalten“. Für exakte Rendite, IZF und
-          Dividendenzuordnung lohnt es sich, Datum und Kurs zu ergänzen.
+          Without a date the position counts as “held from the start”. For an exact return, IRR
+          and dividend matching it’s worth adding the date and price.
         </p>
       </div>
 
       <div className="lcard overflow-hidden">
         <div className="flex items-center justify-between border-b border-hair px-5 py-3">
           <span className="text-sm font-semibold">
-            {txns.length} {txns.length === 1 ? "Buchung" : "Buchungen"}
+            {txns.length} {txns.length === 1 ? "transaction" : "transactions"}
           </span>
           {txns.length > 0 && (
             <button onClick={onClear} className="text-xs text-subtle underline hover:text-bear">
-              Alle löschen
+              Delete all
             </button>
           )}
         </div>
@@ -2209,20 +2211,20 @@ function ActivityTab({
                   </span>
                   <span className="shrink-0 whitespace-nowrap text-[15px] tabular-nums">
                     {t.kind === "buy" || t.kind === "sell"
-                      ? `${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
+                      ? `${t.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })} × ${usd(t.price)}`
                       : t.kind === "split"
-                      ? `${t.shares > 0 ? "+" : ""}${t.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}${NBSP}St.`
+                      ? `${t.shares > 0 ? "+" : ""}${t.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })}${NBSP}sh.`
                       : usd(t.amount)}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge[t.kind]}`}>{label[t.kind]}</span>
-                  <span className="text-[12px] text-subtle">{t.date ? formatDate(t.date) : "ohne Datum"}</span>
+                  <span className="text-[12px] text-subtle">{t.date ? formatDate(t.date) : "no date"}</span>
                 </div>
               </div>
               <button
                 onClick={() => removeTxn(t.id)}
-                aria-label="Buchung löschen"
+                aria-label="Delete transaction"
                 className="press-sm inline-flex h-9 w-9 !min-h-0 shrink-0 items-center justify-center rounded-full text-muted hover:bg-bear/10 hover:text-bear"
               >
                 <Icon name="delete" className="h-[18px] w-[18px]" />
@@ -2230,14 +2232,14 @@ function ActivityTab({
             </div>
           ))}
           {txns.length === 0 && (
-            <div className="px-5 py-10 text-center text-sm text-subtle">Noch keine Buchungen.</div>
+            <div className="px-5 py-10 text-center text-sm text-subtle">No transactions yet.</div>
           )}
           {shown.length < txns.length && (
             <button
               onClick={() => setLimit((n) => n + 200)}
               className="press-sm w-full border-t border-hair px-5 py-3 text-sm font-medium text-brand hover:bg-slate-50"
             >
-              Weitere 200 anzeigen ({txns.length - shown.length} übrig)
+              Show 200 more ({txns.length - shown.length} left)
             </button>
           )}
         </div>
@@ -2257,7 +2259,7 @@ function InvestorsTab({
 }) {
   // The match API speaks in exchange symbols (the ones sent to it); a row's
   // `ticker` is usually the ISIN from the broker export, which never matched
-  // and showed every investor at 0 %.
+  // and showed every investor at 0%.
   const norm = (t: string) => t.toUpperCase().replace(/[.\-/]/g, "");
   const weightWith = (m: MatchRow) => {
     if (total <= 0) return null;
@@ -2268,12 +2270,12 @@ function InvestorsTab({
     return w / total;
   };
 
-  if (!matches) return <div className="lcard p-8 text-center text-sm text-subtle">Wird geladen …</div>;
+  if (!matches) return <div className="lcard p-8 text-center text-sm text-subtle">Loading …</div>;
   if (matches.length === 0)
     return (
       <div className="lcard p-8 text-center text-sm text-subtle">
-        Keiner der verfolgten Investoren hält aktuell eine deiner Positionen. Das muss nichts
-        Schlechtes heißen — Fonds melden ihre Bestände nur quartalsweise und oft mit Verzögerung.
+        None of the tracked investors holds any of your positions right now. That needn’t be
+        bad — funds report their holdings only quarterly and often late.
       </div>
     );
 
@@ -2292,7 +2294,7 @@ function InvestorsTab({
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold">{m.person ?? m.fund}</div>
                 <div className="truncate text-xs text-subtle">
-                  {m.sharedCount} gemeinsame {m.sharedCount === 1 ? "Aktie" : "Aktien"}:{" "}
+                  {m.sharedCount} shared {m.sharedCount === 1 ? "stock" : "stocks"}:{" "}
                   {m.sharedTickers.slice(0, 5).join(", ")}
                   {m.sharedTickers.length > 5 ? " …" : ""}
                 </div>
@@ -2301,34 +2303,34 @@ function InvestorsTab({
                 <div className="text-sm font-semibold tabular-nums">
                   {uw != null ? pctOf(uw, uw < 0.1 ? 1 : 0, false) : "—"}
                 </div>
-                <div className="text-[11px] text-subtle">deines Depots</div>
+                <div className="text-[11px] text-subtle">of your portfolio</div>
               </div>
               <Icon name="chevronRight" className="h-4 w-4 shrink-0 text-zinc-300" />
             </Link>
           );
         })}
       </div>
-      <Collapse title="Wie wird die Überschneidung berechnet?">
+      <Collapse title="How is the overlap calculated?">
         <p className="text-sm text-subtle">
-          Wir vergleichen deine Ticker mit den zuletzt gemeldeten 13F-Beständen der verfolgten
-          Investoren. „% deines Depots“ ist der Anteil deines Depotwerts, der in Aktien steckt, die
-          dieser Investor ebenfalls hält. Weil 13F-Meldungen bis zu 45 Tage nach Quartalsende
-          erscheinen, ist das immer ein Blick in den Rückspiegel — und Leerverkäufe sowie
-          ausländische Papiere tauchen dort gar nicht auf.
+          We compare your tickers with the latest 13F holdings of the tracked investors. “% of
+          your portfolio” is the share of your portfolio’s value in stocks this investor holds
+          too. Because 13F filings appear up to 45 days after quarter end, it’s always a look in
+          the rear-view mirror — and short positions and foreign securities don’t show up there
+          at all.
         </p>
       </Collapse>
     </div>
   );
 }
 
-/** Ehrlicher Import-Bericht: was kam an, was blieb bewusst draußen. */
+/** An honest import report: what arrived, and what was left out on purpose. */
 function ImportSummary({ report, onClose }: { report: ImportReport; onClose: () => void }) {
   const c = report.counts;
   const items: [string, number, string][] = [
-    ["Käufe & Verkäufe", c.trades, "text-ink"],
-    ["Dividenden", c.dividends, "text-bull"],
-    ["Splits & Überträge", c.corporate, "text-ink"],
-    ["Ein- & Auszahlungen", c.cash, "text-subtle"],
+    ["Buys & sells", c.trades, "text-ink"],
+    ["Dividends", c.dividends, "text-bull"],
+    ["Splits & transfers", c.corporate, "text-ink"],
+    ["Deposits & withdrawals", c.cash, "text-subtle"],
   ];
   return (
     <div className="lcard p-5">
@@ -2341,14 +2343,14 @@ function ImportSummary({ report, onClose }: { report: ImportReport; onClose: () 
               .map(([label, n, cls]) => (
                 <div key={label}>
                   <div className={`text-lg font-semibold tabular-nums ${cls}`}>
-                    {n.toLocaleString("de-DE")}
+                    {n.toLocaleString("en-US")}
                   </div>
                   <div className="text-[11px] text-subtle">{label}</div>
                 </div>
               ))}
             <div>
               <div className="text-lg font-semibold tabular-nums">{report.instruments.length}</div>
-              <div className="text-[11px] text-subtle">Wertpapiere</div>
+              <div className="text-[11px] text-subtle">Securities</div>
             </div>
           </div>
           {report.notes.length > 0 && (
@@ -2360,23 +2362,19 @@ function ImportSummary({ report, onClose }: { report: ImportReport; onClose: () 
           )}
           {c.unusable > 0 && (
             <p className="mt-1 text-[11px] text-subtle">
-              · {c.unusable} Zeilen ohne verwertbare Stückzahl oder Betrag übersprungen.
+              · {c.unusable} rows without a usable number of shares or amount were skipped.
             </p>
           )}
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Schließen"
-          className="glass press-sm flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-subtle hover:text-ink"
-        >
-          <Icon name="close" className="h-5 w-5" />
+        <button onClick={onClose} className="press-sm -mr-1 -mt-2 min-h-11 shrink-0 px-2 text-[15px] font-medium text-subtle hover:text-ink">
+          Done
         </button>
       </div>
     </div>
   );
 }
 
-/** Positionen ohne Kurs — mit der Möglichkeit, selbst ein Kürzel zuzuordnen. */
+/** Positions without a price — with a way to assign a ticker yourself. */
 function UnpricedPanel({
   rows,
   resolving,
@@ -2402,14 +2400,13 @@ function UnpricedPanel({
     <div className="lcard overflow-hidden">
       <div className="border-b border-hair px-5 py-3.5">
         <div className="text-sm font-semibold">
-          Nicht bewertet · {rows.length} {rows.length === 1 ? "Position" : "Positionen"}
+          Not valued · {rows.length} {rows.length === 1 ? "position" : "positions"}
         </div>
         <p className="mt-1 text-[11px] text-subtle">
-          Diese Papiere fließen bewusst nicht in Depotwert, Rendite und Aufteilung ein — lieber eine
-          Lücke als eine erfundene Zahl. Eingesetzt sind hier {cAbbrev(cost)}. Für Optionsscheine
-          kannst du den aktuellen Kurs aus deinem Broker eintragen; die Position zählt dann normal
-          mit.
-          {resolving && " Kürzel werden gerade gesucht …"}
+          These are left out of portfolio value, return and allocation on purpose — better a gap
+          than an invented number. {cAbbrev(cost)} is invested in them. For warrants you can enter
+          the current price from your broker; the position then counts normally.
+          {resolving && " Looking up tickers …"}
         </p>
       </div>
       {rows.map((r) => {
@@ -2419,14 +2416,14 @@ function UnpricedPanel({
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{r.company}</div>
               <div className="text-[12px] text-subtle">
-                {r.ticker} · {r.shares.toLocaleString("de-DE", { maximumFractionDigits: 4 })}{NBSP}St. ·
-                Einstand {cAbbrev(r.costBasis)}
+                {r.ticker} · {r.shares.toLocaleString("en-US", { maximumFractionDigits: 4 })}{NBSP}sh. ·
+                cost {cAbbrev(r.costBasis)}
               </div>
             </div>
             {why ? (
-              // Optionsscheine und Privatmarkt-Anteile haben keinen öffentlichen
-              // Kurs — dafür kann der aktuelle Wert aus dem Broker übernommen
-              // werden. Klar als manuell gekennzeichnet.
+              // Warrants and private-market shares have no public price, so the
+              // current value can be taken from the broker, clearly marked as
+              // manual.
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
                   className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-subtle"
@@ -2438,14 +2435,14 @@ function UnpricedPanel({
                   value={priceDraft[r.ticker] ?? ""}
                   onChange={(e) => setPriceDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
                   onKeyDown={(e) => e.key === "Enter" && saveManual(r)}
-                  placeholder={`Kurs je Stück (${currencySymbol().trim()})`}
+                  placeholder={`Price per share (${currencySymbol().trim()})`}
                   className="w-40 rounded-full border border-hair bg-card px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
                   onClick={() => saveManual(r)}
                   className="btn-primary press-sm !px-3 !py-1"
                 >
-                  Wert setzen
+                  Set value
                 </button>
               </div>
             ) : (
@@ -2453,7 +2450,7 @@ function UnpricedPanel({
                 <input
                   value={draft[r.ticker] ?? ""}
                   onChange={(e) => setDraft((d) => ({ ...d, [r.ticker]: e.target.value }))}
-                  placeholder="Kürzel, z. B. AAPL"
+                  placeholder="Ticker, e.g. AAPL"
                   className="w-36 rounded-full border border-hair bg-card px-3 py-1 text-sm focus:border-brand"
                 />
                 <button
@@ -2463,13 +2460,13 @@ function UnpricedPanel({
                   }}
                   className="btn-primary press-sm !px-3 !py-1"
                 >
-                  Zuordnen
+                  Assign
                 </button>
               </div>
             )}
             <button
               onClick={() => onRemove(r.ticker)}
-              aria-label="Entfernen"
+              aria-label="Remove"
               className="press-sm shrink-0 rounded-full px-1.5 text-slate-300 hover:text-bear"
             >
               <Icon name="close" className="h-5 w-5" />
@@ -2481,7 +2478,7 @@ function UnpricedPanel({
   );
 }
 
-/** Große Renditezahl mit Erklärsatz — der Kopf des Performance-Reiters. */
+/** A large return figure with one explaining sentence — the head of the Performance tab. */
 function BigStat({
   label,
   value,
@@ -2519,12 +2516,12 @@ function AssumedHint({ n, onGo }: { n: number; onGo: () => void }) {
   return (
     <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-subtle">
       <span className="font-semibold">
-        {n} {n === 1 ? "Position hat" : "Positionen haben"} kein Kaufdatum.
+        {n} {n === 1 ? "position has" : "positions have"} no purchase date.
       </span>{" "}
-      Sie werden als „seit Beginn des Charts gehalten“ gerechnet. Ergänze Datum und Kaufkurs, dann
-      stimmen auch IZF und Jahresrenditen.{" "}
+      They count as “held since the start of the chart”. Add the date and purchase price and the
+      IRR and yearly returns will be right too.{" "}
       <button onClick={onGo} className="underline hover:no-underline">
-        Zu den Aktivitäten
+        Go to Activity
       </button>
     </div>
   );

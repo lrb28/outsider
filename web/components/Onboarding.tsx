@@ -9,6 +9,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Icon, type IconName } from "@/components/Icon";
 import { fetchCatalogue } from "@/lib/fetchJson";
+import { MARK_HEIGHT, MARK_PATH, MARK_WIDTH } from "@/lib/wordmark";
 import type { InvestorsResponse, PoliticiansResponse, StocksResponse } from "@/lib/types";
 import { type FollowKind, getFollowed, toggleFollow } from "@/lib/watchlist";
 
@@ -19,13 +20,11 @@ type Pick = { id: string; name: string; src?: string | null; ticker?: string | n
 type Step = { kind: FollowKind; icon: IconName; aura: "investor" | "insider" | "politician"; title: string; text: string; focus: [number, number, number] };
 
 const STEPS: Step[] = [
-  { kind: "investor", icon: "chart", aura: "investor", title: "Investoren folgen", text: "Wähle, wessen Quartalsdepots du im Blick haben willst.", focus: [1, 0.15, 0.2] },
-  { kind: "politician", icon: "people", aura: "politician", title: "Abgeordnete folgen", text: "Mitglieder des US-Repräsentantenhauses, die zuletzt Aktien gehandelt haben.", focus: [0.2, 0.25, 1] },
-  { kind: "stock", icon: "work", aura: "insider", title: "Aktien merken", text: "Du siehst sofort, wenn Investoren, Insider oder Politiker sie handeln.", focus: [0.25, 1, 0.3] },
+  { kind: "investor", icon: "chart", aura: "investor", title: "Follow investors", text: "Choose whose quarterly portfolios you want to keep an eye on.", focus: [1, 0.15, 0.2] },
+  { kind: "politician", icon: "people", aura: "politician", title: "Follow politicians", text: "Members of the US House of Representatives who traded stocks recently.", focus: [0.2, 0.25, 1] },
+  { kind: "stock", icon: "work", aura: "insider", title: "Watch stocks", text: "See at once when investors, insiders or politicians trade them.", focus: [0.25, 1, 0.3] },
 ];
 
-/** The Ā of the wordmark without its crossbar: a bar over a Λ. */
-const MARK = "M0 0H69.6V8H0ZM14.9 95.8H0L26.2 21.3H43.5L69.6 95.8H54.8L35.1 36.9H34.5Z";
 
 /*
  * First screen, after the reference wallet app: a band of iridescent silk
@@ -39,8 +38,8 @@ function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void 
     <div className="welcome-screen relative flex h-full flex-col overflow-hidden">
       <SilkRibbon className="pointer-events-none absolute inset-0 h-full w-full" />
 
-      <svg viewBox="-2 -2 73.6 99.8" role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[34%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
-        <path d={MARK} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />
+      <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[34%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
+        <path d={MARK_PATH} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />
       </svg>
 
       <div className="relative mt-auto px-8 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
@@ -53,10 +52,10 @@ function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void 
         </h2>
         <div className="welcome-line mt-9 grid grid-cols-2 gap-3" style={{ animationDelay: "560ms" }}>
           <button type="button" onClick={onSkip} className="welcome-pill press">
-            Später
+            Later
           </button>
           <button ref={start} type="button" onClick={onStart} className="welcome-pill press">
-            Los geht’s
+            Get started
           </button>
         </div>
       </div>
@@ -100,8 +99,8 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
     <div className="relative flex h-full flex-col">
       <AuraField vivid focus={focus} className="pointer-events-none absolute inset-x-0 top-0 h-[46%] w-full [mask-image:linear-gradient(to_top,transparent,#000_55%)]" />
       <div className="relative flex items-start justify-between px-6 pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <div className="text-[13px] font-semibold leading-tight">Deine ĀURA<br /><span className="font-normal text-subtle">einrichten</span></div>
-        <button onClick={onClose} aria-label="Schließen" className="press-sm flex h-11 w-11 items-center justify-center rounded-full bg-card/70 backdrop-blur-md"><Icon name="close" className="h-5 w-5 text-subtle" /></button>
+        <div className="text-[13px] font-semibold leading-tight">Set up<br /><span className="font-normal text-subtle">your ĀURA</span></div>
+        <button onClick={onClose} className="press-sm -mr-2 min-h-11 rounded-full px-3 text-[15px] font-medium text-subtle hover:text-ink">Close</button>
       </div>
 
       <div className="relative mt-auto px-6">
@@ -126,7 +125,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
                 {list === null
                   ? Array.from({ length: 8 }).map((_, k) => <div key={k} className="mx-auto h-14 w-14 rounded-full shimmer" />)
                   : list.length === 0
-                    ? <p className="col-span-4 text-[14px] text-subtle">Gerade keine Auswahl verfügbar – du kannst das später auf den Detailseiten nachholen.</p>
+                    ? <p className="col-span-4 text-[14px] text-subtle">Nothing to choose from right now. You can follow from any detail page later.</p>
                     : list.map((p) => {
                         const on = chosen[s.kind].includes(p.id);
                         return (
@@ -150,8 +149,8 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
           <div className="fade-up flex items-center gap-2 py-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-bull-fill text-white"><Icon name="tick" className="h-4 w-4" /></span>
             <div>
-              <div id="onboarding-title" className="text-[17px] font-semibold">Deine ĀURA ist bereit.</div>
-              <div className="text-[14px] text-subtle">Alles, dem du folgst, findest du auf der Startseite.</div>
+              <div id="onboarding-title" className="text-[17px] font-semibold">Your ĀURA is ready.</div>
+              <div className="text-[14px] text-subtle">Everything you follow is on the home page.</div>
             </div>
           </div>
         )}
@@ -159,13 +158,13 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
 
       <div className="relative px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
         {done ? (
-          <button onClick={onDone} className="btn-primary w-full !min-h-[3.25rem] text-[16px]">Los geht’s</button>
+          <button onClick={onDone} className="btn-primary w-full !min-h-[3.25rem] text-[16px]">Get started</button>
         ) : (
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <button onClick={() => setStep((n) => n + 1)} className="btn-primary !min-h-[3.25rem] text-[16px]">
-              {count > 0 ? `Weiter · ${count} gewählt` : "Weiter"}
+              {count > 0 ? `Continue · ${count} selected` : "Continue"}
             </button>
-            <button onClick={() => setStep(STEPS.length)} className="btn-capsule !min-h-[3.25rem]">Überspringen</button>
+            <button onClick={() => setStep(STEPS.length)} className="btn-capsule !min-h-[3.25rem]">Skip</button>
           </div>
         )}
       </div>
@@ -187,7 +186,7 @@ function OnboardingInner() {
     } catch {
       /* private mode: show once per visit */
     }
-    const ask = params.get("willkommen");
+    const ask = params.get("welcome") ?? params.get("willkommen");
     if (ask === "folgen") setPhase("setup");
     else if (ask === "1" || (path === "/" && !seen)) setPhase("welcome");
   }, [path, params]);
@@ -202,7 +201,7 @@ function OnboardingInner() {
     window.setTimeout(() => {
       setPhase("closed");
       setLeaving(false);
-      if (params.get("willkommen")) router.replace(path || "/", { scroll: false });
+      if (params.get("welcome") || params.get("willkommen")) router.replace(path || "/", { scroll: false });
     }, 350);
   }, [params, path, router]);
 
@@ -233,7 +232,7 @@ function OnboardingInner() {
   );
 }
 
-/** First-visit onboarding on the start page; reopen with ?willkommen=1. */
+/** First-visit onboarding on the start page; reopen with ?welcome=1 (the old ?willkommen=1 still works). */
 export function Onboarding() {
   return (
     <Suspense fallback={null}>

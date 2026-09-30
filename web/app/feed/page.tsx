@@ -10,8 +10,8 @@ import { ChipBar, PageTitle, SegmentedControl } from "@/components/ui";
 import { DataGuideLink } from "@/components/DataGuide";
 import { fetchJson } from "@/lib/fetchJson";
 import type { FeedRow, TradesResponse } from "@/lib/types";
-const TYPES = [{key:"",label:"Alle"},{key:"institution",label:"Investoren",aura:"investor"},{key:"corporate_insider",label:"Insider",aura:"insider"},{key:"politician",label:"Politiker",aura:"politician"}] as const;
-const TXNS = [{key:"",label:"Alle"},{key:"buy",label:"Käufe"},{key:"sell",label:"Verkäufe"}];
+const TYPES = [{key:"",label:"All"},{key:"institution",label:"Investors",aura:"investor"},{key:"corporate_insider",label:"Insiders",aura:"insider"},{key:"politician",label:"Politicians",aura:"politician"}] as const;
+const TXNS = [{key:"",label:"All"},{key:"buy",label:"Buys"},{key:"sell",label:"Sells"}];
 export default function FeedPage() { return <Suspense fallback={<SkeletonList n={8} />}><Feed /></Suspense>; }
 function Feed() {
   const params = useSearchParams();
@@ -54,21 +54,21 @@ function Feed() {
   const submit = (event: FormEvent) => { event.preventDefault(); update("q", q.trim()); };
   const extra = ["from", "to", "size"].filter(key => params.get(key)).length;
   return <div className="space-y-5">
-    <PageTitle title="Meldungen" subtitle={<>Alle Offenlegungen von Abgeordneten, Insidern und Investoren, neueste zuerst. Tippe eine Zeile für Details. <DataGuideLink /></>} />
+    <PageTitle title="Feed" subtitle={<>Every disclosure from politicians, insiders and investors, newest first. Tap a row for details. <DataGuideLink /></>} />
     <div className="space-y-3">
-      <ChipBar mode="filter" label="Akteure" items={TYPES} value={type as (typeof TYPES)[number]["key"]} onChange={value => update("type", value)} />
+      <ChipBar mode="filter" label="Filers" items={TYPES} value={type as (typeof TYPES)[number]["key"]} onChange={value => update("type", value)} />
       <div className="flex flex-wrap items-center gap-2">
-        <SegmentedControl label="Vorgang" size="sm" options={TXNS.map(item => [item.key, item.label] as const)} value={txnType} onChange={value => update("txnType", value)} />
-        <form onSubmit={submit} role="search" className="relative min-w-[12rem] flex-1"><label htmlFor="feed-query" className="sr-only">Akteur, Unternehmen oder Ticker suchen</label><Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" /><input id="feed-query" type="search" value={q} maxLength={100} onChange={e => setQ(e.target.value)} onBlur={() => { if (q.trim() !== (params.get("q") || "")) update("q", q.trim()); }} placeholder="Name oder Ticker suchen …" className="field !pl-9"/></form>
+        <SegmentedControl label="Transaction" size="sm" options={TXNS.map(item => [item.key, item.label] as const)} value={txnType} onChange={value => update("txnType", value)} />
+        <form onSubmit={submit} role="search" className="relative min-w-[12rem] flex-1"><label htmlFor="feed-query" className="sr-only">Search filer, company or ticker</label><Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-subtle" /><input id="feed-query" type="search" value={q} maxLength={100} onChange={e => setQ(e.target.value)} onBlur={() => { if (q.trim() !== (params.get("q") || "")) update("q", q.trim()); }} placeholder="Name or ticker" className="field !pl-9"/></form>
         <button type="button" aria-expanded={more} aria-controls="feed-more" onClick={() => setMore(m => !m)} className={`chip ${more || extra ? "chip-on" : ""}`}><Icon name="filter" className="h-4 w-4" />Filter{extra ? ` · ${extra}` : ""}</button>
       </div>
-      {more && <div id="feed-more" className="card grid gap-3 p-4 sm:grid-cols-3">{["from","to"].map(key => <label key={key} className="text-xs font-medium text-subtle">{key === "from" ? "Offengelegt ab" : "Offengelegt bis"}<input type="date" value={params.get(key) || ""} onChange={e => update(key,e.target.value)} className="field mt-1 block min-w-0 !rounded-2xl"/></label>)}<label className="text-xs font-medium text-subtle">Meldungen pro Seite<select value={pageSize} onChange={e => update("size",e.target.value)} className="field mt-1 block !rounded-2xl">{[6,24,48].map(size => <option key={size} value={size}>{size}</option>)}</select></label></div>}
-      {type === "politician" && <p className="text-[13px] text-subtle">US-Repräsentantenhaus, STOCK-Act-Meldungen. Eingescannte PDFs fehlen noch. <Link className="underline" href="/status">Abdeckung prüfen</Link></p>}
-      {filterKey && <button type="button" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink" onClick={() => {setPage(0);setMore(false);router.push("/feed",{scroll:false});}}><Icon name="close" className="h-4 w-4" />Alle Filter zurücksetzen</button>}
+      {more && <div id="feed-more" className="card grid gap-3 p-4 sm:grid-cols-3">{["from","to"].map(key => <label key={key} className="text-xs font-medium text-subtle">{key === "from" ? "Disclosed from" : "Disclosed to"}<input type="date" value={params.get(key) || ""} onChange={e => update(key,e.target.value)} className="field mt-1 block min-w-0 !rounded-2xl"/></label>)}<label className="text-xs font-medium text-subtle">Filings per page<select value={pageSize} onChange={e => update("size",e.target.value)} className="field mt-1 block !rounded-2xl">{[6,24,48].map(size => <option key={size} value={size}>{size}</option>)}</select></label></div>}
+      {type === "politician" && <p className="text-[13px] text-subtle">US House of Representatives, STOCK Act filings. Scanned PDFs are still missing. <Link className="underline" href="/status">Check coverage</Link></p>}
+      {filterKey && <button type="button" className="inline-flex min-h-11 items-center gap-1 text-sm font-medium text-subtle hover:text-ink" onClick={() => {setPage(0);setMore(false);router.push("/feed",{scroll:false});}}><Icon name="close" className="h-4 w-4" />Reset all filters</button>}
     </div>
     {error && <ErrorRetry onRetry={() => setRetry(r => r + 1)} />}
-    {!error && <p role="status" className="text-xs text-subtle">{loading ? "Meldungen werden geladen …" : `${rows.length} Meldungen geladen`}</p>}
-    <TradeFeed rows={rows} loading={loading && !rows.length} empty={error ? "Daten sind vorübergehend nicht verfügbar." : "Keine Meldungen für diese Auswahl. Passe die Filter an oder setze sie zurück."}/>
-    {next !== null && !error && <div className="text-center"><button onClick={() => setPage(next)} disabled={loading} className="btn-primary">{loading ? "Wird geladen …" : "Weitere Meldungen laden"}</button></div>}
+    {!error && <p role="status" className="text-xs text-subtle">{loading ? "Loading filings …" : `${rows.length} filings loaded`}</p>}
+    <TradeFeed rows={rows} loading={loading && !rows.length} empty={error ? "Data is temporarily unavailable." : "No filings for this selection. Adjust or reset the filters."}/>
+    {next !== null && !error && <div className="text-center"><button onClick={() => setPage(next)} disabled={loading} className="btn-primary">{loading ? "Loading …" : "Load more filings"}</button></div>}
   </div>;
 }

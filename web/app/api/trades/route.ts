@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
       q: textParam(p, "q"), from: dateParam(p, "from"), to: dateParam(p, "to"),
       limit: integerParam(p, "limit", 50, 1, 200), offset: integerParam(p, "offset", 0, 0, 100000),
     };
-    if (f.from && f.to && f.from > f.to) throw new Error("Der Beginn muss vor dem Ende liegen.");
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Ungültige Filter." }, { status: 400 }); }
+    if (f.from && f.to && f.from > f.to) throw new Error("The start must be before the end.");
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid filters." }, { status: 400 }); }
   const limit = f.limit!;
   const offset = f.offset!;
   return dataResponse(async () => {

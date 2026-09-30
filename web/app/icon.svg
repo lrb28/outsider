@@ -1,14 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<defs>
-<linearGradient id="t" x1="0" x2="1"><stop offset="0" stop-color="#44699a"/><stop offset=".5" stop-color="#7a6d84"/><stop offset="1" stop-color="#c27c52"/></linearGradient>
-<linearGradient id="b" x1="0" x2="1"><stop offset="0" stop-color="#122265"/><stop offset=".5" stop-color="#551e60"/><stop offset="1" stop-color="#9c1a4f"/></linearGradient>
-<linearGradient id="v" x1="0" y1="0" x2="0" y2="1"><stop offset=".04" stop-color="#fff" stop-opacity="0"/><stop offset=".96" stop-color="#fff"/></linearGradient>
-<mask id="m"><rect width="512" height="512" fill="url(#v)"/></mask>
-<clipPath id="c"><rect width="512" height="512" rx="113"/></clipPath>
-</defs>
-<g clip-path="url(#c)">
-<rect width="512" height="512" fill="url(#t)"/>
-<rect width="512" height="512" fill="url(#b)" mask="url(#m)"/>
-</g>
-<path fill="#fff" d="M165.1 131.0H346.9V151.8H165.1Z M204.05 381.0H165.14L233.43 186.58H278.71L346.85 381.0H308.08L256.78 227.36H255.21ZM204.57 304.71H307.33V333.74H204.57Z"/>
+<style>.bg{fill:#FFFFFF}.fg{fill:#000000;stroke:#000000}@media (prefers-color-scheme:dark){.bg{fill:#000000}.fg{fill:#FFFFFF;stroke:#FFFFFF}}</style>
+<rect class="bg" width="512" height="512" rx="113"/>
+<path class="fg" transform="translate(147.80 107.06) scale(3.1093)" stroke-width="3" stroke-linejoin="miter" d="M0 0H69.6V8H0ZM14.9 95.8H0L26.2 21.3H43.5L69.6 95.8H54.8L35.1 36.9H34.5Z"/>
 </svg>

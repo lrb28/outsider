@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { AllocationBar } from "@/components/AllocationBar";
 import { Avatar } from "@/components/Avatar";
 import { DepotSkyline } from "@/components/DepotSkyline";
 import { SegmentedControl, StatRow, DetailTopBar } from "@/components/ui";
@@ -15,7 +14,7 @@ import { FollowButton } from "@/components/FollowButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, companyName, fixTicker, formatDate, shortDate, shortMoney, weightPct, stockHref } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, shortDate, shortMoney, weightPct, stockHref } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 
@@ -46,8 +45,8 @@ export default function InvestorPage() {
   const holdings = useMemo(() => {
     if (!inv) return [];
     const h = [...inv.holdings];
-    // Gewicht = Wert / Gesamtwert -> identische Reihenfolge wie Wert.
-    // Deshalb bieten wir Wert (Größe) und Name (A–Z) als echte Alternativen an.
+    // Weight = value / total, so it sorts exactly like value; value (size)
+    // and name (A–Z) are the two real choices.
     h.sort((a, b) =>
       sort === "name" ? a.company.localeCompare(b.company) : (b.value ?? 0) - (a.value ?? 0),
     );
@@ -59,37 +58,36 @@ export default function InvestorPage() {
   if (!inv)
     return (
       <div className="py-16 text-center text-[15px] text-subtle">
-        Investor nicht gefunden.{" "}
+        Investor not found.{" "}
         <Link href="/discover" className="text-ink underline">
-          Zurück zu Entdecken
+          Back to Discover
         </Link>
       </div>
     );
 
   const stats = [
-    { label: "Portfolio-Wert", value: shortMoney(inv.value) },
-    { label: "Positionen", value: inv.positions.toLocaleString("de-DE") },
-    { label: "Stand", value: shortDate(inv.asOf) },
+    { label: "Portfolio value", value: shortMoney(inv.value) },
+    { label: "Positions", value: inv.positions.toLocaleString("en-US") },
+    { label: "As of", value: shortDate(inv.asOf) },
   ];
 
   const buys = inv.moves?.buys ?? inv.trades.filter((t) => t.txnType === "buy").length;
   const sells = inv.moves?.sells ?? inv.trades.filter((t) => t.txnType === "sell").length;
   const moves = [
-    { label: "Aufstockungen", value: buys, color: "rgb(var(--bull-fill))" },
-    { label: "Bestandsabbau", value: sells, color: "rgb(var(--bear-fill))" },
+    { label: "Added to", value: buys, color: "rgb(var(--bull-fill))" },
+    { label: "Reduced", value: sells, color: "rgb(var(--bear-fill))" },
   ];
   const moveTotal = buys + sells;
 
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
-        <DetailTopBar back="/discover?tab=investors" label="Investoren" action={<FollowButton kind="investor" id={inv.slug} />} />
+        <DetailTopBar back="/discover?tab=investors" label="Investors" action={<FollowButton kind="investor" id={inv.slug} />} />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
-            <div className="mt-1 text-[15px] text-subtle">{inv.fund} · 13F-Bericht vom {formatDate(inv.asOf)}</div>
           </div>
         </div>
         {inv.bio && <p className="fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
@@ -97,14 +95,12 @@ export default function InvestorPage() {
         <div className="fade-up"><StatRow items={stats} /></div>
       </div>
 
-      <DepotSkyline holdings={inv.holdings} />
-
-      <AllocationBar holdings={inv.holdings} />
+      <DepotSkyline holdings={inv.holdings} trades={inv.trades} />
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Positionen</h2>
-          <SegmentedControl label="Sortierung" size="sm" options={[["value", "Wert"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All positions</h2>
+          <SegmentedControl label="Sort by" size="sm" options={[["value", "Value"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
         </div>
 
         <div className="card overflow-hidden">
@@ -144,14 +140,13 @@ export default function InvestorPage() {
               onClick={() => setShown((n) => n + 100)}
               className="flex w-full items-center justify-center gap-1 border-t border-hair px-4 py-3 text-[15px] font-medium text-ink hover:bg-ink/[0.03]"
             >
-              {Math.min(100, holdings.length - shown)} weitere zeigen
-              <span className="text-subtle">· {(holdings.length - shown).toLocaleString("de-DE")} übrig</span>
+              Show {Math.min(100, holdings.length - shown)} more
+              <span className="text-subtle">· {(holdings.length - shown).toLocaleString("en-US")} left</span>
             </button>
           )}
           {holdings.length === 0 && (
             <div className="px-4 py-10 text-center text-sm text-subtle">
-              Keine 13F-Positionen vorhanden. (13F wird bis zu 45 Tage nach Quartalsende
-              gemeldet.)
+              No 13F positions. (A 13F is filed up to 45 days after quarter end.)
             </div>
           )}
         </div>
@@ -159,21 +154,21 @@ export default function InvestorPage() {
 
       {moveTotal > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Bewegungen im Quartal</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Moves this quarter</h2>
           <div className="card flex flex-col items-center gap-6 p-5 sm:flex-row">
             <Donut
               segments={moves}
-              centerTop={`${Math.round((buys / moveTotal) * 100)} %`}
-              centerBottom="Aufstockungen"
+              centerTop={`${Math.round((buys / moveTotal) * 100)}%`}
+              centerBottom="added to"
             />
             <div className="w-full flex-1 space-y-2.5">
               {moves.map((s) => (
                 <div key={s.label} className="flex items-center gap-2 text-sm">
                   <span className="dot-3d" style={{ ["--c" as string]: s.color }} />
                   <span className="text-ink">{s.label}</span>
-                  <span className="text-xs text-subtle">{s.value} Positionen</span>
+                  <span className="text-xs text-subtle">{s.value} positions</span>
                   <span className="ml-auto font-semibold">
-                    {Math.round((s.value / moveTotal) * 100)} %
+                    {Math.round((s.value / moveTotal) * 100)}%
                   </span>
                 </div>
               ))}
@@ -183,15 +178,15 @@ export default function InvestorPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letzte Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Latest filings</h2>
         <TradeFeed
           rows={inv.trades}
           showActor={false}
-          empty="Noch keine gemeldeten Umschichtungen."
+          empty="No reported changes yet."
         />
       </section>
 
-      <p className="text-[13px] leading-relaxed text-subtle">13F-Berichte zeigen Quartalsbestände. Veränderungen sind keine datierten Trades. Aktienwerte und Gewichte schließen Optionspositionen aus. Personen sind eine redaktionelle Zuordnung zum Fonds, keine Bestätigung der heutigen Anlageverantwortung.</p>
+      <p className="text-[13px] leading-relaxed text-subtle">13F reports show quarterly holdings. Changes are not dated trades. Stock values and weights exclude option positions. People are an editorial attribution to the fund, not a confirmation of who manages the money today.</p>
     </div>
   );
 }

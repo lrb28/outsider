@@ -97,9 +97,9 @@ export function AllocView({
   title: string;
   warnAbove?: number;
   emptyNote?: string;
-  /** Betrag je Zeile, Standard „24,7 Mio. €“. */
+  /** Amount per row, by default “€24.7M”. */
   format?: (v: number) => string;
-  /** So viele Gruppen einzeln, der Rest wird zu „Übrige“. */
+  /** This many groups on their own, the rest becomes “Others”. */
   max?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -108,18 +108,18 @@ export function AllocView({
     return (
       <div className="lcard p-5">
         <div className="text-[15px] font-semibold">{title}</div>
-        <p className="mt-2 text-sm text-subtle">{emptyNote ?? "Keine Daten."}</p>
+        <p className="mt-2 text-sm text-subtle">{emptyNote ?? "No data."}</p>
       </div>
     );
   }
-  // Everything past the first `max` folds into one grey "Übrige" share, so
-  // the ring always adds up to the whole Depot.
+  // Everything past the first `max` folds into one grey "Others" share, so
+  // the ring always adds up to the whole portfolio.
   const head = sorted.slice(0, max);
   const tail = sorted.slice(max);
   const shown: Segment[] = tail.length
-    ? [...head, { label: `Übrige (${tail.length})`, value: tail.reduce((a, s) => a + s.value, 0), color: OTHER }]
+    ? [...head, { label: `Others (${tail.length})`, value: tail.reduce((a, s) => a + s.value, 0), color: OTHER }]
     : head;
-  // Beim Antippen zeigt die Mitte das gewählte Segment, sonst das größte.
+  // The centre shows the touched segment, otherwise the largest.
   const focus = hover !== null && shown[hover] ? shown[hover] : shown[0];
   const focusShare = focus.value / total;
   const warn = warnAbove !== undefined && sorted[0].value / total > warnAbove;
@@ -129,7 +129,7 @@ export function AllocView({
       <div className="mb-4 flex items-baseline justify-between gap-2">
         <h3 className="text-[17px] font-semibold tracking-[-0.01em]">{title}</h3>
         <span className="shrink-0 text-[13px] text-subtle">
-          {sorted.length} {sorted.length === 1 ? "Gruppe" : "Gruppen"}
+          {sorted.length} {sorted.length === 1 ? "group" : "groups"}
         </span>
       </div>
 
@@ -182,45 +182,45 @@ export function AllocView({
       </div>
       {warn && (
         <p className="mt-3 text-[13px] leading-snug text-subtle">
-          Die größte Gruppe macht über {pctOf(warnAbove!, 0, false)} aus.
+          The largest group is over {pctOf(warnAbove!, 0, false)}.
         </p>
       )}
     </div>
   );
 }
 
-// ── Konzentrations-Übersicht ────────────────────────────────────────────────
+// ── Concentration ───────────────────────────────────────────────────────────
 
 export function Concentration({
   weights,
   count,
 }: {
-  weights: number[]; // absteigend sortierte Anteile (0–1)
+  weights: number[]; // shares sorted descending (0–1)
   count: number;
 }) {
   const cum = (n: number) => weights.slice(0, n).reduce((a, w) => a + w, 0);
-  // Herfindahl-Index → "effektive Anzahl" wirklich unabhängiger Positionen
+  // Herfindahl index → "effective number" of truly independent positions
   const hhi = weights.reduce((a, w) => a + w * w, 0);
   const effective = hhi > 0 ? 1 / hhi : 0;
 
   const rows: [string, string, string][] = [
-    ["Größte Position", pctOf(cum(1), 1, false), cum(1) > 0.25 ? "bear" : ""],
+    ["Largest position", pctOf(cum(1), 1, false), cum(1) > 0.25 ? "bear" : ""],
     ["Top 3", pctOf(cum(3), 1, false), cum(3) > 0.6 ? "bear" : ""],
     ["Top 5", pctOf(cum(5), 1, false), cum(5) > 0.8 ? "bear" : ""],
-    ["Positionen", String(count), ""],
+    ["Positions", String(count), ""],
     [
-      "Effektive Diversifikation",
-      `${num(effective)} Positionen`,
+      "Effective diversification",
+      `${num(effective)} positions`,
       effective < 5 ? "bear" : effective > 12 ? "bull" : "",
     ],
   ];
 
   return (
     <div className="lcard p-5">
-      <div className="mb-1 text-sm font-semibold">Konzentration</div>
+      <div className="mb-1 text-sm font-semibold">Concentration</div>
       <p className="mb-3 text-[11px] text-subtle">
-        „Effektive Diversifikation“ rechnet Übergewichte heraus: 20 Positionen, bei denen eine 80 %
-        ausmacht, zählen wie gut 1,5.
+        “Effective diversification” discounts heavy weights: 20 positions where one makes up 80%
+        count as barely 1.5.
       </p>
       <div className="space-y-2">
         {rows.map(([label, value, tone]) => (
@@ -238,7 +238,7 @@ export function Concentration({
   );
 }
 
-// ── Auf-/Zuklappbarer Abschnitt ─────────────────────────────────────────────
+// ── Collapsible section ─────────────────────────────────────────────────────
 
 export function Collapse({
   title,
@@ -279,7 +279,7 @@ export function Pills<T extends string>({
   value,
   onChange,
   size = "md",
-  label = "Auswahl",
+  label = "Selection",
 }: {
   options: readonly (readonly [T, string])[];
   value: T;

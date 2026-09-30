@@ -36,7 +36,7 @@ export function FollowButton({
       <button
         onClick={handle}
         aria-pressed={on}
-        aria-label={on ? "Nicht mehr folgen" : "Folgen"}
+        aria-label={on ? "Unfollow" : "Follow"}
         className={`h-11 w-11 shrink-0 rounded-full px-1.5 text-lg leading-none transition ${
           on ? "text-warn" : "text-zinc-400 hover:text-warn"
         }`}
@@ -49,7 +49,7 @@ export function FollowButton({
   return (
     <button onClick={handle} aria-pressed={on} className={on ? "btn-capsule !min-h-10 !px-4 !text-[14px]" : "btn-primary !min-h-10 !px-4 !text-[14px]"}>
       {on ? <Icon name="tick" className="h-4 w-4" /> : <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>}
-      {on ? "Folge ich" : "Folgen"}
+      {on ? "Following" : "Follow"}
     </button>
   );
 }

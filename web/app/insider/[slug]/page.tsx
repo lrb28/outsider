@@ -40,24 +40,24 @@ export default function InsiderPage() {
   if (!ins)
     return (
       <div className="py-16 text-center text-[15px] text-subtle">
-        Insider nicht gefunden.{" "}
-        <Link href="/feed?type=corporate_insider" className="text-ink underline">Zu den Insider-Meldungen</Link>
+        Insider not found.{" "}
+        <Link href="/feed?type=corporate_insider" className="text-ink underline">Go to insider filings</Link>
       </div>
     );
 
   const buys = ins.trades.filter((t) => t.txnType === "buy" && t.transactionCode === "P" && !t.isDerivative).length;
   const sells = ins.trades.filter((t) => t.txnType === "sell" && t.transactionCode === "S" && !t.isDerivative).length;
-  const company = ins.company ?? fixTicker(ins.ticker, ins.company) ?? "Unternehmen";
+  const company = ins.company ?? fixTicker(ins.ticker, ins.company) ?? "Company";
   const stats = [
-    { label: "Meldungen", value: ins.trades.length.toLocaleString("de-DE"), cls: "" },
-    { label: "Käufe (Code P)", value: String(buys), cls: "text-bull" },
-    { label: "Verkäufe (Code S)", value: String(sells), cls: "text-bear" },
+    { label: "Filings", value: ins.trades.length.toLocaleString("en-US"), cls: "" },
+    { label: "Buys (code P)", value: String(buys), cls: "text-bull" },
+    { label: "Sells (code S)", value: String(sells), cls: "text-bear" },
   ];
 
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-insider)" }}>
-        <DetailTopBar back="/feed?type=corporate_insider" label="Insider" />
+        <DetailTopBar back="/feed?type=corporate_insider" label="Insiders" />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           {/* An executive's picture is the company they report for. */}
@@ -80,7 +80,7 @@ export default function InsiderPage() {
           {ins.ticker && (
             <Link href={stockHref(ins.ticker)} className="btn-capsule">
               <CompanyLogo ticker={ins.ticker} company={company} size={22} rounded="rounded-[7px]" />
-              Aktie ansehen
+              View stock
             </Link>
           )}
         </div>
@@ -89,11 +89,11 @@ export default function InsiderPage() {
       </div>
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Meldungen</h2>
-        <TradeFeed rows={ins.trades} showActor={false} empty="Noch keine gemeldeten Trades." />
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All filings</h2>
+        <TradeFeed rows={ins.trades} showActor={false} empty="No reported trades yet." />
       </section>
 
-      <p className="text-[13px] leading-relaxed text-subtle">Quelle: SEC Form 4. Nur Code P (Kauf am offenen Markt) und S (Verkauf) gelten als Kauf oder Verkauf; Zuteilungen, Steuereinbehalte und Optionsausübungen werden gesondert ausgewiesen.</p>
+      <p className="text-[13px] leading-relaxed text-subtle">Source: SEC Form 4. Only code P (open-market purchase) and S (sale) count as a buy or sell; grants, tax withholding and option exercises are shown separately.</p>
     </div>
   );
 }

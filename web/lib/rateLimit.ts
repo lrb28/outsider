@@ -54,7 +54,7 @@ export function limitUpstream(route: string, req: { headers?: { get(name: string
   const result = check(`${route}:${clientKey(req.headers)}`, rule);
   if (result.allowed) return null;
   return NextResponse.json(
-    { error: "Zu viele Anfragen. Bitte kurz warten und erneut versuchen." },
+    { error: "Too many requests. Please wait a moment and try again." },
     { status: 429, headers: { "Retry-After": String(result.retryAfterSec), "Cache-Control": "no-store" } },
   );
 }

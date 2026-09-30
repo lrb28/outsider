@@ -4,28 +4,28 @@
 // dann Fonds am Namen erkannt ("… S&P US Dividend Aristocrats UCITS ETF" ist
 // ein ETF auf US-Aktien), dann Yahoos Sektorangabe für Aktien (/api/meta)
 // und für die Region das Land der ISIN oder der Börsenplatz. Nichts davon
-// wird geraten: was keine Quelle hergibt, landet in "Sonstige".
+// wird geraten: was keine Quelle hergibt, landet in "Other".
 
 export type Sector =
-  | "Technologie"
-  | "Kommunikation"
-  | "Zyklischer Konsum"
-  | "Basiskonsum"
-  | "Gesundheit"
-  | "Finanzen"
-  | "Industrie"
-  | "Energie"
-  | "Rohstoffe"
-  | "Versorger"
-  | "Immobilien"
-  | "Breit gestreut (ETF)"
-  | "Anleihen"
-  | "Krypto"
-  | "Sonstige";
+  | "Technology"
+  | "Communication"
+  | "Consumer cyclical"
+  | "Consumer staples"
+  | "Healthcare"
+  | "Financials"
+  | "Industrials"
+  | "Energy"
+  | "Materials"
+  | "Utilities"
+  | "Real estate"
+  | "Broad market (ETF)"
+  | "Bonds"
+  | "Crypto"
+  | "Other";
 
-export type Region = "USA" | "Europa" | "Asien" | "Schwellenländer" | "Global" | "Kanada" | "Australien" | "Sonstige";
+export type Region = "USA" | "Europe" | "Asia" | "Emerging markets" | "Global" | "Canada" | "Australia" | "Other";
 
-export type AssetClass = "Aktie" | "ETF" | "Krypto" | "Anleihe" | "Rohstoff" | "Sonstige";
+export type AssetClass = "Stock" | "ETF" | "Crypto" | "Bond" | "Commodity" | "Other";
 
 export interface AssetMeta {
   sector: Sector;
@@ -33,31 +33,31 @@ export interface AssetMeta {
   assetClass: AssetClass;
 }
 
-const S = (sector: Sector, region: Region = "USA", assetClass: AssetClass = "Aktie"): AssetMeta => ({
+const S = (sector: Sector, region: Region = "USA", assetClass: AssetClass = "Stock"): AssetMeta => ({
   sector,
   region,
   assetClass,
 });
 
-const TECH = S("Technologie");
-const COMM = S("Kommunikation");
-const CYC = S("Zyklischer Konsum");
-const STAP = S("Basiskonsum");
-const HLTH = S("Gesundheit");
-const FIN = S("Finanzen");
-const IND = S("Industrie");
-const ENER = S("Energie");
-const MAT = S("Rohstoffe");
-const UTIL = S("Versorger");
-const RE = S("Immobilien");
+const TECH = S("Technology");
+const COMM = S("Communication");
+const CYC = S("Consumer cyclical");
+const STAP = S("Consumer staples");
+const HLTH = S("Healthcare");
+const FIN = S("Financials");
+const IND = S("Industrials");
+const ENER = S("Energy");
+const MAT = S("Materials");
+const UTIL = S("Utilities");
+const RE = S("Real estate");
 
-const ETF_US = S("Breit gestreut (ETF)", "USA", "ETF");
-const ETF_GLOBAL = S("Breit gestreut (ETF)", "Global", "ETF");
-const ETF_EU = S("Breit gestreut (ETF)", "Europa", "ETF");
-const ETF_EM = S("Breit gestreut (ETF)", "Schwellenländer", "ETF");
-const GOLD = S("Rohstoffe", "Global", "Rohstoff");
-const BOND = S("Anleihen", "USA", "Anleihe");
-const CRYPTO = S("Krypto", "Global", "Krypto");
+const ETF_US = S("Broad market (ETF)", "USA", "ETF");
+const ETF_GLOBAL = S("Broad market (ETF)", "Global", "ETF");
+const ETF_EU = S("Broad market (ETF)", "Europe", "ETF");
+const ETF_EM = S("Broad market (ETF)", "Emerging markets", "ETF");
+const GOLD = S("Materials", "Global", "Commodity");
+const BOND = S("Bonds", "USA", "Bond");
+const CRYPTO = S("Crypto", "Global", "Crypto");
 
 export const ASSET_META: Record<string, AssetMeta> = {
   // ── Technologie ───────────────────────────────────────────────────────────
@@ -67,17 +67,17 @@ export const ASSET_META: Record<string, AssetMeta> = {
   CRWD: TECH, DDOG: TECH, NET: TECH, SMCI: TECH, VRT: TECH, ANET: TECH,
   DELL: TECH, HPQ: TECH, CSCO: TECH, ACN: TECH, MDB: TECH, ZS: TECH,
   SNPS: TECH, CDNS: TECH, KLAC: TECH, LRCX: TECH, AMAT: TECH, MRVL: TECH,
-  ON: TECH, NXPI: TECH, ADI: TECH, WDAY: TECH, TEAM: TECH, SHOP: S("Technologie", "Global"),
-  TSM: S("Technologie", "Asien"), ASML: S("Technologie", "Europa"),
-  SAP: S("Technologie", "Europa"), SONY: S("Technologie", "Asien"),
-  INFY: S("Technologie", "Schwellenländer"), STM: S("Technologie", "Europa"),
-  ARM: S("Technologie", "Europa"), IONQ: TECH, RGTI: TECH, APP: TECH,
+  ON: TECH, NXPI: TECH, ADI: TECH, WDAY: TECH, TEAM: TECH, SHOP: S("Technology", "Global"),
+  TSM: S("Technology", "Asia"), ASML: S("Technology", "Europe"),
+  SAP: S("Technology", "Europe"), SONY: S("Technology", "Asia"),
+  INFY: S("Technology", "Emerging markets"), STM: S("Technology", "Europe"),
+  ARM: S("Technology", "Europe"), IONQ: TECH, RGTI: TECH, APP: TECH,
 
   // ── Kommunikation & Medien ────────────────────────────────────────────────
   GOOGL: COMM, GOOG: COMM, META: COMM, NFLX: COMM, DIS: COMM, CMCSA: COMM,
   T: COMM, VZ: COMM, CHTR: COMM, SIRI: COMM, EA: COMM, TTWO: COMM,
-  WBD: COMM, SPOT: S("Kommunikation", "Europa"), RBLX: COMM, PINS: COMM,
-  SNAP: COMM, LYV: COMM, OMC: COMM, TME: S("Kommunikation", "Asien"),
+  WBD: COMM, SPOT: S("Communication", "Europe"), RBLX: COMM, PINS: COMM,
+  SNAP: COMM, LYV: COMM, OMC: COMM, TME: S("Communication", "Asia"),
 
   // ── Zyklischer Konsum ─────────────────────────────────────────────────────
   AMZN: CYC, TSLA: CYC, HD: CYC, MCD: CYC, NKE: CYC, SBUX: CYC, LOW: CYC,
@@ -85,18 +85,18 @@ export const ASSET_META: Record<string, AssetMeta> = {
   AZO: CYC, LULU: CYC, DPZ: CYC, YUM: CYC, F: CYC, GM: CYC, RIVN: CYC,
   LCID: CYC, DKNG: CYC, EBAY: CYC, ETSY: CYC, RCL: CYC, CCL: CYC, DAL: CYC,
   UAL: CYC, LUV: CYC, LEN: CYC, DHI: CYC, PHM: CYC, NVR: CYC, WSM: CYC,
-  BABA: S("Zyklischer Konsum", "Asien"), JD: S("Zyklischer Konsum", "Asien"),
-  PDD: S("Zyklischer Konsum", "Asien"), SE: S("Zyklischer Konsum", "Asien"),
-  MELI: S("Zyklischer Konsum", "Schwellenländer"), TM: S("Zyklischer Konsum", "Asien"),
-  NIO: S("Zyklischer Konsum", "Asien"), LI: S("Zyklischer Konsum", "Asien"),
+  BABA: S("Consumer cyclical", "Asia"), JD: S("Consumer cyclical", "Asia"),
+  PDD: S("Consumer cyclical", "Asia"), SE: S("Consumer cyclical", "Asia"),
+  MELI: S("Consumer cyclical", "Emerging markets"), TM: S("Consumer cyclical", "Asia"),
+  NIO: S("Consumer cyclical", "Asia"), LI: S("Consumer cyclical", "Asia"),
 
   // ── Basiskonsum ───────────────────────────────────────────────────────────
   WMT: STAP, COST: STAP, PG: STAP, KO: STAP, PEP: STAP, PM: STAP, MO: STAP,
   MDLZ: STAP, CL: STAP, KMB: STAP, GIS: STAP, KHC: STAP, HSY: STAP, STZ: STAP,
   KDP: STAP, MNST: STAP, SYY: STAP, KR: STAP, DG: STAP, TGT: STAP,
   EL: STAP, CHD: STAP, ADM: STAP, TSN: STAP,
-  UL: S("Basiskonsum", "Europa"), NSRGY: S("Basiskonsum", "Europa"),
-  BUD: S("Basiskonsum", "Europa"), DEO: S("Basiskonsum", "Europa"),
+  UL: S("Consumer staples", "Europe"), NSRGY: S("Consumer staples", "Europe"),
+  BUD: S("Consumer staples", "Europe"), DEO: S("Consumer staples", "Europe"),
 
   // ── Gesundheit ────────────────────────────────────────────────────────────
   LLY: HLTH, UNH: HLTH, JNJ: HLTH, ABBV: HLTH, MRK: HLTH, PFE: HLTH,
@@ -105,9 +105,9 @@ export const ASSET_META: Record<string, AssetMeta> = {
   VRTX: HLTH, REGN: HLTH, BIIB: HLTH, MRNA: HLTH, ZTS: HLTH, SYK: HLTH,
   BSX: HLTH, MDT: HLTH, BDX: HLTH, EW: HLTH, IDXX: HLTH, IQV: HLTH,
   A: HLTH, BRKR: HLTH, DVA: HLTH, MCK: HLTH, COR: HLTH, HCA: HLTH,
-  NVO: S("Gesundheit", "Europa"), AZN: S("Gesundheit", "Europa"),
-  NVS: S("Gesundheit", "Europa"), GSK: S("Gesundheit", "Europa"),
-  SNY: S("Gesundheit", "Europa"),
+  NVO: S("Healthcare", "Europe"), AZN: S("Healthcare", "Europe"),
+  NVS: S("Healthcare", "Europe"), GSK: S("Healthcare", "Europe"),
+  SNY: S("Healthcare", "Europe"),
 
   // ── Finanzen ──────────────────────────────────────────────────────────────
   "BRK.A": FIN, "BRK.B": FIN, JPM: FIN, BAC: FIN, WFC: FIN, C: FIN, GS: FIN,
@@ -116,9 +116,9 @@ export const ASSET_META: Record<string, AssetMeta> = {
   CB: FIN, AON: FIN, MMC: FIN, PGR: FIN, TRV: FIN, ALL: FIN, AIG: FIN,
   MET: FIN, PRU: FIN, USB: FIN, PNC: FIN, TFC: FIN, BK: FIN, STT: FIN,
   KKR: FIN, BX: FIN, APO: FIN, ARES: FIN, SLM: FIN, SOFI: FIN, HOOD: FIN,
-  COIN: S("Finanzen", "USA"), NU: S("Finanzen", "Schwellenländer"),
-  HSBC: S("Finanzen", "Europa"), UBS: S("Finanzen", "Europa"),
-  ALV: S("Finanzen", "Europa"), DB: S("Finanzen", "Europa"),
+  COIN: S("Financials", "USA"), NU: S("Financials", "Emerging markets"),
+  HSBC: S("Financials", "Europe"), UBS: S("Financials", "Europe"),
+  ALV: S("Financials", "Europe"), DB: S("Financials", "Europe"),
 
   // ── Industrie ─────────────────────────────────────────────────────────────
   GE: IND, CAT: IND, BA: IND, HON: IND, UNP: IND, UPS: IND, FDX: IND,
@@ -126,22 +126,22 @@ export const ASSET_META: Record<string, AssetMeta> = {
   ITW: IND, PH: IND, CSX: IND, NSC: IND, WM: IND, RSG: IND, CARR: IND,
   JCI: IND, CMI: IND, PCAR: IND, ROK: IND, TT: IND, URI: IND, PWR: IND,
   LHX: IND, TDG: IND, AXON: IND, LDOS: IND, HWM: IND, LAMR: RE, LPX: MAT,
-  SIE: S("Industrie", "Europa"), ABBNY: S("Industrie", "Europa"),
-  AIR: S("Industrie", "Europa"),
+  SIE: S("Industrials", "Europe"), ABBNY: S("Industrials", "Europe"),
+  AIR: S("Industrials", "Europe"),
 
   // ── Energie ───────────────────────────────────────────────────────────────
   XOM: ENER, CVX: ENER, COP: ENER, OXY: ENER, SLB: ENER, HAL: ENER,
   EOG: ENER, PSX: ENER, VLO: ENER, MPC: ENER, KMI: ENER, WMB: ENER,
   OKE: ENER, DVN: ENER, FANG: ENER, HES: ENER, BKR: ENER, TRGP: ENER,
-  SHEL: S("Energie", "Europa"), BP: S("Energie", "Europa"),
-  TTE: S("Energie", "Europa"), E: S("Energie", "Europa"),
-  PBR: S("Energie", "Schwellenländer"),
+  SHEL: S("Energy", "Europe"), BP: S("Energy", "Europe"),
+  TTE: S("Energy", "Europe"), E: S("Energy", "Europe"),
+  PBR: S("Energy", "Emerging markets"),
 
   // ── Rohstoffe & Chemie ────────────────────────────────────────────────────
   LIN: MAT, SHW: MAT, APD: MAT, ECL: MAT, FCX: MAT, NEM: MAT, NUE: MAT,
   DOW: MAT, DD: MAT, PPG: MAT, ALB: MAT, CTVA: MAT, VMC: MAT, MLM: MAT,
-  BHP: S("Rohstoffe", "Global"), RIO: S("Rohstoffe", "Global"),
-  VALE: S("Rohstoffe", "Schwellenländer"), GOLD: S("Rohstoffe", "Global"),
+  BHP: S("Materials", "Global"), RIO: S("Materials", "Global"),
+  VALE: S("Materials", "Emerging markets"), GOLD: S("Materials", "Global"),
 
   // ── Versorger & Immobilien ────────────────────────────────────────────────
   NEE: UTIL, DUK: UTIL, SO: UTIL, D: UTIL, AEP: UTIL, SRE: UTIL, EXC: UTIL,
@@ -159,20 +159,20 @@ export const ASSET_META: Record<string, AssetMeta> = {
   VT: ETF_GLOBAL, ACWI: ETF_GLOBAL, URTH: ETF_GLOBAL, IOO: ETF_GLOBAL,
   VXUS: ETF_GLOBAL, EFA: ETF_EU, VGK: ETF_EU, IEUR: ETF_EU, EZU: ETF_EU,
   EEM: ETF_EM, VWO: ETF_EM, IEMG: ETF_EM, FXI: ETF_EM, MCHI: ETF_EM,
-  INDA: ETF_EM, EWJ: S("Breit gestreut (ETF)", "Asien", "ETF"),
+  INDA: ETF_EM, EWJ: S("Broad market (ETF)", "Asia", "ETF"),
   GLD: GOLD, IAU: GOLD, SLV: GOLD, GDX: GOLD, PDBC: GOLD, USO: GOLD,
   AGG: BOND, BND: BOND, TLT: BOND, IEF: BOND, SHY: BOND, LQD: BOND,
-  HYG: BOND, TIP: BOND, BNDX: S("Anleihen", "Global", "Anleihe"),
+  HYG: BOND, TIP: BOND, BNDX: S("Bonds", "Global", "Bond"),
 
   // ── Krypto ────────────────────────────────────────────────────────────────
   "BTC-USD": CRYPTO, "ETH-USD": CRYPTO, "SOL-USD": CRYPTO, "XRP-USD": CRYPTO,
   "BNB-USD": CRYPTO, "ADA-USD": CRYPTO, "DOGE-USD": CRYPTO, "AVAX-USD": CRYPTO,
   "LINK-USD": CRYPTO, "DOT-USD": CRYPTO, "MATIC-USD": CRYPTO, "LTC-USD": CRYPTO,
-  IBIT: S("Krypto", "Global", "ETF"), FBTC: S("Krypto", "Global", "ETF"),
-  GBTC: S("Krypto", "Global", "ETF"), MSTR: S("Krypto", "USA"),
+  IBIT: S("Crypto", "Global", "ETF"), FBTC: S("Crypto", "Global", "ETF"),
+  GBTC: S("Crypto", "Global", "ETF"), MSTR: S("Crypto", "USA"),
 };
 
-const UNKNOWN: AssetMeta = { sector: "Sonstige", region: "Sonstige", assetClass: "Sonstige" };
+const UNKNOWN: AssetMeta = { sector: "Other", region: "Other", assetClass: "Other" };
 
 export function assetMeta(ticker: string | null | undefined): AssetMeta {
   if (!ticker) return UNKNOWN;
@@ -194,17 +194,17 @@ export interface ListingMeta {
 }
 
 const YAHOO_SECTOR: Record<string, Sector> = {
-  Technology: "Technologie",
-  "Communication Services": "Kommunikation",
-  "Consumer Cyclical": "Zyklischer Konsum",
-  "Consumer Defensive": "Basiskonsum",
-  Healthcare: "Gesundheit",
-  "Financial Services": "Finanzen",
-  Industrials: "Industrie",
-  Energy: "Energie",
-  "Basic Materials": "Rohstoffe",
-  Utilities: "Versorger",
-  "Real Estate": "Immobilien",
+  Technology: "Technology",
+  "Communication Services": "Communication",
+  "Consumer Cyclical": "Consumer cyclical",
+  "Consumer Defensive": "Consumer staples",
+  Healthcare: "Healthcare",
+  "Financial Services": "Financials",
+  Industrials: "Industrials",
+  Energy: "Energy",
+  "Basic Materials": "Materials",
+  Utilities: "Utilities",
+  "Real Estate": "Real estate",
 };
 
 const EUROPE = new Set(["AT", "BE", "CH", "CZ", "DE", "DK", "ES", "FI", "FR", "GB", "GR", "HU", "IE", "IT", "LU", "NL", "NO", "PL", "PT", "SE", "IS", "JE", "GG", "IM", "FO", "LI", "MC"]);
@@ -216,11 +216,11 @@ const DOMICILES = new Set(["IE", "LU", "NL", "JE", "GG", "BM", "KY", "VG", "PA",
 
 function regionOfCountry(cc: string): Region | null {
   if (cc === "US") return "USA";
-  if (cc === "CA") return "Kanada";
-  if (cc === "AU" || cc === "NZ") return "Australien";
-  if (EUROPE.has(cc)) return "Europa";
-  if (ASIA.has(cc)) return "Asien";
-  if (EMERGING.has(cc)) return "Schwellenländer";
+  if (cc === "CA") return "Canada";
+  if (cc === "AU" || cc === "NZ") return "Australia";
+  if (EUROPE.has(cc)) return "Europe";
+  if (ASIA.has(cc)) return "Asia";
+  if (EMERGING.has(cc)) return "Emerging markets";
   return null;
 }
 
@@ -229,12 +229,12 @@ function regionOfSymbol(symbol: string): Region {
   const m = /\.([A-Z]{1,3})$/.exec(symbol.toUpperCase());
   if (!m) return "USA";
   const sfx = m[1];
-  if (["DE", "F", "SG", "MU", "BE", "HM", "DU", "HA", "PA", "AS", "BR", "MI", "MC", "LS", "VI", "SW", "L", "IL", "IR", "ST", "CO", "HE", "OL", "WA", "PR", "AT", "IC"].includes(sfx)) return "Europa";
-  if (["TO", "V", "CN", "NE"].includes(sfx)) return "Kanada";
-  if (["AX", "NZ"].includes(sfx)) return "Australien";
-  if (["T", "HK", "SI"].includes(sfx)) return "Asien";
-  if (["SS", "SZ", "NS", "BO", "SA", "MX", "JO", "KS", "KQ", "TW", "TWO", "JK", "BK", "KL", "IS", "SN"].includes(sfx)) return "Schwellenländer";
-  return "Sonstige";
+  if (["DE", "F", "SG", "MU", "BE", "HM", "DU", "HA", "PA", "AS", "BR", "MI", "MC", "LS", "VI", "SW", "L", "IL", "IR", "ST", "CO", "HE", "OL", "WA", "PR", "AT", "IC"].includes(sfx)) return "Europe";
+  if (["TO", "V", "CN", "NE"].includes(sfx)) return "Canada";
+  if (["AX", "NZ"].includes(sfx)) return "Australia";
+  if (["T", "HK", "SI"].includes(sfx)) return "Asia";
+  if (["SS", "SZ", "NS", "BO", "SA", "MX", "JO", "KS", "KQ", "TW", "TWO", "JK", "BK", "KL", "IS", "SN"].includes(sfx)) return "Emerging markets";
+  return "Other";
 }
 
 // A fund by its name: a fund word, or a brand that only issues funds. Asset
@@ -247,36 +247,36 @@ const isFundName = (name: string) => FUND_WORD.test(name) || FUND_BRAND.test(nam
 /** Region a fund invests in, read from its name ("S&P 500", "MSCI World"). */
 function fundRegion(name: string): Region {
   const n = ` ${name.toUpperCase()} `;
-  if (/EMERGING|\bEM\b|SCHWELLEN|CHINA|INDIA|BRAZIL|LATIN|\bBRIC/.test(n)) return "Schwellenländer";
+  if (/EMERGING|\bEM\b|SCHWELLEN|CHINA|INDIA|BRAZIL|LATIN|\bBRIC/.test(n)) return "Emerging markets";
   if (/\b(US|U\.S\.|USA|AMERICA|AMERICAN|S&P ?500|S&P|NASDAQ|DOW JONES|RUSSELL|NYSE)\b/.test(n) && !/\bEX[- ]?US\b/.test(n)) return "USA";
-  if (/EUROPE|EUROPA|EURO STOXX|STOXX|EUROZONE|\bEMU\b|\bDAX\b|MDAX|GERMANY|DEUTSCHLAND|FTSE 100|FTSE 250|\bUK\b|UNITED KINGDOM|FRANCE|\bCAC\b|SWITZERLAND|\bSMI\b|\bIBEX\b|\bAEX\b|NORDIC/.test(n)) return "Europa";
-  if (/JAPAN|NIKKEI|TOPIX|ASIA|PACIFIC|HONG KONG|SINGAPORE/.test(n)) return "Asien";
-  if (/CANADA|\bTSX\b/.test(n)) return "Kanada";
-  if (/AUSTRALIA|\bASX\b/.test(n)) return "Australien";
+  if (/EUROPE|EUROPA|EURO STOXX|STOXX|EUROZONE|\bEMU\b|\bDAX\b|MDAX|GERMANY|DEUTSCHLAND|FTSE 100|FTSE 250|\bUK\b|UNITED KINGDOM|FRANCE|\bCAC\b|SWITZERLAND|\bSMI\b|\bIBEX\b|\bAEX\b|NORDIC/.test(n)) return "Europe";
+  if (/JAPAN|NIKKEI|TOPIX|ASIA|PACIFIC|HONG KONG|SINGAPORE/.test(n)) return "Asia";
+  if (/CANADA|\bTSX\b/.test(n)) return "Canada";
+  if (/AUSTRALIA|\bASX\b/.test(n)) return "Australia";
   return "Global";
 }
 
 /** What a fund holds, from its name: a sector, bonds, a commodity or crypto. */
 function fundKind(name: string): { sector: Sector; assetClass: AssetClass } {
   const n = name.toUpperCase();
-  if (/BITCOIN|ETHEREUM|CRYPTO|KRYPTO|SOLANA/.test(n)) return { sector: "Krypto", assetClass: "Krypto" };
-  if (/\bGOLD\b(?! MINERS)|SILVER|SILBER|PLATIN|PHYSICAL|COMMODIT|ROHSTOFF|\bETC\b/.test(n)) return { sector: "Rohstoffe", assetClass: "Rohstoff" };
-  if (/BOND|TREASURY|ANLEIHE|RENTEN|\bGOVT\b|GOVERNMENT|CORPORATE|AGGREGATE|T-BILL|MONEY MARKET|GELDMARKT|\bTIPS\b|INFLATION LINKED/.test(n)) return { sector: "Anleihen", assetClass: "Anleihe" };
+  if (/BITCOIN|ETHEREUM|CRYPTO|KRYPTO|SOLANA/.test(n)) return { sector: "Crypto", assetClass: "Crypto" };
+  if (/\bGOLD\b(?! MINERS)|SILVER|SILBER|PLATIN|PHYSICAL|COMMODIT|ROHSTOFF|\bETC\b/.test(n)) return { sector: "Materials", assetClass: "Commodity" };
+  if (/BOND|TREASURY|ANLEIHE|RENTEN|\bGOVT\b|GOVERNMENT|CORPORATE|AGGREGATE|T-BILL|MONEY MARKET|GELDMARKT|\bTIPS\b|INFLATION LINKED/.test(n)) return { sector: "Bonds", assetClass: "Bond" };
   const sectors: [RegExp, Sector][] = [
-    [/INFORMATION TECH|TECHNOLOGY|\bTECH\b|SEMICONDUCTOR|CYBER|ROBOTIC|ARTIFICIAL INTELLIGENCE|\bAI\b|CLOUD|SOFTWARE/, "Technologie"],
-    [/HEALTH ?CARE|BIOTECH|PHARMA|MEDICAL/, "Gesundheit"],
-    [/FINANCIAL|\bBANKS?\b|INSURANCE/, "Finanzen"],
-    [/ENERGY|\bOIL\b|\bGAS\b/, "Energie"],
-    [/REAL ESTATE|\bREITS?\b|PROPERTY|IMMOBILIEN/, "Immobilien"],
-    [/UTILITIES|VERSORGER/, "Versorger"],
-    [/CONSUMER STAPLES/, "Basiskonsum"],
-    [/CONSUMER DISCRETIONARY/, "Zyklischer Konsum"],
-    [/INDUSTRIAL|DEFEN[CS]E|AEROSPACE/, "Industrie"],
-    [/MATERIALS|MINING|MINERS|METALS/, "Rohstoffe"],
-    [/COMMUNICATION|TELECOM|MEDIA/, "Kommunikation"],
+    [/INFORMATION TECH|TECHNOLOGY|\bTECH\b|SEMICONDUCTOR|CYBER|ROBOTIC|ARTIFICIAL INTELLIGENCE|\bAI\b|CLOUD|SOFTWARE/, "Technology"],
+    [/HEALTH ?CARE|BIOTECH|PHARMA|MEDICAL/, "Healthcare"],
+    [/FINANCIAL|\bBANKS?\b|INSURANCE/, "Financials"],
+    [/ENERGY|\bOIL\b|\bGAS\b/, "Energy"],
+    [/REAL ESTATE|\bREITS?\b|PROPERTY|IMMOBILIEN/, "Real estate"],
+    [/UTILITIES|VERSORGER/, "Utilities"],
+    [/CONSUMER STAPLES/, "Consumer staples"],
+    [/CONSUMER DISCRETIONARY/, "Consumer cyclical"],
+    [/INDUSTRIAL|DEFEN[CS]E|AEROSPACE/, "Industrials"],
+    [/MATERIALS|MINING|MINERS|METALS/, "Materials"],
+    [/COMMUNICATION|TELECOM|MEDIA/, "Communication"],
   ];
   for (const [re, sector] of sectors) if (re.test(n)) return { sector, assetClass: "ETF" };
-  return { sector: "Breit gestreut (ETF)", assetClass: "ETF" };
+  return { sector: "Broad market (ETF)", assetClass: "ETF" };
 }
 
 /**
@@ -306,7 +306,7 @@ export function classify({
   const isFund = type === "ETF" || type === "MUTUALFUND" || /ETF|ETC|FONDS|FUND/.test(hint) || isFundName(name);
   if (isFund) {
     const kind = fundKind(name);
-    return { sector: kind.sector, region: kind.assetClass === "Rohstoff" || kind.assetClass === "Krypto" ? "Global" : fundRegion(name), assetClass: kind.assetClass };
+    return { sector: kind.sector, region: kind.assetClass === "Commodity" || kind.assetClass === "Crypto" ? "Global" : fundRegion(name), assetClass: kind.assetClass };
   }
   if (type === "CRYPTOCURRENCY") return CRYPTO;
 
@@ -314,7 +314,7 @@ export function classify({
   let region: Region | null = cc && !DOMICILES.has(cc) ? regionOfCountry(cc) : null;
   if (!region && sym) region = regionOfSymbol(sym);
   if (!region && cc) region = regionOfCountry(cc);
-  const sector = (meta?.sector && YAHOO_SECTOR[meta.sector]) || "Sonstige";
+  const sector = (meta?.sector && YAHOO_SECTOR[meta.sector]) || "Other";
   const known = !!(sym || cc || meta);
-  return { sector, region: region ?? "Sonstige", assetClass: known ? "Aktie" : "Sonstige" };
+  return { sector, region: region ?? "Other", assetClass: known ? "Stock" : "Other" };
 }

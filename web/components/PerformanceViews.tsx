@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { cAbbrev, cMoney } from "@/lib/money";
 import { pctOf } from "@/lib/format";
 
-const MONTHS = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** Rot → weiß → grün. `t` läuft von −1 (schlecht) über 0 bis +1 (gut). */
 function heatColor(t: number): string {
@@ -55,7 +55,7 @@ export function MonthHeatmap({
   }, [months]);
 
   if (grid.length === 0) {
-    return <div className="py-8 text-center text-sm text-subtle">Noch keine vollen Monate.</div>;
+    return <div className="py-8 text-center text-sm text-subtle">No full months yet.</div>;
   }
 
   return (
@@ -67,7 +67,7 @@ export function MonthHeatmap({
             <span className="text-subtle">{`${MONTHS[Number(hover.key.slice(5, 7)) - 1]} ${hover.key.slice(0, 4)}`}</span>
           </>
         ) : (
-          <span className="text-subtle">Tippe auf eine Kachel für den genauen Wert.</span>
+          <span className="text-subtle">Tap a tile for the exact value.</span>
         )}
       </div>
 
@@ -83,7 +83,7 @@ export function MonthHeatmap({
                   {m.slice(0, 1)}<span className="hidden sm:inline">{m.slice(1)}</span>
                 </th>
               ))}
-              <th className="w-9 pb-1 text-[9px] font-medium text-subtle sm:w-14 sm:text-[10px]">Jahr</th>
+              <th className="w-9 pb-1 text-[9px] font-medium text-subtle sm:w-14 sm:text-[10px]">Year</th>
             </tr>
           </thead>
           <tbody>
@@ -127,8 +127,8 @@ export function MonthHeatmap({
         </table>
       </div>
       <p className="mt-2 text-[11px] text-subtle">
-        Werte in Prozent. Die Farbskala richtet sich nach deiner eigenen Schwankungsbreite — nicht
-        nach einem festen Maßstab.
+        Values in percent. The colour scale follows your own range of swings, not a fixed
+        scale.
       </p>
     </div>
   );
@@ -139,8 +139,8 @@ export function MonthHeatmap({
 export interface TreeItem {
   key: string;
   label: string;
-  value: number; // Fläche = Depotanteil
-  ret: number | null; // Farbe = Rendite
+  value: number; // area = share of the portfolio
+  ret: number | null; // colour = return
   gain: number;
 }
 
@@ -220,7 +220,7 @@ export function ReturnTreemap({ items }: { items: TreeItem[] }) {
   }, [sorted]);
 
   if (tiles.length === 0) {
-    return <div className="py-8 text-center text-sm text-subtle">Keine bewerteten Positionen.</div>;
+    return <div className="py-8 text-center text-sm text-subtle">No valued positions.</div>;
   }
   const active = hover ? sorted.find((s) => s.key === hover) : null;
 
@@ -228,7 +228,7 @@ export function ReturnTreemap({ items }: { items: TreeItem[] }) {
     <div>
       <div className="mb-2 flex items-baseline gap-3">
         <span className="text-sm font-semibold">
-          {active ? active.label : "Größe = Anteil, Farbe = Rendite"}
+          {active ? active.label : "Size = share, colour = return"}
         </span>
         {active && (
           <span
@@ -285,12 +285,11 @@ export function ReturnTreemap({ items }: { items: TreeItem[] }) {
   );
 }
 
-// ── Beitrag zum Gewinn ──────────────────────────────────────────────────────
+// ── Contribution to the gain ────────────────────────────────────────────────
 
 /**
- * Welche Position hat wie viel Euro zum Gesamtgewinn beigetragen? Prozente
- * täuschen: 300 % auf eine Kleinstposition bringen weniger als 20 % auf die
- * größte.
+ * How much money did each position add to the total gain? Percentages
+ * mislead: 300% on a tiny position brings less than 20% on the largest.
  */
 export function ContributionBars({
   items,
@@ -308,10 +307,10 @@ export function ContributionBars({
   return (
     <div>
       <div className="mb-3 text-[11px] text-subtle">
-        In Euro, nicht in Prozent. {sorted[0] && totalPos > 0 && (
+        In money, not percent. {sorted[0] && totalPos > 0 && (
           <>
-            <span className="font-semibold text-ink">{sorted[0].label}</span> allein steuert{" "}
-            {pctOf(sorted[0].gain / totalPos, 0, false)} aller Gewinne bei.
+            <span className="font-semibold text-ink">{sorted[0].label}</span> alone brings{" "}
+            {pctOf(sorted[0].gain / totalPos, 0, false)} of all gains.
           </>
         )}
       </div>
@@ -372,15 +371,15 @@ export function CapitalFlow({
       <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
           <div className="text-lg font-semibold tabular-nums text-bull">{cMoney(totalIn)}</div>
-          <div className="text-[11px] text-subtle">eingezahlt</div>
+          <div className="text-[11px] text-subtle">paid in</div>
         </div>
         <div>
           <div className="text-lg font-semibold tabular-nums text-bear">{cMoney(totalOut)}</div>
-          <div className="text-[11px] text-subtle">entnommen</div>
+          <div className="text-[11px] text-subtle">taken out</div>
         </div>
         <div>
           <div className="text-lg font-semibold tabular-nums">{cMoney(totalIn - totalOut)}</div>
-          <div className="text-[11px] text-subtle">netto eingesetzt</div>
+          <div className="text-[11px] text-subtle">net invested</div>
         </div>
         {h && (
           <div className="ml-auto text-right">

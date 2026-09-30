@@ -1,18 +1,19 @@
 import type { FeedRow } from "./types";
 
-// Numbers are always written the German way (1.234,5), and the percent sign
-// is joined with a no-break space so it never wraps onto a line of its own.
+// Numbers are written the English way (1,234.5) and the percent sign follows
+// the number directly (22.4%). NBSP still joins a number to a word unit.
 export const NBSP = "\u00A0";
+export const LOCALE = "en-US";
 
-/** 1.234,5 with a fixed number of decimals. */
+/** 1,234.5 with a fixed number of decimals. */
 export function num(v: number, digits = 1): string {
-  return v.toLocaleString("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return v.toLocaleString(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-/** A ratio as percent: 0.224 -> "+22,4 %" (signed) or "22,4 %". */
+/** A ratio as percent: 0.224 -> "+22.4%" (signed) or "22.4%". */
 export function pctOf(v: number | null | undefined, digits = 1, signed = true): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
-  return `${signed && v >= 0 ? "+" : ""}${num(v * 100, digits)}${NBSP}%`;
+  return `${signed && v >= 0 ? "+" : ""}${num(v * 100, digits)}%`;
 }
 
 export function pct(v: number | null): string {
@@ -21,7 +22,7 @@ export function pct(v: number | null): string {
 
 export function money(v: number | null | undefined): string {
   if (v === null || v === undefined) return "—";
-  return `$${Math.round(v).toLocaleString("de-DE")}`;
+  return `$${Math.round(v).toLocaleString(LOCALE)}`;
 }
 
 // Compact money like Eaves: $263.1B, $12.4M, $980K.
@@ -29,53 +30,62 @@ export function abbrevMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
-  if (a >= 1e12) return `${sign}$${num(a / 1e12)}${NBSP}Bio.`;
-  if (a >= 1e9) return `${sign}$${num(a / 1e9)}${NBSP}Mrd.`;
-  if (a >= 1e6) return `${sign}$${num(a / 1e6)}${NBSP}Mio.`;
+  if (a >= 1e12) return `${sign}$${num(a / 1e12)}T`;
+  if (a >= 1e9) return `${sign}$${num(a / 1e9)}B`;
+  if (a >= 1e6) return `${sign}$${num(a / 1e6)}M`;
   if (a >= 1e3) return `${sign}$${num(a / 1e3, 0)}K`;
   return `${sign}$${num(a, 0)}`;
 }
 
-// Key figures on phones: three significant digits, so $263 Mrd., $26.3 Mrd.
+// Key figures on phones: three significant digits, so $263B, $26.3B.
 export function shortMoney(v: number | null | undefined): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "—";
   const a = Math.abs(v);
   const sign = v < 0 ? "-" : "";
-  const units: [number, string][] = [[1e12, `${NBSP}Bio.`], [1e9, `${NBSP}Mrd.`], [1e6, `${NBSP}Mio.`], [1e3, "K"]];
+  const units: [number, string][] = [[1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]];
   for (const [i, [size, unit]] of units.entries()) {
     const n = a / size;
     if (n < 1) continue;
-    // Number() drops a trailing ".0": $71 Mrd., not $71,0 Mrd.
+    // Number() drops a trailing ".0": $71B, not $71.0B.
     const r = Number(n.toFixed(n >= 99.95 ? 0 : 1));
-    // 999.6 Mrd. would round to "1000 Mrd."; the next unit up reads better.
+    // 999.6B would round to "1000B"; the next unit up reads better.
     if (i > 0 && r >= 1000) return `${sign}$1${units[i - 1][1]}`;
-    return `${sign}$${r.toLocaleString("de-DE", { maximumFractionDigits: 1 })}${unit}`;
+    return `${sign}$${r.toLocaleString(LOCALE, { maximumFractionDigits: 1 })}${unit}`;
   }
   return `${sign}$${a.toFixed(0)}`;
 }
 
-// ISO date (2026-01-27) -> deutsches Format (27.01.2026)
-export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  if (!y || !m || !d) return iso;
-  return `${d}.${m}.${y}`;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function parts(iso: string): [number, number, number] | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const month = Number(m[2]);
+  return month >= 1 && month <= 12 ? [Number(m[1]), month, Number(m[3])] : null;
 }
 
-// ISO date (2026-01-27) -> 27.01.26, for key figures.
+// ISO date (2026-01-27) -> "Jan 27, 2026".
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const p = parts(iso);
+  return p ? `${MONTHS[p[1] - 1]} ${p[2]}, ${p[0]}` : iso;
+}
+
+// ISO date (2026-01-27) -> "Jan 27" this year, "Jan 27 '25" before, for key figures.
 export function shortDate(iso: string | null | undefined): string {
-  const long = formatDate(iso);
-  return /^\d\d\.\d\d\.\d{4}$/.test(long) ? long.slice(0, 6) + long.slice(8) : long;
+  if (!iso) return "—";
+  const p = parts(iso);
+  if (!p) return iso;
+  return p[0] === new Date().getFullYear() ? `${MONTHS[p[1] - 1]} ${p[2]}` : `${MONTHS[p[1] - 1]} ${p[2]} '${String(p[0]).slice(2)}`;
 }
 
 /**
- * Beschriftung für die Spalte „Seit Offenlegung".
+ * Label for the "since disclosure" column.
  *
- * Ein nackter Strich sieht aus, als wäre etwas kaputt. Dabei gibt es zwei ganz
- * verschiedene Gründe für die Leere: die Meldung ist von heute (dann gibt es
- * noch keinen Zeitraum), oder wir führen für dieses Papier gar keine Kursreihe
- * (dann kann die Zahl nicht berechnet werden). Beides wird ausgeschrieben,
- * statt eine Rendite zu erfinden.
+ * A bare dash looks broken. There are two quite different reasons for no
+ * number: the filing is from today (no period yet), or there is no price
+ * series for the security (nothing to compute). Both are spelt out rather
+ * than inventing a return.
  */
 export function disclosureLabel(
   pctSince: number | null,
@@ -84,19 +94,18 @@ export function disclosureLabel(
 ): { text: string; muted: boolean } {
   if (pctSince !== null && Number.isFinite(pctSince)) return { text: pct(pctSince), muted: false };
   const d = disclosedAt ? disclosedAt.slice(0, 10) : null;
-  if (d && d >= today) return { text: "heute gemeldet", muted: true };
-  return { text: "kein Kurs hinterlegt", muted: true };
+  if (d && d >= today) return { text: "filed today", muted: true };
+  return { text: "no price on file", muted: true };
 }
 
 /**
- * Fasst Meldeserien im Feed zusammen.
+ * Folds runs of filings in the feed.
  *
- * Bei einer Vesting-Runde meldet ein Unternehmen am selben Tag ein Dutzend
- * Insider-Buchungen für dieselbe Aktie. Untereinander gelistet verdrängen sie
- * alles andere und der Feed wirkt wie ein einziges Ereignis. Direkt
- * aufeinanderfolgende Zeilen mit gleichem Tag, gleicher Aktie, gleicher Art und
- * gleichem Signal werden deshalb ab drei Stück zu einer Zeile gebündelt — die
- * Einzelmeldungen bleiben erhalten und lassen sich aufklappen.
+ * In a vesting round a company files a dozen insider entries for the same
+ * stock on the same day. Listed one below the other they push everything
+ * else away and the feed looks like a single event. Consecutive rows with
+ * the same day, stock, kind and signal are therefore bundled into one row
+ * from three on; the single filings stay and can be expanded.
  */
 export const SERIES_MIN = 3;
 
@@ -137,8 +146,8 @@ export function sizeDisplay(row: {
     }
     return row.amount_min !== null ? `≥ ${money(row.amount_min)}` : `≤ ${money(row.amount_max)}`;
   }
-  if (row.shares !== null && row.shares > 0 && row.shares < 0.000001) return "< 0,000001 St.";
-  if (row.shares !== null) return `${row.shares.toLocaleString("de-DE", { maximumFractionDigits: 6 })} St.`;
+  if (row.shares !== null && row.shares > 0 && row.shares < 0.000001) return "< 0.000001 sh.";
+  if (row.shares !== null) return `${row.shares.toLocaleString(LOCALE, { maximumFractionDigits: 6 })} sh.`;
   return "—";
 }
 
@@ -150,22 +159,22 @@ export function signalLabel(txnType: string, putCall: string | null): {
   if (putCall === "Put")
     return opening
       ? { text: "Put · bearish", tone: "bear" }
-      : { text: "Put geschlossen", tone: "neutral" };
+      : { text: "Put closed", tone: "neutral" };
   if (putCall === "Call")
     return opening
       ? { text: "Call · bullish", tone: "bull" }
-      : { text: "Call geschlossen", tone: "neutral" };
-  if (txnType === "buy") return { text: "Kauf", tone: "bull" };
-  if (txnType === "sell") return { text: "Verkauf", tone: "bear" };
-  if (txnType === "exchange") return { text: "Umschichtung", tone: "neutral" };
+      : { text: "Call closed", tone: "neutral" };
+  if (txnType === "buy") return { text: "Buy", tone: "bull" };
+  if (txnType === "sell") return { text: "Sell", tone: "bear" };
+  if (txnType === "exchange") return { text: "Exchange", tone: "neutral" };
   return { text: txnType, tone: "neutral" };
 }
 
-// ── Personennamen aus SEC-Meldungen ──────────────────────────────────────────
+// ── Person names from SEC filings ───────────────────────────────────────────
 //
-// Form 4 nennt den Meldenden als "NACHNAME VORNAME MITTELNAME", oft komplett
-// in Großbuchstaben: "BARTON RICHARD N". So gelesen wirkt jede Seite wie ein
-// Behördenausdruck. Hier wird daraus "Richard N. Barton".
+// Form 4 names the filer as "LAST FIRST MIDDLE", often all in capitals:
+// "BARTON RICHARD N". Read like that every page looks like a government
+// printout. This turns it into "Richard N. Barton".
 
 const NAME_SUFFIX = new Set(["JR", "SR", "II", "III", "IV", "V", "MD", "PHD"]);
 const NAME_PARTICLE = new Set(["van", "von", "de", "del", "der", "den", "di", "da", "la", "le"]);
@@ -185,17 +194,17 @@ function titleCasePart(w: string): string {
  * "Zuckerberg Mark"  → "Mark Zuckerberg"
  * "SMITH BRADFORD L JR" → "Bradford L. Smith Jr."
  *
- * Firmennamen bleiben unangetastet — erkennbar an Rechtsformen und Ziffern.
+ * Company names are left alone, recognised by legal forms and digits.
  */
 export function personName(raw: string | null | undefined): string {
   const s = (raw || "").trim().replace(/\s+/g, " ");
   if (!s) return "";
-  // Sieht nach einem Unternehmen aus? Dann nicht anfassen.
+  // Looks like a company? Leave it.
   if (/\b(inc|corp|llc|lp|ltd|plc|trust|fund|capital|partners|holdings?|group|management|gmbh|ag|s\.?a)\b/i.test(s))
     return s;
   if (/\d/.test(s)) return s;
   if (s.includes(",")) {
-    // Manche Quellen liefern bereits "Nachname, Vorname".
+    // Some sources already give "Last, First".
     const [last, rest] = s.split(",", 2);
     const given = (rest || "").trim();
     if (given) return `${formatGiven(given)} ${titleCasePart(last.trim())}`.trim();
@@ -204,7 +213,7 @@ export function personName(raw: string | null | undefined): string {
   const parts = s.split(" ").filter(Boolean);
   if (parts.length < 2) return titleCasePart(s);
 
-  // Anhängsel wie JR/III hinten abtrennen und später wieder anfügen.
+  // Split off suffixes like JR/III and put them back at the end.
   const suffixes: string[] = [];
   while (parts.length > 2 && NAME_SUFFIX.has(parts[parts.length - 1].replace(/\./g, "").toUpperCase())) {
     suffixes.unshift(parts.pop() as string);
@@ -220,7 +229,7 @@ export function personName(raw: string | null | undefined): string {
   return [formatGiven(given), titleCasePart(last), ...suffix].filter(Boolean).join(" ");
 }
 
-/** Vornamen sauber setzen; einzelne Buchstaben bekommen einen Punkt. */
+/** Given names in proper case; single letters get a full stop. */
 function formatGiven(given: string): string {
   return given
     .split(" ")
@@ -320,72 +329,72 @@ export function investorPerson(name: string): string | null {
 
 // Short bio shown on investor pages (Eaves-style, 2–3 punchy sentences).
 const BIO_BUFFETT =
-  "Das „Orakel von Omaha“. Baute Berkshire Hathaway über sechs Jahrzehnte zur größten Investmentholding der Welt — Value-Investing, Lieblingshaltedauer: für immer. Kündigte 2025 an, den CEO-Posten an Greg Abel zu übergeben.";
+  "The “Oracle of Omaha”. Built Berkshire Hathaway over six decades into the world’s largest investment holding company — value investing, favourite holding period: forever. Announced in 2025 that Greg Abel would take over as CEO.";
 const BIO_BURRY =
-  "Wurde mit seiner Wette gegen den US-Häusermarkt weltberühmt („The Big Short“). Fährt ein kleines, extrem konzentriertes Portfolio und wettet gern gegen den Konsens — zuletzt auch mit Puts auf die KI-Lieblinge.";
+  "Became world-famous for his bet against the US housing market (“The Big Short”). Runs a small, extremely concentrated portfolio and likes to bet against the consensus — lately with puts on the AI darlings too.";
 const BIO_ACKMAN =
-  "Aktivistischer Investor: kauft große Anteile an wenigen Firmen und mischt sich aktiv ins Management ein. Bekannt für öffentliche Kampagnen — und ein konzentriertes Portfolio aus rund zehn Positionen.";
+  "Activist investor: buys large stakes in a few companies and gets involved with management. Known for public campaigns — and a concentrated portfolio of around ten positions.";
 const BIO_DRUCK =
-  "Makro-Legende: managte drei Jahrzehnte Geld ohne ein einziges Verlustjahr und war Soros’ rechte Hand beim Pfund-Trade 1992. Investiert heute über sein Family Office — wenige Wetten, hohe Überzeugung.";
+  "Macro legend: managed money for three decades without a single losing year and was Soros’ right hand on the 1992 pound trade. Invests through his family office today — few bets, high conviction.";
 const BIO_SOROS =
-  "„Der Mann, der die Bank von England brach“ — seine Pfund-Wette 1992 machte ihn zur Legende. Sein Family Office investiert breit über Aktien, Anleihen und Währungen.";
+  "“The man who broke the Bank of England” — his 1992 bet against the pound made him a legend. His family office invests broadly across stocks, bonds and currencies.";
 const BIO_MUNGER =
-  "Buffetts Partner über 45 Jahre und Vize-Chairman von Berkshire (1924–2023). Das Daily-Journal-Depot, das er prägte, hält bis heute nur eine Handvoll langfristiger Positionen.";
+  "Buffett’s partner for 45 years and Berkshire’s vice chairman (1924–2023). The Daily Journal portfolio he shaped still holds only a handful of long-term positions.";
 const BIO_DALIO =
-  "Gründete Bridgewater, den größten Hedgefonds der Welt — knapp 1.000 Positionen, extrem diversifiziert. Bekannt für seine „Principles“ und das Allwetter-Portfolio.";
+  "Founded Bridgewater, the world’s largest hedge fund — close to 1,000 positions, extremely diversified. Known for his “Principles” and the All Weather portfolio.";
 const BIO_EDELMAN =
-  "Biotech-Spezialist: Perceptive Advisors investiert fast ausschließlich in Life Sciences und gilt als einer der erfolgreichsten Healthcare-Fonds überhaupt.";
+  "Biotech specialist: Perceptive Advisors invests almost only in life sciences and counts among the most successful healthcare funds of all.";
 const BIO_PABRAI =
-  "Nennt sich selbst einen „schamlosen Kloner“ von Buffett und Munger. Extrem konzentriert — oft nur eine Handvoll Positionen, gern abseits der ausgetretenen US-Pfade.";
+  "Calls himself a “shameless cloner” of Buffett and Munger. Extremely concentrated — often just a handful of positions, gladly off the beaten US track.";
 const BIO_ASCHEN =
-  "Ex-OpenAI-Forscher, schrieb 2024 das viel diskutierte Essay „Situational Awareness“. Gründete danach einen Fonds, der voll auf das KI-Zeitalter setzt — von Chips bis Energie.";
+  "Former OpenAI researcher who wrote the much-debated 2024 essay “Situational Awareness”. Then founded a fund that goes all in on the AI age — from chips to energy.";
 const BIO_COHEN =
-  "Hedgefonds-Milliardär und Besitzer der New York Mets. Point72 (Nachfolger von SAC Capital) handelt mit Dutzenden Teams tausende Positionen.";
+  "Hedge fund billionaire and owner of the New York Mets. Point72 (successor to SAC Capital) trades thousands of positions across dozens of teams.";
 const BIO_COLEMAN =
-  "„Tiger Cub“ aus dem Stall von Julian Robertson. Tiger Global wurde mit frühen Tech-Wetten wie Facebook und JD.com groß — Fokus: Internet und Software weltweit.";
+  "A “Tiger Cub” from Julian Robertson’s stable. Tiger Global grew big on early tech bets like Facebook and JD.com — focus: internet and software worldwide.";
 const BIO_KLARMAN =
-  "Value-Legende und Autor des Kultbuchs „Margin of Safety“. Baupost investiert geduldig und hält gern viel Cash, wenn nichts günstig ist.";
+  "Value legend and author of the cult book “Margin of Safety”. Baupost invests patiently and happily holds a lot of cash when nothing is cheap.";
 
 const BIO_ICAHN =
-  "Aktivist der ersten Stunde: kauft große Pakete und fordert dann öffentlich Veränderungen – von TWA bis Apple. Seine Beteiligungen laufen heute vor allem über Icahn Enterprises.";
+  "Activist from the very start: buys large blocks and then publicly demands change — from TWA to Apple. His stakes run mainly through Icahn Enterprises today.";
 const BIO_GATES =
-  "Die Gates Foundation Trust verwaltet das Vermögen der Gates-Stiftung – ein ruhiges, konzentriertes Depot aus langfristigen Qualitätswerten.";
+  "The Gates Foundation Trust manages the foundation’s endowment — a calm, concentrated portfolio of long-term quality stocks.";
 const BIO_WOOD =
-  "Gründerin von ARK Invest und bekannteste Verfechterin „disruptiver Innovation“: KI, Robotik, Genomik, Krypto. Ihre aktiven ETFs handeln fast täglich; hier siehst du die Quartalsbestände.";
+  "Founder of ARK Invest and the best-known champion of “disruptive innovation”: AI, robotics, genomics, crypto. Her active ETFs trade almost daily; here you see the quarterly holdings.";
 const BIO_TEPPER =
-  "Gründer von Appaloosa, berühmt für seine Wette auf US-Banken nach der Finanzkrise 2009. Gehört seit Jahren zu den erfolgreichsten Hedgefonds-Managern und besitzt die Carolina Panthers.";
+  "Founder of Appaloosa, famous for his bet on US banks after the 2009 financial crisis. One of the most successful hedge fund managers for years, and owner of the Carolina Panthers.";
 const BIO_LILU =
-  "Gründer von Himalaya Capital; Charlie Munger vertraute ihm einen Teil seines Familienvermögens an. Hält nur eine Handvoll Positionen, gern in Asien und bei Finanzwerten.";
+  "Founder of Himalaya Capital; Charlie Munger trusted him with part of his family’s fortune. Holds only a handful of positions, often in Asia and financials.";
 const BIO_LOEB =
-  "Aktivistischer Investor mit Third Point – bekannt für scharf formulierte Briefe an Vorstände und eine Mischung aus Tech, Konsum und Sondersituationen.";
+  "Activist investor with Third Point — known for sharply worded letters to boards and a mix of tech, consumer and special situations.";
 const BIO_SMITH =
-  "Der „britische Buffett“: Fundsmith kauft nur Qualitätsunternehmen, zahlt keinen Überpreis und tut dann möglichst nichts. Sehr konzentriert, sehr geduldig.";
+  "The “British Buffett”: Fundsmith buys only quality companies, never overpays and then tries to do nothing. Very concentrated, very patient.";
 const BIO_PELTZ =
-  "Aktivist mit Trian: kauft große Anteile an etablierten Konsum- und Industrieunternehmen und drängt in den Aufsichtsrat – etwa bei Procter & Gamble und Disney.";
+  "Activist with Trian: buys large stakes in established consumer and industrial companies and pushes onto the board — at Procter & Gamble and Disney, for example.";
 const BIO_AKRE =
-  "Akre Capital sucht „Compounding Machines“ – Firmen, die ihr Kapital jahrzehntelang hoch verzinsen – und hält wenige Positionen sehr lange.";
+  "Akre Capital looks for “compounding machines” — companies that earn high returns on their capital for decades — and holds a few positions for a very long time.";
 const BIO_RUSSO =
-  "Thomas Russo investiert seit Jahrzehnten in globale Markenhersteller mit langem Atem – Getränke, Luxus, Konsumgüter – und hält sie oft über Jahrzehnte.";
+  "Thomas Russo has invested for decades in global brand owners with staying power — drinks, luxury, consumer goods — and often holds them for decades.";
 const BIO_MARKS =
-  "Mitgründer von Oaktree und Autor der berühmten Kunden-Memos, die viele Profis sofort lesen. Oaktree ist vor allem für Anleihen und Sondersituationen bekannt; der 13F zeigt nur den Aktienteil.";
+  "Co-founder of Oaktree and author of the famous client memos many professionals read at once. Oaktree is known mainly for bonds and special situations; the 13F shows only the stock side.";
 const BIO_LAFFONT =
-  "„Tiger Cub“ und Gründer von Coatue: setzt stark auf Technologie – von den großen Plattformen bis zu schnell wachsenden Software-Werten.";
+  "A “Tiger Cub” and founder of Coatue: bets heavily on technology — from the big platforms to fast-growing software.";
 const BIO_HALVORSEN =
-  "Ebenfalls ein „Tiger Cub“: Viking Global verbindet gründliche Unternehmensanalyse mit einem breiten Portfolio aus Gesundheit, Finanzen und Tech.";
+  "Another “Tiger Cub”: Viking Global combines thorough company research with a broad portfolio across healthcare, financials and tech.";
 const BIO_MANDEL =
-  "Der „Tiger Cub“ Stephen Mandel machte Lone Pine zu einem der bekanntesten Wachstumsfonds – konzentriert auf Qualitätsunternehmen mit starken Marken.";
+  "“Tiger Cub” Stephen Mandel made Lone Pine one of the best-known growth funds — concentrated on quality companies with strong brands.";
 const BIO_GERSTNER =
-  "Gründer von Altimeter: investiert früh in Tech-Plattformen, hält Börsengewinner lange und setzt groß auf die Infrastruktur hinter KI.";
+  "Founder of Altimeter: invests early in tech platforms, holds public winners for a long time and bets big on the infrastructure behind AI.";
 const BIO_SUNDHEIM =
-  "Gründete D1 Capital nach Jahren bei Viking: börsennotierte Tech- und Konsumwerte, ergänzt um private Beteiligungen.";
+  "Founded D1 Capital after years at Viking: listed tech and consumer stocks, plus private stakes.";
 const BIO_WATSA =
-  "Der „kanadische Buffett“: führt Fairfax Financial wie Berkshire – Versicherungsgeld, geduldig und gern antizyklisch angelegt.";
+  "The “Canadian Buffett”: runs Fairfax Financial like Berkshire — insurance money, invested patiently and often against the cycle.";
 const BIO_GAYNER =
-  "Führt Markel, oft „Baby Berkshire“ genannt: ein Versicherer mit einem langfristigen Aktiendepot aus Qualitätstiteln.";
+  "Runs Markel, often called “Baby Berkshire”: an insurer with a long-term stock portfolio of quality names.";
 const BIO_STARBOARD =
-  "Starboard Value ist einer der aktivsten Aktivisten der Wall Street: großer Anteil, konkreter Plan für bessere Margen, notfalls die Kampfabstimmung.";
+  "Starboard Value is one of Wall Street’s most active activists: a big stake, a concrete plan for better margins and, if needed, a proxy fight.";
 const BIO_ROBBINS =
-  "Glenview Capital ist auf Gesundheitswerte spezialisiert und bekannt für wenige, gründlich recherchierte Wetten.";
+  "Glenview Capital specialises in healthcare and is known for a few thoroughly researched bets.";
 
 const INVESTOR_BIO: [string, string][] = [
   ["icahn", BIO_ICAHN],
@@ -576,14 +585,14 @@ export function companyName(ticker: string | null, rawName: string | null): stri
 export function tradeSignal(row: Pick<FeedRow, "entityType" | "txnType" | "putCall" | "transactionCode" | "isDerivative">): { text: string; tone: "bull" | "bear" | "neutral" } {
   if (row.entityType === "institution") {
     const suffix = row.putCall ? ` · ${row.putCall}` : "";
-    return { text: (row.txnType === "buy" ? "Bestand erhöht" : row.txnType === "sell" ? "Bestand reduziert" : "Bestand verändert") + suffix, tone: "neutral" };
+    return { text: (row.txnType === "buy" ? "Position raised" : row.txnType === "sell" ? "Position cut" : "Position changed") + suffix, tone: "neutral" };
   }
   if (row.entityType === "corporate_insider") {
     const code = row.transactionCode;
-    if (!code) return { text: row.txnType === "buy" ? "Zugang gemeldet" : row.txnType === "sell" ? "Abgang gemeldet" : "Änderung gemeldet", tone: "neutral" };
-    const codes: Record<string, string> = { A: "Zuteilung", F: "Steuereinbehalt / Ausübung", D: "Abgabe an Emittenten", G: "Schenkung", M: "Ausübung / Umwandlung", C: "Umwandlung", X: "Optionsausübung", J: "Sonstiger Vorgang" };
-    if (code !== "P" && code !== "S") return { text: codes[code] ?? `SEC-Code ${code}`, tone: "neutral" };
-    if (row.isDerivative) return { text: `${code === "P" ? "Derivat erworben" : "Derivat veräußert"}`, tone: "neutral" };
+    if (!code) return { text: row.txnType === "buy" ? "Acquisition filed" : row.txnType === "sell" ? "Disposal filed" : "Change filed", tone: "neutral" };
+    const codes: Record<string, string> = { A: "Grant", F: "Tax withholding / exercise", D: "Returned to issuer", G: "Gift", M: "Exercise / conversion", C: "Conversion", X: "Option exercise", J: "Other transaction" };
+    if (code !== "P" && code !== "S") return { text: codes[code] ?? `SEC code ${code}`, tone: "neutral" };
+    if (row.isDerivative) return { text: `${code === "P" ? "Derivative bought" : "Derivative sold"}`, tone: "neutral" };
   }
   return signalLabel(row.txnType, row.putCall);
 }

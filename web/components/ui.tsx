@@ -5,6 +5,7 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useSta
 
 import { Icon } from "@/components/Icon";
 import type { AuraKind } from "@/lib/format";
+import { useSwipeTabs } from "@/lib/swipeTabs";
 
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
@@ -115,6 +116,7 @@ export function ChipBar<T extends string>({
   onChange,
   label,
   mode = "tabs",
+  swipe = true,
   className = "",
 }: {
   items: readonly { key: T; label: string; aura?: AuraKind | null; count?: number | null }[];
@@ -123,9 +125,12 @@ export function ChipBar<T extends string>({
   label: string;
   /** "tabs" switches sections (tablist), "filter" narrows a list (toggle buttons). */
   mode?: "tabs" | "filter";
+  /** Swiping the page sideways steps through these chips. */
+  swipe?: boolean;
   className?: string;
 }) {
   const track = useRef<HTMLDivElement>(null);
+  useSwipeTabs(items.map((it) => it.key), value, onChange as (key: string) => void, swipe);
   const chips = useRef(new Map<T, HTMLButtonElement>());
   const [edges, setEdges] = useState({ left: false, right: false });
   const readEdges = useCallback(() => {
@@ -210,8 +215,8 @@ export function PageTitle({ title, subtitle, children }: { title: string; subtit
   );
 }
 
-/** Section header: title left, optional "Alle" link right. */
-export function SectionHeader({ title, href, more = "Alle", children }: { title: string; href?: string; more?: string; children?: ReactNode }) {
+/** Section header: title left, optional "See all" link right. */
+export function SectionHeader({ title, href, more = "See all", children }: { title: string; href?: string; more?: string; children?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">{title}</h2>
@@ -313,17 +318,17 @@ export function AuraCard({
   );
 }
 
-const PARTY: Record<string, string> = { D: "Demokraten", R: "Republikaner", I: "Unabhängig", Democrat: "Demokraten", Republican: "Republikaner" };
+const PARTY: Record<string, string> = { D: "Democrat", R: "Republican", I: "Independent", Democrat: "Democrat", Republican: "Republican" };
 
-/** "Demokraten · CA-11" */
+/** "Democrat · CA-11" */
 export function politicianLine(party: string | null | undefined, seat: string | null | undefined): string {
-  return [party ? PARTY[party] ?? party : null, seat].filter(Boolean).join(" · ") || "US-Repräsentantenhaus";
+  return [party ? PARTY[party] ?? party : null, seat].filter(Boolean).join(" · ") || "US House of Representatives";
 }
 
 /** Round glass back button (iOS 26 navigation bar), label for assistive tech. */
 export function BackButton({ href, label }: { href: string; label: string }) {
   return (
-    <Link href={href} aria-label={`Zurück zu ${label}`} title={label} className="btn-capsule !h-11 !w-11 !min-h-0 !p-0">
+    <Link href={href} aria-label={`Back to ${label}`} title={label} className="btn-capsule !h-11 !w-11 !min-h-0 !p-0">
       <Icon name="chevronLeft" className="h-5 w-5" />
     </Link>
   );
@@ -346,7 +351,7 @@ export function StatRow({ items }: { items: { label: string; value: ReactNode; c
           </>
         );
         return s.onClick ? (
-          <button key={s.label} type="button" onClick={s.onClick} aria-label={s.hint ?? `${s.label} anzeigen`} className={`${cell} group transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]`}>
+          <button key={s.label} type="button" onClick={s.onClick} aria-label={s.hint ?? `Show ${s.label.toLowerCase()}`} className={`${cell} group transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]`}>
             {body}
             <Icon name="chevronRight" className="absolute right-2 top-3.5 h-4 w-4 text-muted transition-transform duration-300 ease-spring group-hover:translate-x-0.5 sm:right-3 sm:top-4" />
           </button>

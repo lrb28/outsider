@@ -3,14 +3,14 @@ import type { MetadataRoute } from "next";
 // Add to Home Screen / install: opens full screen like an app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ĀURA — Investoren, Insider und Politiker",
+    name: "ĀURA — investors, insiders and politicians",
     short_name: "AURA",
-    description: "Was Investoren, Unternehmensinsider und US-Abgeordnete offenlegen – verständlich und mit Quelle.",
+    description: "What investors, corporate insiders and members of the US House disclose — clear and sourced.",
     start_url: "/",
     display: "standalone",
     background_color: "#f5f5f7",
     theme_color: "#f5f5f7",
-    lang: "de",
+    lang: "en",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png" },

@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
   if (limited) return limited;
   let tickers: string[];
   try { tickers = symbolList(req.nextUrl.searchParams.get("tickers") || "", 30); }
-  catch (error) { return NextResponse.json({ error: error instanceof InputError ? error.message : "Ungültige Anfrage" }, { status: 400 }); }
+  catch (error) { return NextResponse.json({ error: error instanceof InputError ? error.message : "Invalid request" }, { status: 400 }); }
 
   const entries = await Promise.all(
     tickers.map(async (t) => [t, await fetchQuote(t)] as const),

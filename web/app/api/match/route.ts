@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   let tickers: string[];
   try { tickers = symbolList(req.nextUrl.searchParams.get("tickers") || "", 200); }
-  catch { return NextResponse.json({ error: "Ungültige Wertpapierauswahl." }, { status: 400 }); }
+  catch { return NextResponse.json({ error: "Invalid selection of securities." }, { status: 400 }); }
   return dataResponse(async () => ({ rows: await getMatch(tickers) }), () => ({ rows: [] }));
 }

@@ -18,7 +18,7 @@ export interface DivEntry {
 // Fixed categorical order; payers beyond the eighth share the "Übrige" grey.
 const colorAt = (i: number) => (i < CAT.length ? CAT[i] : OTHER);
 
-const MONTH_SHORT = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
  * Gestapeltes Monatsdiagramm der Ausschüttungen — jede Farbe ist ein Papier.
@@ -97,7 +97,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
   if (entries.length === 0) {
     return (
       <div className="lcard p-8 text-center text-sm text-subtle">
-        Noch keine Ausschüttungen erfasst.
+        No payouts recorded yet.
       </div>
     );
   }
@@ -106,30 +106,30 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
     <div className="lcard p-5">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold">Ausschüttungen je Monat</div>
+          <div className="text-sm font-semibold">Payouts per month</div>
           <p className="text-[11px] text-subtle">
-            Jede Farbe ist ein Wertpapier. Fahr über einen Balken für die Zusammensetzung.
+            Each colour is one security. Touch a bar to see what it’s made of.
           </p>
         </div>
         <SegmentedControl
-          label="Jahr"
+          label="Year"
           size="sm"
-          options={["alle", ...years].map((y) => [y, y === "alle" ? "Alle Jahre" : y] as const)}
+          options={["alle", ...years].map((y) => [y, y === "alle" ? "All years" : y] as const)}
           value={year}
           onChange={setYear}
         />
       </div>
 
-      {/* Kopfzeile: reagiert auf Auswahl */}
+      {/* Header: follows the selection */}
       <div className="mb-3 mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
           <div className="text-xl font-semibold tabular-nums text-bull">{cMoney(sum)}</div>
           <div className="text-[11px] text-subtle">
             {focusTicker
-              ? `nur ${perTicker.find((p) => p.ticker === focusTicker)?.name ?? focusTicker}`
+              ? `only ${perTicker.find((p) => p.ticker === focusTicker)?.name ?? focusTicker}`
               : year === "alle"
-              ? "gesamt erhalten"
-              : `erhalten ${year}`}
+              ? "received in total"
+              : `received in ${year}`}
           </div>
         </div>
         {hoverMonth ? (
@@ -143,7 +143,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
           months.length > 0 && (
             <div>
               <div className="text-lg font-semibold tabular-nums">{cMoney(sum / months.length)}</div>
-              <div className="text-[11px] text-subtle">Durchschnitt je Monat</div>
+              <div className="text-[11px] text-subtle">Average per month</div>
             </div>
           )
         )}
@@ -151,7 +151,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
           <div>
             <div className="text-lg font-semibold tabular-nums">{cMoney(monthTotal(best))}</div>
             <div className="text-[11px] text-subtle">
-              bester Monat · {MONTH_SHORT[Number(best.slice(5, 7)) - 1]} {best.slice(0, 4)}
+              best month · {MONTH_SHORT[Number(best.slice(5, 7)) - 1]} {best.slice(0, 4)}
             </div>
           </div>
         )}
@@ -210,12 +210,12 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
         </span>
       </div>
 
-      {/* Zusammensetzung des überfahrenen Monats */}
+      {/* What the touched month is made of */}
       {detail.length > 0 && (
         <div className="mt-4 rounded-xl bg-slate-50 p-3">
           <div className="mb-2 text-[11px] font-semibold text-subtle">
             {MONTH_SHORT[Number(hoverMonth!.slice(5, 7)) - 1]} {hoverMonth!.slice(0, 4)} —{" "}
-            {detail.length} {detail.length === 1 ? "Zahlung" : "Zahlungen"}
+            {detail.length} {detail.length === 1 ? "payment" : "payments"}
           </div>
           <div className="space-y-1">
             {detail.slice(0, 6).map((d, i) => (
@@ -229,13 +229,13 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
               </div>
             ))}
             {detail.length > 6 && (
-              <div className="text-[11px] text-subtle">+{detail.length - 6} weitere</div>
+              <div className="text-[11px] text-subtle">+{detail.length - 6} more</div>
             )}
           </div>
         </div>
       )}
 
-      {/* Legende: klickbar zum Isolieren */}
+      {/* Legend: tap to isolate */}
       <div className="mt-4 flex flex-wrap gap-1.5">
         {perTicker.slice(0, 14).map((p) => {
           const on = focusTicker === p.ticker;
@@ -262,7 +262,7 @@ export function DividendChart({ entries }: { entries: DivEntry[] }) {
             onClick={() => setFocusTicker(null)}
             className="press-sm rounded-full bg-slate-100 px-2.5 py-1 text-[11px] text-subtle hover:text-ink"
           >
-            Auswahl aufheben
+            Clear selection
           </button>
         )}
       </div>
@@ -282,5 +282,5 @@ export function DividendSplit({ entries }: { entries: DivEntry[] }) {
   }, [entries]);
   const total = segs.reduce((a, s) => a + s.value, 0);
   if (segs.length === 0) return null;
-  return <AllocView segments={segs} total={total} title="Woher die Dividenden kommen" format={cAbbrev} />;
+  return <AllocView segments={segs} total={total} title="Where the dividends come from" format={cAbbrev} />;
 }

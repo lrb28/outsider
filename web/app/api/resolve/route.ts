@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
   if (limited) return limited;
   const raw = req.nextUrl.searchParams.get("ids") || "";
   const ids = [...new Set(raw.split(",").map(s => s.trim().toUpperCase()).filter(Boolean))];
-  if (ids.length > 60 || ids.some(id => !ISIN_RE.test(id))) return NextResponse.json({error:"Maximal 60 gültige ISINs pro Anfrage."},{status:400});
+  if (ids.length > 60 || ids.some(id => !ISIN_RE.test(id))) return NextResponse.json({error:"At most 60 valid ISINs per request."},{status:400});
 
   if (ids.length === 0) return NextResponse.json({ symbols: {} });
 

@@ -57,21 +57,21 @@ export default function PoliticianPage() {
   if (!pol || !summary)
     return (
       <div className="py-16 text-center text-[15px] text-subtle">
-        Politiker nicht gefunden.{" "}
-        <Link href="/discover?tab=politicians" className="text-ink underline">Zurück</Link>
+        Politician not found.{" "}
+        <Link href="/discover?tab=politicians" className="text-ink underline">Back</Link>
       </div>
     );
 
   const stats = [
-    { label: "Gemeldete Trades", value: pol.trades.length.toLocaleString("de-DE") },
-    { label: "Käufe / Verkäufe", value: `${summary.buys} / ${summary.sells}` },
-    { label: "Letzte Meldung", value: shortDate(pol.trades[0]?.disclosedAt) },
+    { label: "Reported trades", value: pol.trades.length.toLocaleString("en-US") },
+    { label: "Buys / sells", value: `${summary.buys} / ${summary.sells}` },
+    { label: "Latest filing", value: shortDate(pol.trades[0]?.disclosedAt) },
   ];
 
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-        <DetailTopBar back="/discover?tab=politicians" label="Politiker" action={<FollowButton kind="politician" id={pol.slug} />} />
+        <DetailTopBar back="/discover?tab=politicians" label="Politicians" action={<FollowButton kind="politician" id={pol.slug} />} />
 
         <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
@@ -79,7 +79,7 @@ export default function PoliticianPage() {
             <h1 className="large-title">{pol.name}</h1>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[15px] text-subtle">
               <span className="rounded-full bg-politician/10 px-2.5 py-1 text-[13px] font-semibold text-politician">{politicianLine(pol.party, pol.seat)}</span>
-              <span>US-Repräsentantenhaus</span>
+              <span>US House of Representatives</span>
             </div>
           </div>
         </div>
@@ -89,14 +89,14 @@ export default function PoliticianPage() {
 
       {summary.top.length > 0 && (
         <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Meistgehandelt</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Most traded</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {summary.top.map((t) => (
               <Link key={t.ticker} href={stockHref(t.ticker)} className="card lcard-hover press flex items-center gap-3 p-3">
                 <CompanyLogo ticker={t.ticker} company={t.name} size={40} />
                 <div className="min-w-0">
                   <div className="truncate text-[15px] font-semibold">{t.name}</div>
-                  <div className="text-[13px] text-subtle">{t.n} Trades · {t.buys} Käufe</div>
+                  <div className="text-[13px] text-subtle">{t.n} trades · {t.buys} buys</div>
                 </div>
               </Link>
             ))}
@@ -105,16 +105,16 @@ export default function PoliticianPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Alle Meldungen</h2>
+        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All filings</h2>
         <TradeFeed
           rows={pol.trades}
           showActor={false}
-          empty="Noch keine maschinenlesbaren Meldungen. Eingescannte PDFs lassen sich (noch) nicht automatisch auslesen."
+          empty="No machine-readable filings yet. Scanned PDFs can’t be read automatically (yet)."
         />
       </section>
 
       <p className="text-[13px] leading-relaxed text-subtle">
-        Quelle: Periodic Transaction Reports (STOCK Act) des US-Repräsentantenhauses. Beträge sind Spannen, gemeldet bis zu 45 Tage nach dem Trade. Offizielles Porträt des US-Kongresses (gemeinfrei).
+        Source: Periodic Transaction Reports (STOCK Act) of the US House of Representatives. Amounts are ranges, filed up to 45 days after the trade. Official portrait of the US Congress (public domain).
       </p>
     </div>
   );
