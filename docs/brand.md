@@ -18,7 +18,12 @@ it, colour only where it carries meaning.
   welcome screen's 3-unit outline, black on white for light mode and white
   on black for dark mode, glyph 46 % of the icon's height.
   `web/scripts/icon/generate-icons.mjs` builds everything from `MARK_PATH`:
-  `app/icon.svg` (tab icon, switches with `prefers-color-scheme` itself),
+  the website icon, which is the app icon itself (same rounded tile, 22.5 %
+  corners, same glyph size; user, 2026-10-02): `public/icon.svg` (switches
+  with `prefers-color-scheme` itself) and `public/favicon.ico` (light tile at
+  16/32/48 px for browsers without SVG tab icons, such as Safari), both
+  listed in `metadata.icons` in `app/layout.tsx`, because an `icons` entry
+  there replaces Next's automatic icon links;
   `public/apple-touch-icon{,-dark}.png` (full bleed; the dark one is linked
   with a media query, which iOS may or may not honour when adding to the
   home screen), rounded manifest icons 192/512 and a maskable 512, each with a
