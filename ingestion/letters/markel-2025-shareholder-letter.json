@@ -1,0 +1,33 @@
+{
+  "slug": "markel-2025-shareholder-letter",
+  "investor": "markel-group-inc",
+  "author": "Tom Gayner",
+  "org": "Markel Group",
+  "kind": "annual_letter",
+  "title": "Markel Group 2025 Letter to Shareholders",
+  "published_on": "2026-02-26",
+  "published_precision": "day",
+  "source_url": "https://content.markel.com/api/public/content/shareholder-letter-2025",
+  "source_name": "mklgroup.com",
+  "stance": "neutral",
+  "headline": "Gayner: intrinsic value per share up 12% in 2025, insurance decentralised again under a new CEO, reinsurance sold off.",
+  "summary": "Markel’s intrinsic value per share grew 12% in 2025, 15% a year over five years and 16% a year since its IPO. Operating revenues reached $15.5 billion, the combined ratio was 94% and reserves proved redundant for the 21st year in a row. Gayner admits insurance had become too centralised; the new insurance CEO, Simon Wilson, is moving decisions back to the front line, and Markel sold the renewal rights of its reinsurance business. Public equities returned 10.5%, 223,000 shares were bought back at an average $1,894, and the bond portfolio stays clear of private credit. The industrial businesses slowed in a “K-shaped” economy.",
+  "takeaways": [
+    { "label": "Move", "text": "Sold the renewal rights of the reinsurance business to focus on specialty insurance, where Markel has an edge.", "tickers": [] },
+    { "label": "Move", "text": "Bought back 223,000 shares at an average $1,894; the share count fell from about 14 million in 2016 to 12.6 million.", "tickers": ["MKL"] },
+    { "label": "View", "text": "No private credit or riskier credit in the bond portfolio: those bonds are there to pay claims.", "tickers": [] },
+    { "label": "Watch", "text": "Tougher economic conditions and softer property insurance prices may weigh on reported results in the short run.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Industry", "text": "Softer property insurance prices." },
+    { "scope": "Macro", "text": "A “K-shaped” economy: businesses outside the AI spending boom face tougher end markets." },
+    { "scope": "Company", "text": "Running off the reinsurance book temporarily raises the expense ratio and lowers revenue." }
+  ],
+  "quotes": [
+    { "text": "We don’t stretch for extra basis points of yield that might jeopardize that in any way, shape, or form.", "context": "On the bond portfolio" },
+    { "text": "While some investors will run faster over the sprint distances of a year or three, we operate as if we are running a marathon.", "context": "On investing" }
+  ],
+  "stocks": [
+    { "ticker": "MKL", "company": "Markel Group", "stance": "neutral", "note": "Its own shares, bought back at an average $1,894." }
+  ]
+}

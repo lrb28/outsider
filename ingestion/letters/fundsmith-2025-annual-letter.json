@@ -1,0 +1,45 @@
+{
+  "slug": "fundsmith-2025-annual-letter",
+  "investor": "fundsmith-llp",
+  "author": "Terry Smith",
+  "org": "Fundsmith",
+  "kind": "annual_letter",
+  "title": "Fundsmith Equity Fund 2025 Annual Letter",
+  "published_on": "2026-01-01",
+  "published_precision": "month",
+  "source_url": "https://www.fundsmith.co.uk/media/4hcfd1pg/2025-fef-annual-letter-web.pdf",
+  "source_name": "fundsmith.co.uk",
+  "stance": "bearish",
+  "headline": "Terry Smith after a fifth year behind the index: +0.8% against +12.8%, blamed on concentration and index funds. He won’t chase.",
+  "summary": "The fund returned 0.8% in 2025 against 12.8% for the MSCI World in sterling, its fifth calendar year in a row behind the index, though it still leads by 1.7% a year since 2010. Smith sees three causes: the ten largest S&P 500 stocks (39% of the index, half its return), index funds that buy regardless of price and amplify every flow, and a weaker dollar. He calls the AI capex race unproven and expects the concentration to end badly, but will neither buy the index giants nor chase momentum. Novo Nordisk was the biggest detractor; he sold PepsiCo and Brown-Forman and bought Zoetis, EssilorLuxottica, Intuit and Wolters Kluwer.",
+  "takeaways": [
+    { "label": "Move", "text": "Sold Brown-Forman and PepsiCo, exposed to weight-loss drugs and to Gen Z drinking less; bought Zoetis, EssilorLuxottica, Intuit and Wolters Kluwer.", "tickers": ["BF.B", "PEP", "ZTS", "INTU"] },
+    { "label": "View", "text": "US market concentration is the highest since 1930. With over half of US equity fund assets in index funds, money switched into them moves prices about 5.5 times its size (NBER).", "tickers": [] },
+    { "label": "View", "text": "The portfolio’s free-cash-flow yield of 3.7% compares with 2.8% for the S&P 500: his companies are now cheaper than the market.", "tickers": [] },
+    { "label": "Watch", "text": "Novo Nordisk under a new CEO at 13 times earnings, a rating that “appears to us to be expecting very little”.", "tickers": ["NVO"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "An index-driven, concentrated market could take years to unwind, as after 1930, 2000 and Japan in 1989." },
+    { "scope": "Macro", "text": "A weaker dollar cuts the sterling value of mostly US-listed holdings." },
+    { "scope": "Company", "text": "Poor management at Novo Nordisk and Coloplast showed that fewer businesses than he thought can run themselves." }
+  ],
+  "quotes": [
+    { "text": "I have no clue how or when it will end except to say badly.", "context": "On index concentration" },
+    { "text": "Our Fund is a portfolio, not a sectoral bet.", "context": "On not owning the Magnificent Seven" },
+    { "text": "We have been made painfully aware that the range of businesses which can be run by an idiot is much more limited than we thought", "context": "On Novo Nordisk" }
+  ],
+  "stocks": [
+    { "ticker": "NVO", "company": "Novo Nordisk", "stance": "neutral", "note": "Biggest detractor (−3.0 points); new CEO, 13x earnings." },
+    { "ticker": "GOOGL", "company": "Alphabet", "stance": "bullish", "note": "Top contributor (+2.6 points)." },
+    { "ticker": "IDXX", "company": "IDEXX", "stance": "bullish", "note": "Second-best contributor (+2.3 points)." },
+    { "ticker": "PM", "company": "Philip Morris", "stance": "bullish", "note": "+1.5 points; reduced-risk products keep working." },
+    { "ticker": "META", "company": "Meta Platforms", "stance": "bullish", "note": "+1.1 points." },
+    { "ticker": "MSFT", "company": "Microsoft", "stance": "bullish", "note": "+1.0 point, its tenth time among the top contributors." },
+    { "ticker": "ZTS", "company": "Zoetis", "stance": "bullish", "note": "Bought: the leading animal-health drugmaker." },
+    { "ticker": "INTU", "company": "Intuit", "stance": "bullish", "note": "Bought back after selling over the Mailchimp deal." },
+    { "ticker": "PEP", "company": "PepsiCo", "stance": "bearish", "note": "Sold: snacks are in the crosshairs of weight-loss drugs." },
+    { "ticker": "BF.B", "company": "Brown-Forman", "stance": "bearish", "note": "Sold: weight-loss drugs and Gen Z drinking less." },
+    { "ticker": "ADP", "company": "ADP", "stance": "neutral", "note": "Detractor (−0.9 points) on a weak US jobs market." },
+    { "ticker": "TSLA", "company": "Tesla", "stance": "bearish", "note": "At 327 times earnings, bought by index funds regardless." }
+  ]
+}

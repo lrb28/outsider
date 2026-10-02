@@ -1,0 +1,36 @@
+{
+  "slug": "oaktree-ai-hurtles-ahead",
+  "investor": "oaktree-capital-management-lp",
+  "author": "Howard Marks",
+  "org": "Oaktree Capital",
+  "kind": "memo",
+  "title": "AI Hurtles Ahead",
+  "published_on": "2026-02-26",
+  "published_precision": "day",
+  "source_url": "https://www.oaktreecapital.com/insights/memo/ai-hurtles-ahead",
+  "source_name": "oaktreecapital.com",
+  "stance": "neutral",
+  "headline": "Marks, after a tutorial from Claude: AI is real and probably underestimated, but that doesn’t make AI investments cheap.",
+  "summary": "An addendum to his December memo “Is It a Bubble?”. Marks explains how AI models are trained and why agents that finish whole tasks on their own set this technology apart from earlier ones. He calls AI very real, more likely underestimated than exaggerated, and expects it to push out investors who add little beyond processing public information. Whether AI assets are fairly priced is a different question: every infrastructure boom has wasted capital, and some AI revenue is circular. His advice stands: neither all-in nor all-out.",
+  "takeaways": [
+    { "label": "View", "text": "The technology is no fad. Demand for inference already exceeds supply, and more capex now follows real demand than speculative model training.", "tickers": [] },
+    { "label": "View", "text": "Hyperscalers such as Microsoft, Amazon and Google are unlikely to prove “ruinously” overvalued; richly valued AI start-ups are lottery tickets.", "tickers": ["MSFT", "AMZN", "GOOGL"] },
+    { "label": "Watch", "text": "How much AI revenue is circular, with AI companies buying from each other, and whether the build-out runs ahead of demand.", "tickers": [] },
+    { "label": "View", "text": "AI raises the bar for investors: judging new situations, qualitative factors and the future stays human work.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Macro", "text": "Every sweeping technology boom built too much infrastructure and destroyed capital; Marks sees no reason this time is different." },
+    { "scope": "Market", "text": "Part of AI revenue comes from AI companies buying from each other; the chain has to end with users paying for real value." },
+    { "scope": "Macro", "text": "AI could replace knowledge and driving jobs faster than society can adjust." }
+  ],
+  "quotes": [
+    { "text": "Since AI seems amorphous and little understood, I think its potential is more likely to be underestimated today than exaggerated.", "context": "On AI" },
+    { "text": "However, that’s not the same as saying AI investments are on the bargain counter or even fairly priced.", "context": "On prices" },
+    { "text": "A moderate position, applied with selectivity and prudence, seems like the best approach.", "context": "His advice, carried over from December" }
+  ],
+  "stocks": [
+    { "ticker": "MSFT", "company": "Microsoft", "stance": "neutral", "note": "Named among the hyperscalers unlikely to prove “ruinously excessive” at today’s prices." },
+    { "ticker": "AMZN", "company": "Amazon", "stance": "neutral", "note": "Same: an enormously profitable business for which AI is one part." },
+    { "ticker": "GOOGL", "company": "Alphabet", "stance": "neutral", "note": "Same." }
+  ]
+}

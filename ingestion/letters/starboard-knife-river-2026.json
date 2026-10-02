@@ -1,0 +1,33 @@
+{
+  "slug": "starboard-knife-river-2026",
+  "investor": "starboard-value-lp",
+  "author": "Jeffrey Smith",
+  "org": "Starboard Value",
+  "kind": "activist_letter",
+  "title": "Starboard Value Letter to Knife River",
+  "published_on": "2026-09-24",
+  "published_precision": "day",
+  "source_url": "https://www.starboardvalue.com/wp-content/uploads/Starboard_Value_LP_Letter_to_KNF_CEO_and_Board_09.24.2026.pdf",
+  "source_name": "starboardvalue.com",
+  "stance": "bullish",
+  "headline": "Starboard to Knife River: a scarce aggregates business that fell further behind peers. Reach a 22% margin by FY2029 or weigh a sale.",
+  "summary": "Starboard, now a significant shareholder, writes that Knife River owns scarce assets, about 1.3 billion tons of aggregate reserves, but has not delivered the margin catch-up it promised at its 2023 spin-off from MDU. The gap to peers’ adjusted EBITDA margins widened from about 1,053 to nearly 1,400 basis points; the 15% target management met was set at a cyclical low. Starboard wants a credible plan for at least 22% by FY2029 through higher aggregates prices and lower overhead. If the board lacks confidence, it should evaluate strategic alternatives, since comparable deals were priced well above Knife River’s roughly 8x 2027 EBITDA.",
+  "takeaways": [
+    { "label": "Move", "text": "Starboard holds a significant stake and asks for an adjusted EBITDA margin of at least 22% by FY2029, about 700 basis points below peers’ roughly 29%.", "tickers": ["KNF"] },
+    { "label": "View", "text": "More than half of the per-ton price gap to aggregates peers is addressable, and overhead (SG&A) is materially above peers.", "tickers": [] },
+    { "label": "Watch", "text": "Whether the board commits to targets or opens a strategic review. Comparable assets changed hands at about 12 to 17 times EBITDA, Martin Marietta’s Lhoist deal among them.", "tickers": ["MLM"] }
+  ],
+  "risks": [
+    { "scope": "Company", "text": "Execution: since the spin-off, management has fallen short of the margin gap to peers it set out to close." },
+    { "scope": "Industry", "text": "Aggregates margins swing with fuel and input costs, which makes fixed margin targets misleading." }
+  ],
+  "quotes": [
+    { "text": "Attaining the static and obsolete target of 15% was not progress; measured against the industry, it represented considerable, and unacceptable, underperformance.", "context": "On the 15% target" },
+    { "text": "We believe Knife River is simply too valuable a business to accept subpar performance.", "context": "On a possible sale" }
+  ],
+  "stocks": [
+    { "ticker": "KNF", "company": "Knife River", "stance": "bullish", "note": "About 8x 2027 EBITDA; Starboard sees a path to margins of 22% or more." },
+    { "ticker": "MLM", "company": "Martin Marietta", "stance": "neutral", "note": "Peer; agreed to buy Lhoist North America at 17.2x EBITDA." },
+    { "ticker": "VMC", "company": "Vulcan Materials", "stance": "neutral", "note": "Peer cited for how price increases restored margins." }
+  ]
+}

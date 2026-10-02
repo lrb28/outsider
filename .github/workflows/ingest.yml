@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only this source key (form4, insider-buys, house, 13f, names, tickers, prices, returns); empty = all"
+        description: "Run only this source key (form4, insider-buys, house, 13f, names, tickers, prices, returns, letters); empty = all"
         required: false
         default: ""
       args:
@@ -54,6 +54,11 @@ jobs:
             # day if it runs out of time), afterwards only new quarters and a
             # weekly refresh of the latest months.
             command: python -m outsider_ingest.pipelines.compute_returns --all
+          - source: Investor letters
+            key: letters
+            # Summaries live in ingestion/letters/*.json and are reviewed in
+            # pull requests; this only loads them.
+            command: python -m outsider_ingest.pipelines.ingest_letters
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
