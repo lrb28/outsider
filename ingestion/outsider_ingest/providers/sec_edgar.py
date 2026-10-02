@@ -96,9 +96,30 @@ class SecEdgarProvider(FilingsProvider):
         external_entity_id: str,
         form_types: Sequence[str],
         since: Optional[date] = None,
+        include_older: bool = False,
     ) -> list[FilingRef]:
+        """Filings of the given forms. submissions.json only lists the latest
+        1,000 filings (Berkshire's reach back about two years); with
+        `include_older` the older pages it points to are read as well, as far
+        back as `since` needs."""
         data = self.get_submissions(external_entity_id)
-        recent = data.get("filings", {}).get("recent", {})
+        out = self._refs(data.get("filings", {}).get("recent", {}), external_entity_id, form_types, since)
+        if include_older:
+            for page in data.get("filings", {}).get("files", []):
+                # Pages run newest to oldest; skip those that end before `since`.
+                if since and _to_date(page.get("filingTo")) and _to_date(page.get("filingTo")) < since:
+                    continue
+                older = self._get(f"https://data.sec.gov/submissions/{page['name']}").json()
+                out.extend(self._refs(older, external_entity_id, form_types, since))
+        return out
+
+    def _refs(
+        self,
+        recent: dict,
+        external_entity_id: str,
+        form_types: Sequence[str],
+        since: Optional[date],
+    ) -> list[FilingRef]:
         forms = recent.get("form", [])
         accs = recent.get("accessionNumber", [])
         filed = recent.get("filingDate", [])

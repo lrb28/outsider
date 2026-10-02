@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only this source key (form4, insider-buys, house, 13f, names, tickers, prices); empty = all"
+        description: "Run only this source key (form4, insider-buys, house, 13f, names, tickers, prices, returns); empty = all"
         required: false
         default: ""
       args:
@@ -48,6 +48,12 @@ jobs:
           - source: EOD prices
             key: prices
             command: python -m outsider_ingest.pipelines.backfill_prices
+          - source: Investor returns from 13F
+            key: returns
+            # Reads ten years of 13F filings the first time (continues the next
+            # day if it runs out of time), afterwards only new quarters and a
+            # weekly refresh of the latest months.
+            command: python -m outsider_ingest.pipelines.compute_returns --all
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
