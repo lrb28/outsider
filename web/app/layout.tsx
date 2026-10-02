@@ -28,9 +28,16 @@ export const metadata: Metadata = {
   description: DESC,
   applicationName: "AURA",
   manifest: "/manifest.webmanifest",
-  // The Ā in black on white, or white on black in dark mode (app/icon.svg
-  // switches by itself; the PNGs are chosen by media query where supported).
+  // The website icon is the app icon: the Ā tile in black on white, or white
+  // on black in dark mode (icon.svg switches by itself; favicon.ico is the
+  // light tile for browsers without SVG tab icons, such as Safari). Listed
+  // here because an `icons` entry replaces Next's automatic icon links.
+  // sizes="32x32" on the ICO keeps Chrome on the SVG.
   icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180" },
       { url: "/apple-touch-icon-dark.png", sizes: "180x180", media: "(prefers-color-scheme: dark)" },
