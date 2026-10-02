@@ -258,3 +258,58 @@ upscaled to 1170×2538 and is played as HEVC or H.264 by `SilkVideo`
 until it plays and for reduced motion. On top: the mark in the upper middle
 (36 %), "Money / leaves / clues" bottom left and two equal frosted capsules
 where the video had its own buttons.
+
+## Investor letters (after Eaves, 2026-10-02)
+
+- Letters, memos and public letters to companies by the tracked investors,
+  one JSON file each in `ingestion/letters/`, summarised from the original
+  and reviewed before they are committed (`draft_letter` drafts one with
+  Claude and checks that every quote is verbatim). Never invent a day: a
+  letter that only carries a month shows "January 2026".
+- Card (`LetterCard`): title, tone pill, "Annual letter · Feb 28, 2026", the
+  one-sentence headline (three lines at most), author's picture and name.
+  Rows of cards on Home ("Investor letters"), the investor page ("Letters"),
+  the stock page ("In investor letters") and the "Letters" chip of the Feed
+  (with All / Bullish / Neutral / Bearish).
+- The tone is always a word in a pill (`StancePill`): Bullish on a light
+  emerald, Bearish on a light rose, Neutral grey. It is our reading of the
+  letter, and the page says so.
+- Letter page: author (links to the investor), title, tone and date, then the
+  point first: headline and summary on a soft investor-blue card. Below:
+  Takeaways (Move · what they did, View · what they think, Watch · what to
+  watch, with ticker chips), Risks they're watching (scope tag), In their
+  words (verbatim quotes with a blue bar), Stocks discussed (tone per stock,
+  a link only where ĀURA has the stock), "Read the original" and the source.
+  Pictures: the author's own portrait or fund logo; no other person's face
+  (Greg Abel's letter shows his initials, not Buffett).
+
+## Investor returns
+
+- What copying each 13F would have returned: stock positions held from one
+  report to the next, monthly, dividends included (`compute_returns`). It is
+  not the fund's own result; the Returns card and "Best performers" say so.
+- Investor page: "Per year since 2016" as a key figure (green/red with
+  sign; under two years of history "Since 2025" with the total), then the
+  Returns card: per year and last 12 months next to the S&P 500 over the same
+  months, yearly columns, and a table of the years (latest five, "Show all").
+  Under 60% of the reported value priced in the last year, the note leads
+  with that caveat and the investor is left out of "Best performers".
+- Chart: emphasis, not two equal series: the investor in the investor aura,
+  the S&P 500 in `--bench-fill` (grey; a darker step in dark mode, validated
+  with the dataviz checker against the blue). Columns at most 10 px, rounded
+  4 px at the end away from zero and square on the zero line, hairline grid,
+  `'16` year labels. Touch, hover or arrow keys pick a year; the readout
+  above (key, name, value for both) is also the legend.
+- Discover: "Best performers" (12-month return, coverage at least 60%) in
+  People and as `/discover/best`; the Investors tab sorts by portfolio value
+  or 12-month return.
+
+## Add to portfolio
+
+- Stock page, under the name (after Eaves): "Follow" (solid) and "Add to
+  portfolio" (capsule), side by side. Held stocks read "✓ In portfolio"; a
+  position imported by ISIN counts once its symbol is resolved.
+- The sheet books a purchase: shares, price per share in the Portfolio's
+  currency (prefilled with the latest price, converted if the listing trades
+  in another currency) and date (today, never in the future). Then "Added to
+  your Portfolio" with "Done" and "Open Portfolio".

@@ -9,11 +9,51 @@ import { TradeFeed } from "@/components/TradeFeed";
 import { ChipBar, PageTitle, SegmentedControl } from "@/components/ui";
 import { DataGuideLink } from "@/components/DataGuide";
 import { fetchJson } from "@/lib/fetchJson";
-import type { FeedRow, TradesResponse } from "@/lib/types";
-const TYPES = [{key:"",label:"All"},{key:"institution",label:"Investors",aura:"investor"},{key:"corporate_insider",label:"Insiders",aura:"insider"},{key:"politician",label:"Politicians",aura:"politician"}] as const;
+import { LetterCard } from "@/components/Letters";
+import type { FeedRow, LetterSummary, LettersResponse, TradesResponse } from "@/lib/types";
+const TYPES = [{key:"",label:"All"},{key:"institution",label:"Investors",aura:"investor"},{key:"corporate_insider",label:"Insiders",aura:"insider"},{key:"politician",label:"Politicians",aura:"politician"},{key:"letters",label:"Letters"}] as const;
+const STANCES = [["","All"],["bullish","Bullish"],["neutral","Neutral"],["bearish","Bearish"]] as const;
 const TXNS = [{key:"",label:"All"},{key:"buy",label:"Buys"},{key:"sell",label:"Sells"}];
 export default function FeedPage() { return <Suspense fallback={<SkeletonList n={8} />}><Feed /></Suspense>; }
 function Feed() {
+  const params = useSearchParams();
+  return params.get("type") === "letters" ? <LettersFeed /> : <Filings />;
+}
+
+/**
+ * Investor letters, memos and public letters to companies (after Eaves's
+ * Letters tab), newest first, each summarised from the original.
+ */
+function LettersFeed() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const stance = params.get("stance") || "";
+  const [rows, setRows] = useState<LetterSummary[] | null>(null);
+  const [error, setError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setRows(null); setError(false);
+    fetchJson<LettersResponse>(`/api/letters?limit=60${stance ? `&stance=${stance}` : ""}`, {signal: controller.signal})
+      .then(d => setRows(d.rows))
+      .catch(() => { if (!controller.signal.aborted) setError(true); });
+    return () => controller.abort();
+  }, [stance, retry]);
+  const go = (key: string, value: string) => { const q = new URLSearchParams(params.toString()); if (value) q.set(key, value); else q.delete(key); if (key === "type") q.delete("stance"); router.push(`/feed${q.size ? `?${q}` : ""}`, {scroll:false}); };
+  return <div className="space-y-5">
+    <PageTitle title="Feed" subtitle="Letters, memos and open letters from the investors ĀURA follows, each summarised from the original." />
+    <div className="space-y-3">
+      <ChipBar mode="filter" label="Filers" items={TYPES} value={"letters" as (typeof TYPES)[number]["key"]} onChange={value => go("type", value)} />
+      <SegmentedControl label="Tone" size="sm" options={STANCES} value={stance as (typeof STANCES)[number][0]} onChange={value => go("stance", value)} />
+    </div>
+    {error && <ErrorRetry onRetry={() => setRetry(r => r + 1)} />}
+    {!error && rows === null && <SkeletonList n={4} />}
+    {rows && rows.length === 0 && <div className="card p-8 text-center text-[15px] text-subtle">No letters with this tone yet.</div>}
+    {rows && rows.length > 0 && <div className="fade-up grid gap-3 sm:grid-cols-2">{rows.map(l => <LetterCard key={l.slug} letter={l} />)}</div>}
+  </div>;
+}
+
+function Filings() {
   const params = useSearchParams();
   const router = useRouter();
   const [q, setQ] = useState(params.get("q") || "");

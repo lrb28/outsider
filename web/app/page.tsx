@@ -11,6 +11,7 @@ import { DataStatus } from "@/components/DataStatus";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { MatchSheet, matchPct, myHoldings } from "@/components/MatchSheet";
 import { Icon } from "@/components/Icon";
+import { LetterCard } from "@/components/Letters";
 import { Skeleton, SkeletonList } from "@/components/Skeleton";
 import { SwipeRow } from "@/components/SwipeRow";
 import { TradeDetailModal } from "@/components/TradeDetailModal";
@@ -19,7 +20,7 @@ import { Watchlist } from "@/components/Watchlist";
 import { fetchCatalogue, fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, auraOf, companyName, formatDate, investorPerson, pct, shortDate, tradeSignal } from "@/lib/format";
 import type { StatsResponse } from "@/lib/stats";
-import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, MatchResponse, MatchRow, PoliticianRow, PoliticiansResponse, TradesResponse } from "@/lib/types";
+import type { CollectionItem, DiscoverData, FeedRow, InvestorRow, InvestorsResponse, LetterSummary, LettersResponse, MatchResponse, MatchRow, PoliticianRow, PoliticiansResponse, TradesResponse } from "@/lib/types";
 
 /* ── Floating logos for the entry cards ──────────────────────────────────── */
 // Three logos in a loose row, each tilted a little and bobbing on its own
@@ -147,6 +148,7 @@ export default function HomePage() {
   const [selected, setSelected] = useState<{ row: FeedRow; rows: FeedRow[] } | null>(null);
   const [match, setMatch] = useState<MatchRow | null>(null);
   const [holdingNames, setHoldingNames] = useState<Map<string, string>>(new Map());
+  const [letters, setLetters] = useState<LetterSummary[] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -160,6 +162,7 @@ export default function HomePage() {
     fetchJson<TradesResponse>("/api/trades?type=institution&limit=120", { signal: controller.signal }).then((d) => setInst(d.rows)).catch(() => fail("inst"));
     fetchJson<TradesResponse>("/api/trades?type=corporate_insider&limit=60", { signal: controller.signal }).then((d) => setInsiders(d.rows)).catch(() => fail("insiders"));
     fetchJson<TradesResponse>("/api/trades?type=politician&limit=60", { signal: controller.signal }).then((d) => setPols(d.rows)).catch(() => fail("pols"));
+    fetchJson<LettersResponse>("/api/letters?limit=8", { signal: controller.signal }).then((d) => setLetters(d.rows)).catch(() => setLetters([]));
     const holdings = myHoldings();
     setDepotCount(holdings.size);
     setHoldingNames(holdings);
@@ -243,6 +246,16 @@ export default function HomePage() {
         </section>
       )}
       {match && <MatchSheet slug={match.slug} who={match.person ?? match.fund} shared={match.sharedTickers} total={depotCount} names={holdingNames} onClose={() => setMatch(null)} />}
+
+      {/* After Eaves: the latest investor letters, each summarised. */}
+      {letters !== null && letters.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader title="Investor letters" href="/feed?type=letters" />
+          <SwipeRow className="gap-3">
+            {letters.map((l) => <LetterCard key={l.slug} letter={l} className="w-[300px] shrink-0 snap-start" />)}
+          </SwipeRow>
+        </section>
+      )}
 
       {/* Spotlight */}
       <section className="space-y-3">

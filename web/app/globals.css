@@ -32,6 +32,9 @@
   --bear-hi: 255 122 136;
   --bear-deep: 184 29 53;
   --flat-fill: 155 161 173;
+  /* Index comparison in charts (S&P 500 next to an investor): context grey,
+     a darker step in dark mode so it stays apart from the investor blue. */
+  --bench-fill: 155 161 173;
   --flat-hi: 199 203 211;
   --flat-deep: 110 116 128;
   /* Selected segment of a segmented control (iOS: white / system grey). */
@@ -100,6 +103,7 @@
   --bear-hi: 255 154 165;
   --bear-deep: 224 67 90;
   --flat-fill: 124 130 144;
+  --bench-fill: 99 104 116;
   --flat-hi: 160 165 177;
   --flat-deep: 84 89 101;
   --seg-thumb: 99 99 102;
@@ -163,6 +167,7 @@
     --bear-hi: 255 154 165;
     --bear-deep: 224 67 90;
     --flat-fill: 124 130 144;
+    --bench-fill: 99 104 116;
     --flat-hi: 160 165 177;
     --flat-deep: 84 89 101;
     --seg-thumb: 99 99 102;

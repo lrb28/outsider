@@ -52,6 +52,12 @@ const INV_META: Record<
     base: "/investor",
     pick: (d) => d.biggestFunds,
   },
+  best: {
+    title: "Best performers",
+    blurb: "The return of each investor’s reported stock positions over the last 12 months, held from one 13F to the next, dividends included. Only investors whose positions could mostly be priced.",
+    base: "/investor",
+    pick: (d) => d.bestPerformers ?? [],
+  },
   concentrated: {
     title: "Most concentrated",
     blurb: "Investors who put the biggest share into a single stock.",

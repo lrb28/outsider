@@ -8,10 +8,13 @@ import {
   personName,
   sizeDisplay,
 } from "./format";
+import { MIN_COVERAGE, summarize } from "./returns";
 import {
   CollectionInvestor,
   CollectionItem,
   DiscoverData,
+  Letter,
+  LetterSummary,
   FeedRow,
   HoldingRow,
   InsiderDetail,
@@ -182,17 +185,48 @@ const CUR_CTE = `
 `;
 
 // ── Investors list ──────────────────────────────────────────────────────────
+// Per investor: months, first month, growth over the series and over the
+// twelve months to the latest computed month (13F clone, lib/returns.ts).
+const RET_CTE = `
+  ret_window as (select max(month) - interval '12 months' as start from investor_returns),
+  ret as (
+    select r.entity_id, count(*) as n, min(r.month) as first,
+           exp(sum(ln(greatest(1 + r.ret, 1e-9)))) as g,
+           exp(sum(ln(greatest(1 + r.ret, 1e-9))) filter (where r.month > w.start)) as g1,
+           count(*) filter (where r.month > w.start) as n1,
+           avg(r.coverage) filter (where r.month > w.start) as cov1
+    from investor_returns r cross join ret_window w
+    group by r.entity_id
+  )
+`;
+
+function returnFields(r: Record<string, unknown>) {
+  const n = Number(r.ret_n) || 0;
+  const g = r.ret_g == null ? null : Number(r.ret_g);
+  const g1 = r.ret_g1 == null ? null : Number(r.ret_g1);
+  return {
+    oneYear: g1 !== null && Number(r.ret_n1) >= 12 ? g1 - 1 : null,
+    cagr: g !== null && n >= 24 ? Math.pow(g, 12 / n) - 1 : null,
+    since: r.ret_first ? String(r.ret_first).slice(0, 7) : null,
+    coverage: r.ret_cov1 == null ? null : Number(r.ret_cov1),
+  };
+}
+
 export async function getInvestors(): Promise<InvestorRow[]> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
   const { rows } = await pool.query(`
-    ${CUR_CTE}
+    ${CUR_CTE},
+    ${RET_CTE}
     select e.slug, e.full_name as fund,
            (select max(as_of_date) from holdings where entity_id = e.id) as as_of,
            count(c.security_id) as positions,
-           sum(c.market_value) as value
+           sum(c.market_value) as value,
+           max(ret.n) as ret_n, max(ret.g) as ret_g, max(ret.g1) as ret_g1, max(ret.n1) as ret_n1,
+           max(ret.cov1) as ret_cov1, to_char(min(ret.first), 'YYYY-MM') as ret_first
     from entities e
     left join cur c on c.entity_id = e.id and c.put_call is null
+    left join ret on ret.entity_id = e.id
     where e.type = 'institution'
     group by e.id, e.slug, e.full_name
     order by value desc nulls last, e.full_name
@@ -205,6 +239,7 @@ export async function getInvestors(): Promise<InvestorRow[]> {
       positions: Number(r.positions) || 0,
       value: r.value !== null ? Number(r.value) : null,
       asOf: r.as_of ? new Date(r.as_of as string).toISOString().slice(0, 10) : null,
+      ...returnFields(r),
     }))
     // hide entities with no current holdings (e.g. a stale demo-seed row)
     .filter((r) => r.positions > 0 || r.value !== null);
@@ -275,6 +310,16 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     : [];
   const moveCount = (type: string) => Number(moveRows.find((r) => r.txn_type === type)?.n ?? 0);
 
+  const [monthly, bench, letters] = await Promise.all([
+    pool.query(`select to_char(month, 'YYYY-MM') as m, ret, coverage from investor_returns where entity_id = $1 order by month`, [e.id]),
+    pool.query(`select to_char(month, 'YYYY-MM') as m, ret from benchmark_returns where symbol = 'SPY' order by month`),
+    getLetters({ investor: slug, limit: 12 }),
+  ]);
+  const returns = summarize(
+    monthly.rows.map((r) => ({ month: r.m as string, ret: Number(r.ret), coverage: r.coverage == null ? null : Number(r.coverage) })),
+    bench.rows.map((r) => ({ month: r.m as string, ret: Number(r.ret) })),
+  );
+
   return {
     slug: e.slug as string,
     fund: e.fund as string,
@@ -287,6 +332,8 @@ export async function getInvestor(slug: string): Promise<InvestorDetail | null> 
     holdings,
     trades,
     moves: { buys: moveCount("buy"), sells: moveCount("sell") },
+    returns,
+    letters,
   };
 }
 
@@ -466,6 +513,7 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
   const investorCount = new Set(holderRows.map((r) => r.slug)).size;
   const trades = await getTrades({ ticker: ticker, limit: 25 });
   const activity = await getStockActivity(T);
+  const letters = await getLetters({ ticker: T, limit: 8 });
 
   return {
     ticker: (s.ticker as string) ?? null,
@@ -476,6 +524,7 @@ export async function getStock(ticker: string): Promise<StockDetail | null> {
     holders: holderRows,
     activity,
     trades,
+    letters,
   };
 }
 
@@ -710,7 +759,18 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
 
-  const [mostHeld, conviction, biggest, bought, insiderBuys, funds, conc, pols] = await Promise.all([
+  // Best performers: twelve-month 13F-clone return, only where most of the
+  // reported value could be priced (MIN_COVERAGE) and the year is complete.
+  const bestQ = pool.query(`
+    with ${RET_CTE}
+    select e.slug, e.full_name as fund, ret.g1 - 1 as r
+    from ret join entities e on e.id = ret.entity_id
+    where ret.n1 >= 12 and ret.cov1 >= $1
+    order by r desc
+    limit 12
+  `, [MIN_COVERAGE]);
+
+  const [mostHeld, conviction, biggest, bought, insiderBuys, funds, conc, pols, best] = await Promise.all([
     mostHeldQ,
     convictionQ,
     biggestQ,
@@ -719,6 +779,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     fundsQ,
     concQ,
     polQ,
+    bestQ.catch(() => ({ rows: [] as Record<string, unknown>[] })),
   ]);
 
   const item = (r: Record<string, unknown>, metric: string): CollectionItem => ({
@@ -753,6 +814,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     mostConcentrated: conc.rows.map((r) =>
       inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} top position`),
     ),
+    bestPerformers: best.rows.map((r) => inv(r, pctOf(Number(r.r), 1))),
     topPoliticians: pols.rows.map((r) => ({
       slug: r.slug as string,
       fund: [r.party, seatOf(r.role)].filter(Boolean).join("-") || "US House",
@@ -760,5 +822,97 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       metric: `${Number(r.n)} trades`,
       photo: (r.photo as string) ?? null,
     })),
+  };
+}
+
+// ── Investor letters ────────────────────────────────────────────────────────
+export interface LetterFilters {
+  investor?: string;
+  ticker?: string;
+  stance?: string;
+  limit?: number;
+  offset?: number;
+}
+
+const LETTER_COLS = `
+  l.slug, l.title, l.author, l.org, e.slug as investor_slug, l.kind,
+  to_char(l.published_on, 'YYYY-MM-DD') as published_on, l.published_precision,
+  l.stance, l.headline, l.summary, l.stocks
+`;
+
+function toLetterSummary(r: Record<string, unknown>): LetterSummary {
+  const stocks = Array.isArray(r.stocks) ? (r.stocks as { ticker?: string | null }[]) : [];
+  return {
+    slug: r.slug as string,
+    title: r.title as string,
+    author: r.author as string,
+    org: (r.org as string) ?? null,
+    investorSlug: (r.investor_slug as string) ?? null,
+    kind: r.kind as LetterSummary["kind"],
+    publishedOn: r.published_on as string,
+    precision: r.published_precision === "month" ? "month" : "day",
+    stance: r.stance as LetterSummary["stance"],
+    headline: r.headline as string,
+    summary: r.summary as string,
+    tickers: [...new Set(stocks.map((s) => s.ticker).filter((t): t is string => !!t))],
+  };
+}
+
+export async function getLetters(f: LetterFilters = {}): Promise<LetterSummary[]> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (f.investor) {
+    args.push(f.investor);
+    where.push(`e.slug = $${args.length}`);
+  }
+  if (f.ticker) {
+    // Named in "stocks discussed" or in a takeaway.
+    args.push(f.ticker.toUpperCase());
+    where.push(`(l.stocks @> jsonb_build_array(jsonb_build_object('ticker', $${args.length}::text))
+      or exists (select 1 from jsonb_array_elements(l.takeaways) t where t->'tickers' ? $${args.length}))`);
+  }
+  if (f.stance && ["bullish", "neutral", "bearish"].includes(f.stance)) {
+    args.push(f.stance);
+    where.push(`l.stance = $${args.length}`);
+  }
+  args.push(Math.min(Math.max(f.limit ?? 30, 1), 100), Math.max(f.offset ?? 0, 0));
+  const { rows } = await pool.query(
+    `select ${LETTER_COLS}
+     from letters l left join entities e on e.id = l.entity_id
+     ${where.length ? `where ${where.join(" and ")}` : ""}
+     order by l.published_on desc, l.id desc
+     limit $${args.length - 1} offset $${args.length}`,
+    args,
+  );
+  return rows.map(toLetterSummary);
+}
+
+export async function getLetter(slug: string): Promise<Letter | null> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+  const { rows } = await pool.query(
+    `select ${LETTER_COLS}, l.source_url, l.source_name, l.takeaways, l.risks, l.quotes, l.summarized_by
+     from letters l left join entities e on e.id = l.entity_id
+     where l.slug = $1`,
+    [slug],
+  );
+  if (!rows.length) return null;
+  const r = rows[0];
+  const stocks = (Array.isArray(r.stocks) ? r.stocks : []) as Letter["stocks"];
+  const tickers = stocks.map((s) => s.ticker?.toUpperCase()).filter((t): t is string => !!t);
+  const known = tickers.length
+    ? new Set((await pool.query(`select distinct upper(ticker) as t from securities where upper(ticker) = any($1)`, [tickers])).rows.map((x) => x.t as string))
+    : new Set<string>();
+  return {
+    ...toLetterSummary(r),
+    sourceUrl: r.source_url as string,
+    sourceName: (r.source_name as string) ?? null,
+    takeaways: (Array.isArray(r.takeaways) ? r.takeaways : []).map((t: Letter["takeaways"][number]) => ({ ...t, tickers: t.tickers ?? [] })),
+    risks: Array.isArray(r.risks) ? r.risks : [],
+    quotes: Array.isArray(r.quotes) ? r.quotes : [],
+    stocks: stocks.map((s) => ({ ...s, known: !!s.ticker && known.has(s.ticker.toUpperCase()) })),
+    summarizedBy: (r.summarized_by as string) ?? null,
   };
 }

@@ -35,3 +35,12 @@ def test_validation_catches_mistakes():
         bad = copy.deepcopy(GOOD)
         change(bad)
         assert any(needle in e for e in validate(bad)), needle
+
+
+def test_quote_check_tolerates_layout_but_not_rewording():
+    from outsider_ingest.pipelines.draft_letter import missing_quotes
+
+    text = "It’s a problem with U.S. fiscal manage-\nment, and ultimately   a potential problem\nwith the U.S. dollar."
+    ok = {"text": "It's a problem with U.S. fiscal management, and ultimately a potential problem with the U.S. dollar."}
+    reworded = {"text": "It is a problem with US fiscal management."}
+    assert missing_quotes([ok, reworded], text) == [reworded["text"]]

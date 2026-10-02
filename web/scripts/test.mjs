@@ -6,7 +6,7 @@ const root = resolve(import.meta.dirname,'..');
 const dir = await mkdtemp(join(root,'.test-build-'));
 let failed = false;
 try {
-  for (const name of ['portfolio','brokers','instruments','format','valuation','apiValidation','fetchJson','watchlist']) {
+  for (const name of ['portfolio','brokers','instruments','format','valuation','apiValidation','fetchJson','watchlist','returns']) {
     await build({entryPoints:[join(root,`lib/${name}.ts`)],outfile:join(dir,`${name}.mjs`),bundle:true,platform:'node',format:'esm',logLevel:'silent'});
   }
   const mockDb = join(dir,'db.ts');
@@ -19,7 +19,7 @@ try {
   }
   await build({entryPoints:[join(root,'lib/rateLimit.ts')],outfile:join(dir,'rateLimit.cjs'),bundle:true,platform:'node',format:'cjs',packages:'external',logLevel:'silent'});
   await build({entryPoints:[join(root,'lib/db.ts')],outfile:join(dir,'db.cjs'),bundle:true,platform:'node',format:'cjs',packages:'external',plugins:[{name:'server-only',setup(builder){builder.onResolve({filter:/^server-only$/},()=>({path:'server-only',namespace:'stub'}));builder.onLoad({filter:/.*/,namespace:'stub'},()=>({contents:''}));}}],logLevel:'silent'});
-  for (const name of ['test-portfolio.mjs','test-broker-import.mjs','test-audit.mjs','test-hardening.mjs']) {
+  for (const name of ['test-portfolio.mjs','test-broker-import.mjs','test-audit.mjs','test-hardening.mjs','test-returns.mjs']) {
     const source = (await readFile(join(root,'scripts',name),'utf8')).replaceAll('../.tmp-','./');
     const file = join(dir,name); await writeFile(file,source);
     const result = spawnSync(process.execPath,[file],{cwd:root,stdio:'inherit',env:{...process.env,OUTSIDER_REPO:resolve(root,'..')}});

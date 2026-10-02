@@ -11,11 +11,14 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Donut } from "@/components/Donut";
 import { FollowButton } from "@/components/FollowButton";
+import { InvestorReturns } from "@/components/InvestorReturns";
+import { LetterCard } from "@/components/Letters";
+import { SwipeRow } from "@/components/SwipeRow";
 import { MatchSheet, matchPct, myHoldings, normTicker } from "@/components/MatchSheet";
 import { SkeletonPage } from "@/components/Skeleton";
 import { TradeFeed } from "@/components/TradeFeed";
 import { fetchJson } from "@/lib/fetchJson";
-import { abbrevMoney, companyName, fixTicker, shortDate, shortMoney, weightPct, stockHref } from "@/lib/format";
+import { abbrevMoney, companyName, fixTicker, pctOf, shortDate, shortMoney, weightPct, stockHref } from "@/lib/format";
 import { InvestorDetail, InvestorResponse } from "@/lib/types";
 import { Icon } from "@/components/Icon";
 
@@ -77,9 +80,19 @@ export default function InvestorPage() {
       </div>
     );
 
+  // After Eaves: the growth rate of the 13F clone as a key figure (per year
+  // with two or more years of history, else the return so far).
+  const ret = inv.returns ?? null;
+  const growth = ret
+    ? ret.cagr !== null
+      ? { label: `Per year since ${ret.from.slice(0, 4)}`, v: ret.cagr }
+      : { label: `Since ${ret.from.slice(0, 4)}`, v: ret.total }
+    : null;
   const stats: { label: string; value: string; cls?: string; onClick?: () => void; hint?: string }[] = [
     { label: "Portfolio value", value: shortMoney(inv.value) },
-    { label: "Positions", value: inv.positions.toLocaleString("en-US") },
+    growth
+      ? { label: growth.label, value: pctOf(growth.v, 1), cls: growth.v >= 0 ? "text-bull" : "text-bear", onClick: () => document.getElementById("returns")?.scrollIntoView({ behavior: "smooth", block: "start" }), hint: "Show returns by year" }
+      : { label: "Positions", value: inv.positions.toLocaleString("en-US") },
     { label: "As of", value: shortDate(inv.asOf) },
   ];
   if (mine.size > 0)
@@ -117,9 +130,20 @@ export default function InvestorPage() {
 
       <DepotSkyline holdings={inv.holdings} trades={inv.trades} />
 
+      {ret && <div id="returns" className="scroll-mt-4"><InvestorReturns returns={ret} who={inv.person ?? inv.fund} /></div>}
+
+      {inv.letters && inv.letters.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Letters</h2>
+          <SwipeRow className="gap-3">
+            {inv.letters.map((l) => <LetterCard key={l.slug} letter={l} className="w-[300px] shrink-0 snap-start" />)}
+          </SwipeRow>
+        </section>
+      )}
+
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All positions</h2>
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All positions <span className="text-[17px] font-semibold text-subtle">{inv.positions.toLocaleString("en-US")}</span></h2>
           <SegmentedControl label="Sort by" size="sm" options={[["value", "Value"], ["name", "Name"]] as const} value={sort} onChange={setSort} />
         </div>
 
