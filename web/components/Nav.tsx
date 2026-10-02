@@ -29,7 +29,7 @@ export function activeTab(path: string): string {
     path.startsWith("/insider")
   )
     return "/discover";
-  if (path.startsWith("/feed")) return "/feed";
+  if (path.startsWith("/feed") || path.startsWith("/letter")) return "/feed";
   if (path.startsWith("/me")) return "/me";
   if (path.startsWith("/settings")) return "/settings";
   return path;

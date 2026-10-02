@@ -40,6 +40,11 @@ Die Web-API benötigt nur Leserechte. Die Ingestion benötigt getrennte Schreibr
 
 Die tägliche Ingestion führt Quellen unabhängig aus und meldet Ausfälle. Der Senatsmirror ist historisch; ein Import ohne frische Abdeckung meldet dies als Fehler. Nach dem Ausrollen der neuen Ingestion müssen alte Meldungen kontrolliert neu eingelesen und die Abdeckung verglichen werden. Bestehende Zeilen bleiben beim Ersatz archiviert erhalten.
 
+### Investoren-Renditen und Briefe
+
+- **Renditen** (`compute_returns`, Job `returns`): liest je Investor die 13F-HR-Meldungen seit Ende 2015, hält jede Meldung bis zur nächsten (Monatskurse von Yahoo inkl. Dividenden) und schreibt Monatsrenditen nach `investor_returns`, den S&P 500 (SPY) nach `benchmark_returns`. Alte CUSIPs landen in `return_symbols`, nie in `securities`. Der erste Lauf rechnet alles (rund 12 Minuten), danach nur neue Quartale und wöchentlich die letzten Monate. Komplett neu: `gh workflow run ingest.yml -f only=returns -f args="--full"`.
+- **Briefe**: je Brief eine Datei unter `ingestion/letters/` (Zusammenfassung, Takeaways, Risiken, wörtliche Zitate, besprochene Aktien), per Pull Request geprüft; der Job `letters` lädt sie. Entwurf aus einem Original: `PYTHONPATH=ingestion python -m outsider_ingest.pipelines.draft_letter --url … --investor … --author … --kind … --slug …` (braucht `pip install anthropic` und einen API-Schlüssel); das Skript prüft Format und ob jedes Zitat wörtlich im Original steht.
+
 ## Audit und Umsetzung
 
 - [Gründlicher Audit](docs/AUDIT-2026-09-13.md)

@@ -304,6 +304,8 @@ const INVESTOR_PEOPLE: [string, string, string][] = [
   ["fairfax financial", "Prem_Watsa", "Prem Watsa"],
   ["markel", "Tom_Gayner", "Tom Gayner"],
   ["starboard value", "Jeff_Smith", "Jeff Smith"],
+  // Starboard's letters are signed with the full first name.
+  ["jeffrey smith", "Jeff_Smith", "Jeff Smith"],
   ["glenview", "Larry_Robbins", "Larry Robbins"],
   ["pelosi", "Nancy_Pelosi", "Nancy Pelosi"],
 ];

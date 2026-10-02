@@ -1,0 +1,31 @@
+{
+  "slug": "oaktree-laws-of-economics-part-iii",
+  "investor": "oaktree-capital-management-lp",
+  "author": "Howard Marks",
+  "org": "Oaktree Capital",
+  "kind": "memo",
+  "title": "Shall We Repeal the Laws of Economics – Part III",
+  "published_on": "2026-09-22",
+  "published_precision": "day",
+  "source_url": "https://www.oaktreecapital.com/insights/memo/shall-we-repeal-the-laws-of-economics---part-iii",
+  "source_name": "oaktreecapital.com",
+  "stance": "bearish",
+  "headline": "Marks on the Treasury buying back long bonds: capping yields treats the fever, not the deficit that causes it.",
+  "summary": "After the 30-year Treasury yield closed above 5.3% on August 17, the Treasury enlarged its buybacks of long-dated bonds. Marks calls the move cosmetic: its effect fades, and it ignores what pushes rates up, namely 3.7% inflation, a deficit near 6% of GDP in good times, net interest above $1 trillion and the capital the AI build-out needs. He sees no risk of default, but a chronic cost and a threat to the dollar. The only real fix is fiscal: more revenue and spending that grows slower than GDP. Selling US stocks is not the answer either, since the problem lies with fiscal policy and the dollar, not with US companies.",
+  "takeaways": [
+    { "label": "View", "text": "Long-term yields reflect the fundamentals. With about $2 trillion of net new Treasury issuance and the AI build-out competing for capital, he doesn’t expect rates to fall soon.", "tickers": [] },
+    { "label": "View", "text": "Don’t sell US stocks over this. The risk is to the dollar, and moving money abroad brings its own risks; some diversification can suit investors with non-dollar needs.", "tickers": [] },
+    { "label": "Watch", "text": "The Treasury’s long-bond buybacks, raised to as much as $6 billion per operation, and whether markets stay unimpressed.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Macro", "text": "Deficits near 6% of GDP during prosperity, with federal debt around $40 trillion." },
+    { "scope": "Macro", "text": "Buying bonds to cap yields can make lenders worry about the dollar and demand more on new debt." },
+    { "scope": "Macro", "text": "Inflation at 3.7% (PCE) and oil prices tied to the war with Iran." }
+  ],
+  "quotes": [
+    { "text": "The goal shouldn’t be to get interest rates down. It should be to respond to the factors pushing rates up.", "context": "On the buybacks" },
+    { "text": "It’s a problem with U.S. fiscal management, and ultimately a potential problem with the U.S. dollar.", "context": "On selling US stocks" },
+    { "text": "The bottom line: you can’t ignore the laws of economics and expect to come out ahead.", "context": "Conclusion" }
+  ],
+  "stocks": []
+}

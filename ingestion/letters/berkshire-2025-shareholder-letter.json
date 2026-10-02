@@ -1,0 +1,40 @@
+{
+  "slug": "berkshire-2025-shareholder-letter",
+  "investor": "berkshire-hathaway-inc",
+  "author": "Greg Abel",
+  "org": "Berkshire Hathaway",
+  "kind": "annual_letter",
+  "title": "Berkshire Hathaway 2025 Shareholder Letter",
+  "published_on": "2026-02-28",
+  "published_precision": "day",
+  "source_url": "https://www.berkshirehathaway.com/letters/2025ltr.pdf",
+  "source_name": "berkshirehathaway.com",
+  "stance": "neutral",
+  "headline": "Abel’s first letter as CEO: the culture stays, more than $370 billion waits for the right pitch, and Kraft Heinz is called a disappointment.",
+  "summary": "Greg Abel’s first annual letter writes Berkshire’s values down and promises they will not change. Operating earnings fell to $44.5 billion from $47.4 billion. Insurance had an exceptional underwriting year (87.1% combined ratio), but Abel expects to write less business as prices soften. Cash and Treasuries above $370 billion are dry powder, he says, not a retreat. 2025 brought two acquisitions, OxyChem and Bell Laboratories. The core stocks (Apple, American Express, Coca-Cola, Moody’s and the five Japanese trading houses) stay, with little activity planned.",
+  "takeaways": [
+    { "label": "Move", "text": "Bought two businesses in 2025: OxyChem, which Berkshire got to know through its Occidental stake, and the rodent-control maker Bell Laboratories.", "tickers": ["OXY"] },
+    { "label": "View", "text": "Cash and Treasuries above $370 billion are dry powder. Buybacks only happen below a conservative estimate of intrinsic value.", "tickers": [] },
+    { "label": "View", "text": "Apple, American Express, Coca-Cola, Moody’s and the Japanese trading houses make up nearly two-thirds of the $297.8 billion stock portfolio. Activity there will be limited.", "tickers": ["AAPL", "AXP", "KO", "MCO"] },
+    { "label": "Watch", "text": "Insurance prices are softening, so Berkshire expects to write less property-casualty insurance and reinsurance for a while.", "tickers": [] },
+    { "label": "Watch", "text": "BNSF’s 34.5% operating margin still trails the best railroads. Each point of margin is worth about $230 million of cash flow a year.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Industry", "text": "More capital in insurance is cutting property reinsurance prices, while claims inflation outpaces pricing in casualty." },
+    { "scope": "Company", "text": "GEICO’s rate increases restored margins but cost customers; competitors’ rate cuts may keep retention under pressure in 2026." },
+    { "scope": "Company", "text": "Wildfire liability at the utilities, and AI-driven power demand that BHE will only serve if data-centre customers pay for the grid it needs." }
+  ],
+  "quotes": [
+    { "text": "Many times in Berkshire’s history, some observers have suggested that our substantial cash position signals a retreat from investing. It does not.", "context": "On the cash pile" },
+    { "text": "Our investment in Kraft Heinz has been disappointing.", "context": "On Kraft Heinz" },
+    { "text": "At Berkshire’s scale, the math of compounding works against us – a reality long understood and best acknowledged plainly.", "context": "On size" }
+  ],
+  "stocks": [
+    { "ticker": "AAPL", "company": "Apple", "stance": "neutral", "note": "Largest holding, $62.0 billion at year-end. Core, little activity planned." },
+    { "ticker": "AXP", "company": "American Express", "stance": "neutral", "note": "22.1% owned. Core holding." },
+    { "ticker": "KO", "company": "Coca-Cola", "stance": "neutral", "note": "9.3% owned. Core holding." },
+    { "ticker": "MCO", "company": "Moody’s", "stance": "neutral", "note": "13.9% owned. Core holding." },
+    { "ticker": "KHC", "company": "Kraft Heinz", "stance": "bearish", "note": "Return “well short of adequate”, even counting the original Heinz preferred." },
+    { "ticker": "OXY", "company": "Occidental Petroleum", "stance": "neutral", "note": "Held under the equity method. Berkshire bought its OxyChem unit." }
+  ]
+}

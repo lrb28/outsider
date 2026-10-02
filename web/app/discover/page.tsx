@@ -9,9 +9,9 @@ import { ErrorRetry } from "@/components/ErrorRetry";
 import { FaceStack } from "@/components/FaceStack";
 import { FollowButton } from "@/components/FollowButton";
 import { SkeletonList } from "@/components/Skeleton";
-import { AuraCard, ChipBar, EmptyState, ListCard, ListRow, PageTitle, politicianLine } from "@/components/ui";
+import { AuraCard, ChipBar, EmptyState, ListCard, ListRow, PageTitle, politicianLine, SegmentedControl } from "@/components/ui";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { abbrevMoney, formatDate, stockHref } from "@/lib/format";
+import { abbrevMoney, formatDate, pctOf, stockHref } from "@/lib/format";
 import type {
   CollectionInvestor,
   CollectionItem,
@@ -93,6 +93,18 @@ function Discover() {
   }, [tab, retry]);
 
   const sortedStocks = useMemo(() => (stocks ? [...stocks].sort((a, b) => b.investors - a.investors) : null), [stocks]);
+  // Investors by size or by the last twelve months' 13F return (after Eaves's
+  // "Best performers"); those without a full year go last.
+  const [invSort, setInvSort] = useState<"value" | "return">("value");
+  const sortedInvestors = useMemo(
+    () =>
+      investors
+        ? invSort === "value"
+          ? investors
+          : [...investors].sort((a, b) => (b.oneYear ?? -Infinity) - (a.oneYear ?? -Infinity))
+        : null,
+    [investors, invSort],
+  );
 
   return (
     <div className="space-y-6">
@@ -122,6 +134,9 @@ function Discover() {
               <h2 className="eyebrow">People</h2>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <AuraCard href="/discover/politicians" aura="politician" title="Most active politicians" blurb="Members of the US House with the most stock trades in the last year." visual={<FaceTrio people={data.topPoliticians} kind="politician" />} />
+                {(data.bestPerformers?.length ?? 0) > 0 && (
+                  <AuraCard href="/discover/best" aura="investor" title="Best performers" blurb="Whose reported stocks did best over the last 12 months." visual={<FaceTrio people={data.bestPerformers ?? []} />} />
+                )}
                 <AuraCard href="/discover/biggestfunds" aura="investor" title="Biggest funds" blurb="The tracked investors with the largest reported portfolios." visual={<FaceTrio people={data.biggestFunds} />} />
                 <AuraCard href="/discover/concentrated" aura="investor" title="Most concentrated" blurb="Investors who put the biggest share into a single stock." visual={<FaceTrio people={data.mostConcentrated} />} />
               </div>
@@ -130,13 +145,15 @@ function Discover() {
         ))}
 
       {tab === "investors" &&
-        (investors === null ? (
+        (sortedInvestors === null ? (
           error ? null : <SkeletonList n={8} />
-        ) : investors.length === 0 ? (
+        ) : sortedInvestors.length === 0 ? (
           <EmptyState title="No investor data yet" />
         ) : (
-          <ListCard className="fade-up">
-            {investors.map((iv) => (
+          <div className="fade-up space-y-3">
+          <SegmentedControl label="Sort investors by" size="sm" options={[["value", "Portfolio value"], ["return", "12-month return"]] as const} value={invSort} onChange={setInvSort} />
+          <ListCard>
+            {sortedInvestors.map((iv) => (
               <ListRow
                 key={iv.slug}
                 href={`/investor/${iv.slug}`}
@@ -144,16 +161,24 @@ function Discover() {
                 title={iv.person ?? iv.fund}
                 subtitle={iv.person ? iv.fund : `13F ${formatDate(iv.asOf)}`}
                 trailing={
-                  <>
-                    <div className="text-[15px] font-semibold tabular-nums">{abbrevMoney(iv.value)}</div>
-                    <div className="text-[13px] text-subtle">{iv.positions} positions</div>
-                  </>
+                  invSort === "return" ? (
+                    <>
+                      <div className={`text-[15px] font-semibold tabular-nums ${iv.oneYear == null ? "text-subtle" : iv.oneYear >= 0 ? "text-bull" : "text-bear"}`}>{iv.oneYear == null ? "—" : pctOf(iv.oneYear, 1)}</div>
+                      <div className="text-[13px] text-subtle">{iv.oneYear == null ? "under a year" : "12 months"}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[15px] font-semibold tabular-nums">{abbrevMoney(iv.value)}</div>
+                      <div className="text-[13px] text-subtle">{iv.positions} positions</div>
+                    </>
+                  )
                 }
                 chevron={false}
                 after={<FollowButton kind="investor" id={iv.slug} variant="star" />}
               />
             ))}
           </ListCard>
+          </div>
         ))}
 
       {tab === "politicians" &&

@@ -1,0 +1,34 @@
+{
+  "slug": "fairfax-2025-shareholder-letter",
+  "investor": "fairfax-financial-holdings-ltd",
+  "author": "Prem Watsa",
+  "org": "Fairfax Financial",
+  "kind": "annual_letter",
+  "title": "Fairfax Financial 2025 Letter to Shareholders",
+  "published_on": "2026-03-06",
+  "published_precision": "day",
+  "source_url": "https://www.fairfax.ca/wp-content/uploads/2026/03/FFH_Fairfax-Financial-2025-Annual-Report-144860.pdf",
+  "source_name": "fairfax.ca",
+  "stance": "bullish",
+  "headline": "Watsa marks Fairfax’s 40th year with record net income of $4.8 billion and sees about $5 billion of operating income a year for four more.",
+  "summary": "Book value per share rose 21% in 2025 to $1,260 and the stock 31%, on record underwriting profit ($1.8 billion despite $1.2 billion of catastrophe losses), record interest and dividend income ($2.6 billion) and $3.2 billion of investment gains. Watsa expects, without guarantee, about $5 billion of operating income a year for the next four years, roughly $150 a share after tax. Eurobank, bought during the Greek crisis, is “by far the best investment we have had in our 40 years”. Fairfax is taking Kennedy Wilson private with its management and keeps buying back stock, while the hard insurance market is beginning to soften.",
+  "takeaways": [
+    { "label": "View", "text": "About $5 billion of operating income a year looks sustainable for four years: $1.5 billion or more from underwriting, $2.5 billion from interest and dividends, $1 billion from associates and other businesses.", "tickers": [] },
+    { "label": "Move", "text": "Taking Kennedy Wilson private with Bill McMorrow at $10.90 a share, and selling Eurolife’s life business to Eurobank for €813 million.", "tickers": ["KW"] },
+    { "label": "Move", "text": "Bought back and cancelled 1 million shares in 2025; shares outstanding are down 24.8% since 2017.", "tickers": [] },
+    { "label": "Watch", "text": "The hard insurance market that began in 2019 “is now beginning to soften”.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Industry", "text": "Softening insurance prices after a long hard market." },
+    { "scope": "Company", "text": "Catastrophe losses have averaged over $1 billion a year for the last five years." },
+    { "scope": "Market", "text": "$20.5 billion is in common stocks: Watsa expects large gains, but not when." }
+  ],
+  "quotes": [
+    { "text": "Eurobank is by far the best investment we have had in our 40 years!", "context": "On Eurobank" },
+    { "text": "To be clear, we expect to make significant profits from our common stock positions – but we don’t know when!", "context": "On the stock portfolio" }
+  ],
+  "stocks": [
+    { "ticker": null, "company": "Eurobank", "stance": "bullish", "note": "15% a year since 2014; still about 10x earnings with a 5% yield." },
+    { "ticker": "KW", "company": "Kennedy Wilson", "stance": "neutral", "note": "Being taken private at $10.90 a share, a 46% premium." }
+  ]
+}

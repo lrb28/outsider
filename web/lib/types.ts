@@ -1,3 +1,5 @@
+import type { ReturnSummary } from "./returns";
+
 export type EntityType = "politician" | "corporate_insider" | "institution";
 export type TxnType = "buy" | "sell" | "exchange" | "option";
 
@@ -40,6 +42,13 @@ export interface InvestorRow {
   positions: number;
   value: number | null;
   asOf: string | null;
+  /** 13F-clone return over the last twelve months and since its first
+   *  month (lib/returns.ts); null without enough history. */
+  oneYear?: number | null;
+  cagr?: number | null;
+  since?: string | null;
+  /** Share of the reported value that could be priced, last twelve months. */
+  coverage?: number | null;
 }
 
 export interface HoldingRow {
@@ -65,6 +74,8 @@ export interface InvestorDetail {
   trades: FeedRow[];
   /** Stock positions raised and cut in the latest reported quarter. */
   moves?: { buys: number; sells: number };
+  returns?: ReturnSummary | null;
+  letters?: LetterSummary[];
 }
 
 export interface InvestorsResponse {
@@ -142,6 +153,8 @@ export interface StockDetail {
   /** Latest quarter's moves of the tracked investors (13F vs the one before). */
   activity?: StockMove[];
   trades: FeedRow[];
+  /** Investor letters that discuss the stock. */
+  letters?: LetterSummary[];
 }
 
 export interface StocksResponse {
@@ -242,4 +255,55 @@ export interface DiscoverData {
   biggestFunds: CollectionInvestor[];
   mostConcentrated: CollectionInvestor[];
   topPoliticians: CollectionInvestor[];
+  /** Highest 13F-clone return over the last twelve months. */
+  bestPerformers?: CollectionInvestor[];
+}
+
+// ── Investor letters ────────────────────────────────────────────────────────
+export type Stance = "bullish" | "neutral" | "bearish";
+export type LetterKind = "annual_letter" | "quarterly_letter" | "memo" | "activist_letter" | "commentary";
+
+export interface LetterSummary {
+  slug: string;
+  title: string;
+  author: string;
+  org: string | null;
+  investorSlug: string | null;
+  kind: LetterKind;
+  publishedOn: string;
+  precision: "day" | "month";
+  stance: Stance;
+  headline: string;
+  summary: string;
+  /** Tickers the letter discusses, in its order. */
+  tickers: string[];
+}
+
+export interface LetterStock {
+  ticker: string | null;
+  company: string;
+  stance: Stance;
+  note?: string;
+  /** ĀURA has a page for it. */
+  known: boolean;
+}
+
+export interface Letter extends LetterSummary {
+  sourceUrl: string;
+  sourceName: string | null;
+  takeaways: { label: "Move" | "View" | "Watch"; text: string; tickers: string[] }[];
+  risks: { scope: "Company" | "Industry" | "Market" | "Macro"; text: string }[];
+  quotes: { text: string; context?: string }[];
+  stocks: LetterStock[];
+  summarizedBy: string | null;
+}
+
+export interface LettersResponse {
+  source: "database" | "sample";
+  rows: LetterSummary[];
+}
+
+export interface LetterResponse {
+  source: "database" | "sample";
+  letter: Letter | null;
 }

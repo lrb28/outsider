@@ -1,0 +1,47 @@
+{
+  "slug": "pershing-square-2025-annual-letter",
+  "investor": "pershing-square-capital-management-l-p",
+  "author": "Bill Ackman",
+  "org": "Pershing Square",
+  "kind": "annual_letter",
+  "title": "Pershing Square Holdings 2025 Letter to Shareholders",
+  "published_on": "2026-02-01",
+  "published_precision": "month",
+  "source_url": "https://assets.pershingsquareholdings.com/wp-content/uploads/2026/02/18175039/Pershing-Square-Holdings-Ltd.-2025-Annual-Report.pdf",
+  "source_name": "pershingsquareholdings.com",
+  "stance": "bullish",
+  "headline": "Ackman: NAV up 20.9% in 2025, Meta bought on its capex dip, and “constructive” on 2026.",
+  "summary": "Pershing Square Holdings’ NAV rose 20.9% in 2025 (the shares 33.9%) against 17.9% for the S&P 500. Ackman argues the market’s rise rests on earnings growth, not speculation, and that index ownership plus leveraged short-term traders make even the largest stocks swing irrationally, which helps patient capital. He bought Meta after its capex-driven drop at about 20 times earnings, joining Alphabet and Amazon, and defends all three’s AI spending. Howard Hughes is to become “a modern-day Berkshire Hathaway”, starting with the $2.1 billion purchase of the insurer Vantage. He lists ten reasons 2026 could be a very strong economic year.",
+  "takeaways": [
+    { "label": "Move", "text": "New position in Meta after its October drop, bought at about 20 times earnings. Hilton was sold after seven years; Chipotle, Canadian Pacific and Nike were sold during 2025.", "tickers": ["META", "HLT", "CMG", "CP", "NKE"] },
+    { "label": "View", "text": "Higher capex at Alphabet, Amazon and Meta answers rising demand and should be applauded, not booed.", "tickers": ["GOOGL", "AMZN", "META"] },
+    { "label": "Move", "text": "Howard Hughes, 47% owned together with the management company, is buying Vantage for $2.1 billion, with up to $1 billion of preferred equity from the fund.", "tickers": ["HHH"] },
+    { "label": "View", "text": "Fannie Mae and Freddie Mac could re-rate above $40 a share if the plan Pershing Square published in November is followed.", "tickers": ["FNMA", "FMCC"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "Leveraged short-term funds with stop-losses can force sharp, irrational drops after even a small disappointment." },
+    { "scope": "Company", "text": "Uber: investors fear autonomous vehicles from Tesla and Waymo will erode its network." },
+    { "scope": "Company", "text": "Universal Music: a possible share sale by Bolloré, a delayed US listing and worries about AI-made music." }
+  ],
+  "quotes": [
+    { "text": "When a business you own, managed by a management team you trust, announces a large increase in capital spending due to increased demand for its products or services, you should be applauding rather than booing.", "context": "On Big Tech capex" },
+    { "text": "Our long-term objective is to transform HHH into a modern-day Berkshire Hathaway", "context": "On Howard Hughes" },
+    { "text": "we are constructive on the current economic and market backdrop and on Pershing Square Holdings.", "context": "Outlook" }
+  ],
+  "stocks": [
+    { "ticker": "META", "company": "Meta Platforms", "stance": "bullish", "note": "New in late 2025 at about 20x earnings, under 16x excluding Reality Labs." },
+    { "ticker": "GOOGL", "company": "Alphabet", "stance": "bullish", "note": "Biggest contributor in 2025 (+10.3 points); Cloud margins up to 24%." },
+    { "ticker": "AMZN", "company": "Amazon", "stance": "bullish", "note": "Bought in April 2025 at about 25x forward earnings; AWS growth re-accelerating." },
+    { "ticker": "BN", "company": "Brookfield", "stance": "bullish", "note": "About 14x distributable earnings, which he expects to grow 25% or more." },
+    { "ticker": "UBER", "company": "Uber", "stance": "bullish", "note": "Under 20x earnings against 30%+ expected EPS growth; a partner for robotaxis." },
+    { "ticker": "QSR", "company": "Restaurant Brands", "stance": "bullish", "note": "16x earnings, nearly 30% below peers." },
+    { "ticker": "HTZ", "company": "Hertz", "stance": "bullish", "note": "Turnaround with a line of sight to $1 billion of EBITDA." },
+    { "ticker": "HHH", "company": "Howard Hughes", "stance": "bullish", "note": "Becoming a diversified holding company, starting with Vantage." },
+    { "ticker": "FNMA", "company": "Fannie Mae", "stance": "bullish", "note": "Plan could lift the shares above $40, about five times the price at the time." },
+    { "ticker": "FMCC", "company": "Freddie Mac", "stance": "bullish", "note": "Same plan as for Fannie Mae." },
+    { "ticker": null, "company": "Universal Music Group", "stance": "bullish", "note": "18x earnings, the lowest since it listed." },
+    { "ticker": "HLT", "company": "Hilton", "stance": "neutral", "note": "Sold after more than seven years; the valuation left too little upside." },
+    { "ticker": "CMG", "company": "Chipotle", "stance": "neutral", "note": "Sold in 2025, the biggest detractor (−4.6 points)." },
+    { "ticker": "NKE", "company": "Nike", "stance": "neutral", "note": "Sold in 2025 (−2.5 points)." }
+  ]
+}

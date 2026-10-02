@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
+import { AddToPortfolio } from "@/components/AddToPortfolio";
 import { FollowButton } from "@/components/FollowButton";
+import { LetterCard } from "@/components/Letters";
+import { SwipeRow } from "@/components/SwipeRow";
 import { PriceChart } from "@/components/PriceChart";
 import { RollingNumber } from "@/components/RollingNumber";
 import { SkeletonChart, SkeletonPage } from "@/components/Skeleton";
@@ -101,7 +104,7 @@ export default function StockPage() {
   return (
     <div className="space-y-8">
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: up ? "var(--bull-fill)" : "var(--bear-fill)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-      <DetailTopBar back="/discover?tab=stocks" label="Stocks" action={stock.ticker ? <FollowButton kind="stock" id={stock.ticker} /> : undefined} />
+      <DetailTopBar back="/discover?tab=stocks" label="Stocks" />
 
       <div className="fade-up flex items-center gap-4">
         <CompanyLogo ticker={stock.ticker} company={stock.company} size={72} rounded="rounded-[20px]" />
@@ -110,6 +113,13 @@ export default function StockPage() {
           <div className="mt-1 text-[15px] font-medium text-subtle">{fixTicker(stock.ticker, stock.company) ?? "—"}</div>
         </div>
       </div>
+      {/* After Eaves: follow and add to the Portfolio side by side. */}
+      {stock.ticker && (
+        <div className="fade-up flex flex-wrap gap-2">
+          <FollowButton kind="stock" id={stock.ticker} />
+          <AddToPortfolio ticker={stock.ticker} company={stock.company} price={quote?.price ?? (bars && bars.length ? bars[bars.length - 1].close : null)} priceCurrency={quote?.currency ?? (bars && bars.length ? "USD" : null)} />
+        </div>
+      )}
       {quote && (
         <div className="fade-up flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="num-xl"><RollingNumber rollIn value={quote.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} /> <span className="text-[17px] font-semibold text-subtle">{quote.currency || ""}</span></span>
@@ -185,6 +195,15 @@ export default function StockPage() {
           )}
         </div>
       </section>
+
+      {stock.letters && stock.letters.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">In investor letters</h2>
+          <SwipeRow className="gap-3">
+            {stock.letters.map((l) => <LetterCard key={l.slug} letter={l} className="w-[300px] shrink-0 snap-start" />)}
+          </SwipeRow>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Latest filings</h2>
