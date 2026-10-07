@@ -43,7 +43,7 @@ function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void 
     window.setTimeout(onStart, 260);
   };
   return (
-    <div className={`welcome-screen relative flex h-full flex-col overflow-hidden transition-[opacity,filter] duration-300 ease-out ${leaving ? "opacity-0 blur-sm" : ""}`}>
+    <div className={`welcome-screen relative flex h-full touch-none select-none flex-col overflow-hidden transition-[opacity,filter] duration-300 ease-out ${leaving ? "opacity-0 blur-sm" : ""}`}>
       <SilkVideo className="pointer-events-none absolute inset-0" />
 
       <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[36%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">

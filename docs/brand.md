@@ -28,6 +28,11 @@ it, colour only where it carries meaning.
   with a media query, which iOS may or may not honour when adding to the
   home screen), rounded manifest icons 192/512 and a maskable 512, each with a
   `-dark` twin.
+- Home Screen app (2026-10-07): full screen, drawn under the clock and
+  battery (`black-translucent`), so the welcome silk fills the whole display.
+  iOS gives web apps only white status bar icons in that mode, also in light
+  mode; the header and the set-up leave room with `env(safe-area-inset-top)`.
+  A Safari tab can't do this: Safari fills the status bar strip itself.
 
 ## Colour
 
@@ -263,6 +268,19 @@ upscaled to 1170×2538 and is played as HEVC or H.264 by `SilkVideo`
 until it plays and for reduced motion. On top: the mark in the upper middle
 (36 %), "Money / leaves / clues" bottom left and two equal frosted capsules
 where the video had its own buttons.
+
+The silk is a river and a finger is a stone in it (user, 2026-10-07): the
+strands part around the finger and close behind it, a drag pulls the silk
+along like a current and stirs eddies, a finger landing gives a small
+splash, and once it lifts the silk flows back (about a second, with a slight
+overshoot). Several fingers are several stones; a mouse is a smaller stone
+while it hovers. `lib/silkCurrent.ts` draws the video's own frames on a
+WebGL2 canvas through a small fluid simulation (a current down the band from
+top right to bottom left, the stones, a spring-loaded displacement map) and
+an exact potential-flow parting; colours are never touched, only where each
+pixel is read from. The canvas shows only while the silk is disturbed, so
+the untouched screen is the plain video. No effect for reduced motion or
+without WebGL2.
 
 ## Investor letters (after Eaves, 2026-10-02)
 
