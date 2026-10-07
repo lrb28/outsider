@@ -433,6 +433,8 @@ h1, h2, h3 {
 .welcome-screen {
   background: #fff;
   color: #000;
+  /* The finger rests on the silk (SilkVideo): no text selection, no callout. */
+  -webkit-touch-callout: none;
   --pill-bg: rgb(255 255 255 / 0.5);
   --pill-rim: rgb(0 0 0 / 0.06);
 }
