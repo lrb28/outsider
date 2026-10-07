@@ -43,7 +43,13 @@ export const metadata: Metadata = {
       { url: "/apple-touch-icon-dark.png", sizes: "180x180", media: "(prefers-color-scheme: dark)" },
     ],
   },
-  appleWebApp: { capable: true, title: "AURA", statusBarStyle: "default" },
+  // The Home Screen app runs full screen, under the clock and battery, so
+  // the welcome silk fills the whole display (user, 2026-10-07). iOS then
+  // shows those in white everywhere; the header and the set-up leave room
+  // for them with env(safe-area-inset-top). Takes effect once the icon is
+  // removed and added again.
+  appleWebApp: { capable: true, title: "AURA", statusBarStyle: "black-translucent" },
+  other: { "apple-mobile-web-app-capable": "yes" },
   openGraph: {
     title: "ĀURA — understand public disclosures",
     description: DESC,

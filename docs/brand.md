@@ -28,6 +28,11 @@ it, colour only where it carries meaning.
   with a media query, which iOS may or may not honour when adding to the
   home screen), rounded manifest icons 192/512 and a maskable 512, each with a
   `-dark` twin.
+- Home Screen app (2026-10-07): full screen, drawn under the clock and
+  battery (`black-translucent`), so the welcome silk fills the whole display.
+  iOS gives web apps only white status bar icons in that mode, also in light
+  mode; the header and the set-up leave room with `env(safe-area-inset-top)`.
+  A Safari tab can't do this: Safari fills the status bar strip itself.
 
 ## Colour
 
