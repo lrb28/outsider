@@ -42,3 +42,25 @@ export function fetchCatalogue<T>(url: string): Promise<T> {
   catalogue.set(url, { until: Date.now() + 10_000, promise });
   return promise;
 }
+
+/*
+ * Detail pages (an investor, a politician) opened in the last few minutes,
+ * the last six, so swiping back and forth through the watchlist does not
+ * load the same one again. A large fund's response is big, hence so few.
+ */
+const details = new Map<string, { at: number; promise: Promise<unknown> }>();
+export function fetchDetail<T>(url: string, fresh = false): Promise<T> {
+  const hit = details.get(url);
+  details.delete(url);
+  if (hit && !fresh && Date.now() - hit.at < 5 * 60_000) {
+    details.set(url, hit);
+    return hit.promise as Promise<T>;
+  }
+  if (details.size >= 6) details.delete(details.keys().next().value as string);
+  const promise: Promise<T> = fetchJson<T>(url).catch((error) => {
+    if (details.get(url)?.promise === promise) details.delete(url);
+    throw error;
+  });
+  details.set(url, { at: Date.now(), promise });
+  return promise;
+}

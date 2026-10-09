@@ -10,61 +10,25 @@ import { Donut } from "@/components/Donut";
 import { InvestorReturns } from "@/components/InvestorReturns";
 import { LetterCard } from "@/components/Letters";
 import { MatchSheet, matchPct, myHoldings, normTicker } from "@/components/MatchSheet";
-import { Skeleton } from "@/components/Skeleton";
 import { SwipeRow } from "@/components/SwipeRow";
 import { TradeFeed } from "@/components/TradeFeed";
 import { SegmentedControl, StatRow } from "@/components/ui";
-import { fetchJson } from "@/lib/fetchJson";
+import { fetchDetail } from "@/lib/fetchJson";
 import { abbrevMoney, companyName, fixTicker, pctOf, shortDate, shortMoney, stockHref, weightPct } from "@/lib/format";
 import type { InvestorDetail, InvestorResponse } from "@/lib/types";
 
-/*
- * Investors opened once stay at hand for a while, so swiping back and forth
- * through the watchlist does not load the same 13F again. A handful at most:
- * a large fund's response is big.
- */
-const loaded = new Map<string, { at: number; promise: Promise<InvestorDetail | null> }>();
-
 export function loadInvestor(slug: string, fresh = false): Promise<InvestorDetail | null> {
-  const hit = loaded.get(slug);
-  loaded.delete(slug);
-  if (hit && !fresh && Date.now() - hit.at < 5 * 60_000) {
-    loaded.set(slug, hit);
-    return hit.promise;
-  }
-  if (loaded.size >= 6) loaded.delete(loaded.keys().next().value as string);
-  const promise = fetchJson<InvestorResponse>(`/api/investor?slug=${encodeURIComponent(slug)}`)
-    .then((d) => d.investor)
-    .catch((error) => {
-      if (loaded.get(slug)?.promise === promise) loaded.delete(slug);
-      throw error;
-    });
-  loaded.set(slug, { at: Date.now(), promise });
-  return promise;
-}
-
-/** The head of an investor page while it loads: picture and name, as far as known. */
-export function InvestorHeadPlaceholder({ name }: { name?: string }) {
-  return (
-    <div role="status" aria-label="Loading" className="space-y-5">
-      <div className="flex flex-col items-start gap-4">
-        {name ? <Avatar name={name} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" /> : <Skeleton className="h-24 w-24 rounded-full" />}
-        {name ? <h1 className="large-title">{name}</h1> : <Skeleton className="h-8 w-56" />}
-      </div>
-      <Skeleton className="h-4 w-full max-w-xl" />
-      <Skeleton className="h-[74px] w-full rounded-[22px]" />
-      <Skeleton className="h-72 w-full rounded-[22px]" />
-    </div>
-  );
+  return fetchDetail<InvestorResponse>(`/api/investor?slug=${encodeURIComponent(slug)}`, fresh).then((d) => d.investor);
 }
 
 /**
  * Everything an investor page shows about one investor. `top` is the row
  * with the back button (left out when the watchlist pager keeps it fixed
  * above), `preview` draws only the head and the allocation, for the
- * neighbouring investor that slides in beside the current one.
+ * neighbouring investor that slides in beside the current one, and
+ * `centred` stacks picture, name and bio down the middle (the pager).
  */
-export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean }) {
+export function InvestorView({ inv, top, preview = false, centred = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean; centred?: boolean }) {
   const [sort, setSort] = useState<"value" | "name">("value");
   // Point72 reports almost 2,000 positions; rendering them all at once made
   // the page stutter on phones. The list grows on request.
@@ -128,13 +92,13 @@ export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetai
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
         {top}
 
-        <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        <div className={`fade-up flex flex-col gap-4 ${centred ? "items-center text-center" : "items-start sm:flex-row sm:items-center"}`}>
           <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
           </div>
         </div>
-        {inv.bio && <p className="fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
+        {inv.bio && <p className={`fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80 ${centred ? "mx-auto text-center" : ""}`}>{inv.bio}</p>}
 
         <div className="fade-up"><StatRow items={stats} /></div>
       </div>

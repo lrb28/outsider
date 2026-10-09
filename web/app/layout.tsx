@@ -81,7 +81,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a href="#main" className="skip-link">Skip to content</a>
         {/* Floating navigation layer (HIG): separate glass elements over a
             soft scroll-edge fade, no full-width bar. */}
-        <header className="sticky top-0 z-20">
+        <header data-site-header className="sticky top-0 z-20">
           <div aria-hidden="true" className="scroll-edge-top pointer-events-none absolute inset-x-0 top-0 h-24" />
           <div className="relative mx-auto flex max-w-5xl items-center gap-3 px-4 py-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
             <Link href="/" aria-label="AURA – home" className="press-sm flex min-h-11 items-center text-ink">

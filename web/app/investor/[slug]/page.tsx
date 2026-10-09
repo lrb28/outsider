@@ -11,6 +11,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { DetailTopBar } from "@/components/ui";
 import { WatchPager } from "@/components/WatchPager";
 import type { InvestorDetail } from "@/lib/types";
+import { personFromPath } from "@/lib/watchlist";
 
 export default function InvestorPage() {
   return (
@@ -22,15 +23,15 @@ export default function InvestorPage() {
 
 function Investor() {
   const params = useParams<{ slug: string }>();
-  // The path, not the route's params: swiping through the watchlist replaces
-  // the URL without a navigation, and Back/Forward come back to that URL.
   const path = usePathname() ?? "";
-  const slug = decodeURIComponent(path.split("/")[2] ?? "") || (params?.slug as string);
   const query = useSearchParams();
-  // Opened from "Your watchlist" on Home: swipe through those investors.
+  // Opened from "Your watchlist" on Home: swipe through those people. Who is
+  // shown comes from the path, not the route's params: the pager replaces the
+  // URL without a navigation (it may now name a politician), and Back/Forward
+  // come back to that URL with this route's state.
   const [fromWatchlist] = useState(() => query?.get("from") === "watchlist");
-  if (fromWatchlist) return <WatchPager start={slug} />;
-  return <InvestorScreen slug={slug} />;
+  if (fromWatchlist) return <WatchPager start={personFromPath(path) ?? { kind: "investor", slug: params?.slug as string }} />;
+  return <InvestorScreen slug={params?.slug as string} />;
 }
 
 function InvestorScreen({ slug }: { slug: string }) {

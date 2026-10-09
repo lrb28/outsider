@@ -103,8 +103,8 @@ column names and decimal commas.
 - Swiping the page sideways switches between the main tabs of the tab bar
   (`SwipeNav`), never between a page's chips or filters (user,
   2026-09-30); detail pages swipe from the tab they belong to. One
-  exception: an investor opened from "Your watchlist" on Home swipes
-  through the watchlist's investors instead (see Watchlist pager). Rows that
+  exception: a person opened from "Your watchlist" on Home swipes through
+  the watchlist's people instead (see Watchlist pager). Rows that
   scroll sideways, charts, the 3D allocation (`data-noswipe`), fields, open
   sheets and the outer 24 px (system back gesture) are left alone.
 - Portfolio matches (after Eaves, needs a Portfolio): an investor's match is
@@ -363,27 +363,39 @@ without WebGL2.
 
 ## Watchlist pager (after the user's reference video, 2026-10-07)
 
-- An investor opened from "Your watchlist" on Home (`?from=watchlist`)
-  swipes sideways to the other investors of that row, in the same order
-  (`watchedInvestors`), snapshotted on arrival. Three or more go round in
-  a loop; two stop at either end with a little give. Back returns to Home
-  (the URL is replaced, not pushed); reloading keeps the investor.
-- Under the back button, the names run along the lower rim of a large
+- A person opened from "Your watchlist" on Home (`?from=watchlist`)
+  swipes sideways to the other people of that row, investors and then
+  politicians (user, 2026-10-09), in the same order (`watchedPeople`),
+  snapshotted on arrival. Three or more go round in a loop; two stop at
+  either end with a little give. Back returns to Home (the URL is
+  replaced, not pushed, and may switch between `/investor/…` and
+  `/politician/…`; both pages open the pager from the path); reloading
+  keeps the person.
+- The wheel is the top of the screen, as in the video: on phones it sits
+  right under the Dynamic Island (`env(safe-area-inset-top)`) and the site
+  header with the wordmark gives way (user, 2026-10-09); the back button,
+  Follow and the search loupe (the header's, narrower when open) are one
+  row below it. From tablets up the header keeps its tabs and the wheel
+  sticks under it.
+- Picture, name and the text under it are centred on these pages
+  (`centred` on `InvestorView` / `PoliticianView`; user, 2026-10-09); each
+  person keeps their own aura (investor blue, politician magenta).
+- The names run along the lower rim of a large
   circle (`WatchDial`, SVG text on a path): the current one level in the
   middle, the neighbours tilting up and away, dimmer, and fading out at
   both edges. Uppercase, 14 px semibold, 0.06 em tracking, an even 30 px
   gap between names whatever their length; funds without a person lose
   "LLC", "L.P." and the like. Swiping turns the wheel with the finger;
   tapping a neighbour's name moves one step towards it.
-- The page follows the finger with the next investor beside it (32 px
-  apart), each with its own aura; a far (a third) or quick swipe moves on,
-  a short one springs back, on the `ease-spring` curve, carrying the
-  flick's speed. Scrolled down, the next investor slides in with its head
-  right under the names, and stays there.
-- The names stick under the header; once stuck they sit on a plain band in
-  the page colour that fades out below them (no glass: colour showing
-  through muddied the names). At the top of the page the band is clear, so
-  the aura shows behind it.
+- The page follows the finger with the next person beside it (32 px
+  apart); a far (a third) or quick swipe moves on, a short one springs
+  back, on the `ease-spring` curve, carrying the flick's speed. Scrolled
+  down, the next person slides in with their head right under the names,
+  and stays there.
+- The names stick at the top; once stuck they sit on a plain band in the
+  page colour that fades out below them (no glass: colour showing through
+  muddied the names). At the top of the page the band is clear, so the
+  aura shows behind it.
 - Arrow keys, a sideways trackpad swipe and two hidden "Previous" / "Next"
   buttons (shown on keyboard focus) move too; the current name and "2 of 5"
   are announced. Reduced motion turns the page at once. Touches on rows
