@@ -40,13 +40,13 @@ export function toggleFollow(k: FollowKind, id: string): boolean {
   return next.includes(id);
 }
 
-/** Someone in the people row of "Your watchlist": an investor or a politician. */
+/** Someone you follow who has a page of their own: an investor or a politician. */
 export type WatchedPerson = { kind: "investor" | "politician"; slug: string; name: string; photo: string | null };
 
 /**
- * The people row of "Your watchlist" on Home, in its order: the followed
- * investors, then the followed politicians, each in the catalogue's order.
- * The watchlist pager swipes through the same row.
+ * The people you follow, in one order everywhere (the list and swipe view of
+ * the star tab, the people row on Home): the followed investors, then the
+ * followed politicians, each in the catalogue's order.
  */
 export function watchedPeople(
   investors: { slug: string; fund: string; person: string | null }[],
@@ -61,16 +61,23 @@ export function watchedPeople(
   ];
 }
 
-/** Query that marks a person's page as opened from "Your watchlist". */
-export const FROM_WATCHLIST = "from=watchlist";
-
-export function personHref(p: { kind: WatchedPerson["kind"]; slug: string }, fromWatchlist = false): string {
-  return `/${p.kind}/${encodeURIComponent(p.slug)}${fromWatchlist ? `?${FROM_WATCHLIST}` : ""}`;
+export function personHref(p: { kind: WatchedPerson["kind"]; slug: string }): string {
+  return `/${p.kind}/${encodeURIComponent(p.slug)}`;
 }
 
-/** Who a person's URL names ("/politician/nancy-pelosi"), if anyone. */
-export function personFromPath(path: string): { kind: WatchedPerson["kind"]; slug: string } | null {
-  const [, kind, slug] = path.split("/");
+/** The star tab's swipe view, opened at this person ("/watchlist?who=politician/nancy-pelosi"). */
+export function swipeHref(p: { kind: WatchedPerson["kind"]; slug: string }): string {
+  return `/watchlist?who=${p.kind}/${encodeURIComponent(p.slug)}`;
+}
+
+/** Who `?who=` names ("politician/nancy-pelosi"), if anyone. */
+export function personFromWho(who: string | null | undefined): { kind: WatchedPerson["kind"]; slug: string } | null {
+  const [kind, ...rest] = (who ?? "").split("/");
+  const slug = rest.join("/");
   if ((kind !== "investor" && kind !== "politician") || !slug) return null;
-  return { kind, slug: decodeURIComponent(slug) };
+  try {
+    return { kind, slug: decodeURIComponent(slug) };
+  } catch {
+    return null;
+  }
 }

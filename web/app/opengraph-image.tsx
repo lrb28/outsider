@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
 
-import { WORDMARK_HEIGHT, WORDMARK_PATH, WORDMARK_WIDTH } from "@/lib/wordmark";
+import { MARK_PATH, MARK_X, MARK_Y, WORD_PATH, WORDMARK_HEIGHT, WORDMARK_WIDTH } from "@/lib/wordmark";
 
-export const alt = "ĀURA – what investors, insiders and politicians disclose";
+export const alt = "Outsider – what investors, insiders and politicians disclose";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -24,7 +24,8 @@ export default function Image() {
       }}
     >
       <svg width="520" height={(520 * WORDMARK_HEIGHT) / WORDMARK_WIDTH} viewBox={`0 0 ${WORDMARK_WIDTH} ${WORDMARK_HEIGHT}`}>
-        <path fill="#ffffff" d={WORDMARK_PATH} />
+        <path fill="#ffffff" d={WORD_PATH} />
+        <path fill="#ffffff" transform={`translate(${MARK_X} ${MARK_Y})`} d={MARK_PATH} />
       </svg>
       <div style={{ display: "flex", flexDirection: "column", fontSize: 76, fontWeight: 700, lineHeight: 1.02, letterSpacing: -3 }}>
         <span>See what the powerful buy.</span>

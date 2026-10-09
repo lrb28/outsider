@@ -17,6 +17,7 @@ import { SwipeRow } from "@/components/SwipeRow";
 import { TradeDetailModal } from "@/components/TradeDetailModal";
 import { AuraCard, SectionHeader } from "@/components/ui";
 import { Watchlist } from "@/components/Watchlist";
+import { PORTFOLIO } from "@/lib/features";
 import { fetchCatalogue, fetchJson } from "@/lib/fetchJson";
 import { abbrevMoney, auraOf, companyName, formatDate, investorPerson, pct, shortDate, tradeSignal } from "@/lib/format";
 import type { StatsResponse } from "@/lib/stats";
@@ -163,7 +164,8 @@ export default function HomePage() {
     fetchJson<TradesResponse>("/api/trades?type=corporate_insider&limit=60", { signal: controller.signal }).then((d) => setInsiders(d.rows)).catch(() => fail("insiders"));
     fetchJson<TradesResponse>("/api/trades?type=politician&limit=60", { signal: controller.signal }).then((d) => setPols(d.rows)).catch(() => fail("pols"));
     fetchJson<LettersResponse>("/api/letters?limit=8", { signal: controller.signal }).then((d) => setLetters(d.rows)).catch(() => setLetters([]));
-    const holdings = myHoldings();
+    // Portfolio matches only while My portfolio is published (lib/features).
+    const holdings = PORTFOLIO ? myHoldings() : new Map<string, string>();
     setDepotCount(holdings.size);
     setHoldingNames(holdings);
     if (holdings.size) {
@@ -194,7 +196,7 @@ export default function HomePage() {
           See what the powerful buy.
         </h1>
         <p className="mt-4 max-w-lg text-[17px] leading-relaxed text-subtle">
-          Investors, corporate insiders and members of Congress have to disclose their trades. ĀURA turns them into a clear overview — every row with its source.
+          Investors, corporate insiders and members of Congress have to disclose their trades. Outsider turns them into a clear overview — every row with its source.
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5">
           <Link href="/feed" className="btn-primary">See the filings <Icon name="arrowRight" className="h-4 w-4" /></Link>

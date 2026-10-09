@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // Add to Home Screen / install: opens full screen like an app.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "ĀURA — investors, insiders and politicians",
-    short_name: "AURA",
+    name: "Outsider — investors, insiders and politicians",
+    short_name: "Outsider",
     description: "What investors, corporate insiders and members of the US House disclose — clear and sourced.",
     start_url: "/",
     display: "standalone",

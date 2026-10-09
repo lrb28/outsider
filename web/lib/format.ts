@@ -355,6 +355,13 @@ export function wikiTitleFor(name: string): string | null {
 }
 
 // Display name of the person behind a fund.
+/** A fund's name without its legal form: "Berkshire Hathaway", "Pershing Square Capital". */
+export function shortFund(name: string): string {
+  let s = name.trim();
+  for (let i = 0; i < 3; i++) s = s.replace(/,?\s+(LLC|L\.?L\.?C\.?|L\.?P\.?|LP|Inc\.?|Ltd\.?|Corp\.?|Corporation|Co\.?|Management)$/i, "");
+  return s;
+}
+
 export function investorPerson(name: string): string | null {
   return investorEntry(name)?.[2] ?? null;
 }

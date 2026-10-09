@@ -8,6 +8,7 @@ import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { AddToPortfolio } from "@/components/AddToPortfolio";
+import { PORTFOLIO } from "@/lib/features";
 import { FollowButton } from "@/components/FollowButton";
 import { LetterCard } from "@/components/Letters";
 import { SwipeRow } from "@/components/SwipeRow";
@@ -117,7 +118,7 @@ export default function StockPage() {
       {stock.ticker && (
         <div className="fade-up flex flex-wrap gap-2">
           <FollowButton kind="stock" id={stock.ticker} />
-          <AddToPortfolio ticker={stock.ticker} company={stock.company} price={quote?.price ?? (bars && bars.length ? bars[bars.length - 1].close : null)} priceCurrency={quote?.currency ?? (bars && bars.length ? "USD" : null)} />
+          {PORTFOLIO && <AddToPortfolio ticker={stock.ticker} company={stock.company} price={quote?.price ?? (bars && bars.length ? bars[bars.length - 1].close : null)} priceCurrency={quote?.currency ?? (bars && bars.length ? "USD" : null)} />}
         </div>
       )}
       {quote && (

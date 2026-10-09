@@ -36,7 +36,7 @@ from outsider_ingest.pipelines.ingest_letters import KINDS, LABELS, LETTERS_DIR,
 MODEL = "claude-opus-5-5"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
-INSTRUCTIONS = """You summarise investor letters for ĀURA, an app that shows what investors, insiders and politicians disclose. Readers are private investors on a phone. Write in plain, short English sentences, in your own words, and stay strictly with what the document says: no outside facts, no figures that are not in it, no advice.
+INSTRUCTIONS = """You summarise investor letters for Outsider, an app that shows what investors, insiders and politicians disclose. Readers are private investors on a phone. Write in plain, short English sentences, in your own words, and stay strictly with what the document says: no outside facts, no figures that are not in it, no advice.
 
 Fill the fields like this:
 - title: the document's own title, cleaned up (e.g. "Berkshire Hathaway 2025 Shareholder Letter").
@@ -218,7 +218,7 @@ def main() -> None:
         "risks": draft["risks"],
         "quotes": draft["quotes"],
         "stocks": draft["stocks"],
-        "summarized_by": f"ĀURA editors with {MODEL}",
+        "summarized_by": f"Outsider editors with {MODEL}",
     }
     out.write_text(json.dumps(letter, ensure_ascii=False, indent=2) + "\n")
     print(f"Draft written to {out}")

@@ -41,7 +41,7 @@ function LettersFeed() {
   }, [stance, retry]);
   const go = (key: string, value: string) => { const q = new URLSearchParams(params.toString()); if (value) q.set(key, value); else q.delete(key); if (key === "type") q.delete("stance"); router.push(`/feed${q.size ? `?${q}` : ""}`, {scroll:false}); };
   return <div className="space-y-5">
-    <PageTitle title="Feed" subtitle="Letters, memos and open letters from the investors ĀURA follows, each summarised from the original." />
+    <PageTitle title="Feed" subtitle="Letters, memos and open letters from the investors Outsider follows, each summarised from the original." />
     <div className="space-y-3">
       <ChipBar mode="filter" label="Filers" items={TYPES} value={"letters" as (typeof TYPES)[number]["key"]} onChange={value => go("type", value)} />
       <SegmentedControl label="Tone" size="sm" options={STANCES} value={stance as (typeof STANCES)[number][0]} onChange={value => go("stance", value)} />

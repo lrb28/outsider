@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { ErrorRetry } from "@/components/ErrorRetry";
@@ -9,9 +9,8 @@ import { FollowButton } from "@/components/FollowButton";
 import { InvestorView, loadInvestor } from "@/components/InvestorView";
 import { SkeletonPage } from "@/components/Skeleton";
 import { DetailTopBar } from "@/components/ui";
-import { WatchPager } from "@/components/WatchPager";
 import type { InvestorDetail } from "@/lib/types";
-import { personFromPath } from "@/lib/watchlist";
+import { swipeHref } from "@/lib/watchlist";
 
 export default function InvestorPage() {
   return (
@@ -23,15 +22,16 @@ export default function InvestorPage() {
 
 function Investor() {
   const params = useParams<{ slug: string }>();
-  const path = usePathname() ?? "";
   const query = useSearchParams();
-  // Opened from "Your watchlist" on Home: swipe through those people. Who is
-  // shown comes from the path, not the route's params: the pager replaces the
-  // URL without a navigation (it may now name a politician), and Back/Forward
-  // come back to that URL with this route's state.
-  const [fromWatchlist] = useState(() => query?.get("from") === "watchlist");
-  if (fromWatchlist) return <WatchPager start={personFromPath(path) ?? { kind: "investor", slug: params?.slug as string }} />;
-  return <InvestorScreen slug={params?.slug as string} />;
+  const router = useRouter();
+  const slug = params?.slug as string;
+  // Links from before the swipe view moved to the star tab (2026-10-09).
+  const fromWatchlist = query?.get("from") === "watchlist";
+  useEffect(() => {
+    if (fromWatchlist && slug) router.replace(swipeHref({ kind: "investor", slug }));
+  }, [fromWatchlist, router, slug]);
+  if (fromWatchlist) return <SkeletonPage />;
+  return <InvestorScreen slug={slug} />;
 }
 
 function InvestorScreen({ slug }: { slug: string }) {

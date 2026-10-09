@@ -1,9 +1,11 @@
-"""Generate lib/wordmark.ts: the ĀURA wordmark as one SVG path.
+"""Generate lib/wordmark.ts: the OUTSIDER wordmark and its dot-ring mark.
 
-Letters come from Inter Tight (scripts/fonts, OFL) at a fixed weight with wide
-tracking. The first A loses its crossbar and gets a bar above instead (the
-same Ā as the welcome screen and the app icon): drawn at stem weight across
-the A's full width, a little above the cap height.
+The letters come from Inter Tight (scripts/fonts, OFL) at a heavy weight
+with a little tracking, after the Trade Republic wordmark the user chose as
+the reference (2026-10-09). The mark is a ring of eight equal dots (the
+user's "circle made of dots", after the Cosmos and Offsuit app icons). It
+stands right of the word, as tall as the capitals plus a little optical
+overshoot, the way Trade Republic's flag stands beside its name.
 
     pip install fonttools brotli
     python3 scripts/generate-wordmark.py            # from web/
@@ -11,6 +13,7 @@ the A's full width, a little above the cap height.
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
 
@@ -23,10 +26,20 @@ from fontTools.varLib.instancer import instantiateVariableFont
 WEB = Path(__file__).resolve().parents[1]
 FONT = WEB / "scripts/fonts/InterTight-latin.woff2"
 OUT = WEB / "lib/wordmark.ts"
-WEIGHT = 620
-TRACKING = 0.14  # em between letters
-BAR_GAP = 0.13  # em between cap height and bar
+WORD = "OUTSIDER"
+WEIGHT = 740
+TRACKING = 0.03  # em between letters
 SCALE = 0.05  # font units -> path units
+
+DOTS = 8  # around the ring, the first at twelve o'clock
+DOT = 0.52  # dot diameter / ring radius
+MARK = 1.06  # mark height / cap height (circles look smaller than flat caps)
+GAP = 0.42  # word to mark, in cap heights
+
+
+def num(v: float) -> str:
+    s = f"{v:.1f}".rstrip("0").rstrip(".")
+    return "0" if s in ("-0", "") else s
 
 
 def main() -> None:
@@ -34,34 +47,35 @@ def main() -> None:
     upm = font["head"].unitsPerEm
     glyphs = font.getGlyphSet()
     cmap = font.getBestCmap()
+    cap = font["OS/2"].sCapHeight
 
-    paths, boxes, x = [], [], 0.0
-    for i, ch in enumerate("AURA"):
+    paths, x = [], 0.0
+    x0, x1, top, bottom = math.inf, -math.inf, -cap, 0.0
+    for i, ch in enumerate(WORD):
         name = cmap[ord(ch)]
         pen = SVGPathPen(glyphs)
         glyphs[name].draw(TransformPen(pen, (1, 0, 0, -1, x, 0)))
-        cmds = pen.getCommands()
-        if i == 0:
-            # Inter Tight draws the A as a Λ plus a separate crossbar
-            # rectangle (M H V H Z); the mark keeps only the Λ.
-            contours = ["M" + c for c in cmds.split("M") if c]
-            bars = [c for c in contours if re.fullmatch(r"M[-\d. ]+H[-\d.]+V[-\d.]+H[-\d.]+Z", c)]
-            assert len(bars) == 1, contours
-            cmds = "".join(c for c in contours if c not in bars)
-        paths.append(cmds)
+        paths.append(pen.getCommands())
         bounds = BoundsPen(glyphs)
         glyphs[name].draw(bounds)
-        boxes.append((x, bounds.bounds))
-        x += font["hmtx"][name][0] + (TRACKING * upm if i < 3 else 0)
+        bx0, by0, bx1, by1 = bounds.bounds
+        x0, x1 = min(x0, x + bx0), max(x1, x + bx1)
+        top, bottom = min(top, -by1), max(bottom, -by0)
+        x += font["hmtx"][name][0] + (TRACKING * upm if i < len(WORD) - 1 else 0)
 
-    ax, (a0, _, a1, a_top) = boxes[0]
-    thick = upm * (0.056 + (WEIGHT - 400) / 400 * 0.04)
-    top = -a_top - BAR_GAP * upm - thick
-    paths.insert(0, f"M{ax + a0:.1f} {top:.1f}H{ax + a1:.1f}V{top + thick:.1f}H{ax + a0:.1f}Z")
+    # The mark: centred on the capitals, a touch taller than them.
+    size = MARK * cap
+    ring = size / (2 + DOT)  # ring radius, centre to dot centre
+    r = DOT * ring / 2
+    mx = x1 + GAP * cap
+    cy = -cap / 2
+    top, bottom = min(top, cy - size / 2), max(bottom, cy + size / 2)
 
-    x0 = min(bx + b[0] for bx, b in boxes)
-    x1 = max(bx + b[2] for bx, b in boxes)
-    y0, y1 = top, max(-b[1] for _, b in boxes)
+    def sx(v: float) -> float:
+        return (v - x0) * SCALE
+
+    def sy(v: float) -> float:
+        return (v - top) * SCALE
 
     def scale(cmd: str) -> str:
         out, op, n = [], "", 0
@@ -72,35 +86,55 @@ def main() -> None:
                 continue
             v = float(tok)
             if op in "MLCQ":
-                v = (v - x0) * SCALE if n % 2 == 0 else (v - y0) * SCALE
+                v = sx(v) if n % 2 == 0 else sy(v)
             elif op == "H":
-                v = (v - x0) * SCALE
+                v = sx(v)
             elif op == "V":
-                v = (v - y0) * SCALE
+                v = sy(v)
             n += 1
-            out.append(f"{v:.1f}".rstrip("0").rstrip(".").replace("-0", "0") if abs(v) < 0.05 else f"{v:.1f}".rstrip("0").rstrip("."))
+            out.append(num(v))
         return re.sub(r" ?([A-Za-z]) ?", r"\1", " ".join(out))
 
-    d = "".join(scale(p) for p in paths)
-    # The Ā alone (bar + Λ): welcome screen, app icons.
-    mark = "".join(scale(p) for p in paths[:2])
-    mark_w = round((boxes[0][1][2] - boxes[0][1][0]) * SCALE, 1)
-    mark_h = round((-boxes[0][1][1] - y0) * SCALE, 1)
+    word = "".join(scale(p) for p in paths)
+    word_w = (x1 - x0) * SCALE
+    height = (bottom - top) * SCALE
+    # Dot centres in the mark's own box (0..MARK_SIZE), clockwise from the top.
+    m = size * SCALE
+    rr = ring * SCALE
+    dots = [(m / 2 + rr * math.sin(2 * math.pi * k / DOTS), m / 2 - rr * math.cos(2 * math.pi * k / DOTS)) for k in range(DOTS)]
+    dot_r = r * SCALE
+    # Two decimals: the app icon scales the mark up threefold.
+    f2 = lambda v: f"{v:.2f}"
+    circle = lambda cx, cy: f"M{f2(cx - dot_r)} {f2(cy)}a{f2(dot_r)} {f2(dot_r)} 0 1 0 {f2(2 * dot_r)} 0a{f2(dot_r)} {f2(dot_r)} 0 1 0 {f2(-2 * dot_r)} 0Z"
+    mark_path = "".join(circle(cx, cy) for cx, cy in dots)
+    mark_x = sx(mx)
+    mark_y = sy(cy - size / 2)
+
     OUT.write_text(
-        "// ĀURA wordmark: Inter Tight (OFL) at weight 620 with 0.14 em tracking, as\n"
-        "// one path so it renders identically everywhere. The first A has no\n"
-        "// crossbar; its bar sits above it at stem weight across the full width (the\n"
-        "// mark of the welcome screen and app icon). Generated by\n"
+        "// OUTSIDER wordmark: Inter Tight (OFL) at weight 740 with 0.03 em tracking,\n"
+        "// as one path so it renders identically everywhere, after the Trade\n"
+        "// Republic wordmark (user, 2026-10-09). The mark, a ring of eight dots,\n"
+        "// stands right of the word, centred on the capitals. Generated by\n"
         "// scripts/generate-wordmark.py; edit the generator, not the numbers.\n"
-        f"export const WORDMARK_WIDTH = {round((x1 - x0) * SCALE, 1)};\n"
-        f"export const WORDMARK_HEIGHT = {round((y1 - y0) * SCALE, 1)};\n"
-        "export const WORDMARK_PATH =\n"
-        f'  "{d}";\n'
+        f"export const WORDMARK_WIDTH = {num(mark_x + m)};\n"
+        f"export const WORDMARK_HEIGHT = {num(height)};\n"
+        "/** The word alone, in the lockup's units. */\n"
+        f"export const WORD_WIDTH = {num(word_w)};\n"
+        "export const WORD_PATH =\n"
+        f'  "{word}";\n'
+        "/** Where the mark sits in the lockup (top left of its square). */\n"
+        f"export const MARK_X = {num(mark_x)};\n"
+        f"export const MARK_Y = {num(mark_y)};\n"
         "\n"
-        "// The Ā on its own, same units (welcome screen, app icons).\n"
-        f"export const MARK_WIDTH = {mark_w};\n"
-        f"export const MARK_HEIGHT = {mark_h};\n"
-        f'export const MARK_PATH = "{mark}";\n'
+        "// The mark on its own (welcome screen, app icons, spinners): a square\n"
+        "// MARK_SIZE wide, dots of radius MARK_DOT_R at MARK_DOTS, clockwise from\n"
+        "// twelve o'clock. MARK_PATH draws all of them as one path.\n"
+        f"export const MARK_SIZE = {num(m)};\n"
+        f"export const MARK_DOT_R = {dot_r:.2f};\n"
+        "export const MARK_DOTS: readonly (readonly [number, number])[] = [\n"
+        + "".join(f"  [{cx:.2f}, {cy:.2f}],\n" for cx, cy in dots)
+        + "];\n"
+        f'export const MARK_PATH = "{mark_path}";\n'
     )
     print(f"wrote {OUT.relative_to(WEB)}")
 

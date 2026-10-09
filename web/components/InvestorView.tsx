@@ -13,6 +13,7 @@ import { MatchSheet, matchPct, myHoldings, normTicker } from "@/components/Match
 import { SwipeRow } from "@/components/SwipeRow";
 import { TradeFeed } from "@/components/TradeFeed";
 import { SegmentedControl, StatRow } from "@/components/ui";
+import { PORTFOLIO } from "@/lib/features";
 import { fetchDetail } from "@/lib/fetchJson";
 import { abbrevMoney, companyName, fixTicker, pctOf, shortDate, shortMoney, stockHref, weightPct } from "@/lib/format";
 import type { InvestorDetail, InvestorResponse } from "@/lib/types";
@@ -23,12 +24,13 @@ export function loadInvestor(slug: string, fresh = false): Promise<InvestorDetai
 
 /**
  * Everything an investor page shows about one investor. `top` is the row
- * with the back button (left out when the watchlist pager keeps it fixed
- * above), `preview` draws only the head and the allocation, for the
- * neighbouring investor that slides in beside the current one. Picture,
- * name and bio stand centred (user, 2026-10-09).
+ * with the back button (left out in the watchlist's swipe view), `preview`
+ * draws only the head and the allocation, for the neighbouring investor
+ * that slides in beside the current one, `still` keeps the picture and
+ * name from fading in (the swipe view already shows them while the page
+ * loads). Picture, name and bio stand centred (user, 2026-10-09).
  */
-export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean }) {
+export function InvestorView({ inv, top, preview = false, still = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean; still?: boolean }) {
   const [sort, setSort] = useState<"value" | "name">("value");
   // Point72 reports almost 2,000 positions; rendering them all at once made
   // the page stutter on phones. The list grows on request.
@@ -36,7 +38,9 @@ export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetai
   // Your Portfolio (on this device), for the match with this investor.
   const [mine, setMine] = useState<Map<string, string>>(new Map());
   const [showMatch, setShowMatch] = useState(false);
-  useEffect(() => setMine(myHoldings()), []);
+  useEffect(() => {
+    if (PORTFOLIO) setMine(myHoldings());
+  }, []);
 
   const holdings = useMemo(() => {
     const h = [...inv.holdings];
@@ -92,8 +96,10 @@ export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetai
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
         {top}
 
-        <div className="fade-up flex flex-col items-center gap-4 text-center">
-          <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
+        <div className={`${still ? "" : "fade-up "}flex flex-col items-center gap-4 text-center`}>
+          <span data-face className="flex rounded-full">
+            <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
+          </span>
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
           </div>
