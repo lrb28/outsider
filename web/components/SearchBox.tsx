@@ -333,7 +333,7 @@ export function SearchSheet({ sheet }: { sheet: ReturnType<typeof useSearchSheet
   return (
     <div ref={root} data-open={open ? "" : undefined} className="search-sheet fixed inset-0 z-50 md:hidden" aria-hidden={!open}>
       <div aria-hidden="true" onClick={close} className="search-scrim absolute inset-0" />
-      <div className="pointer-events-none relative flex h-full flex-col px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none relative flex h-full flex-col px-4 pt-[max(0.75rem,calc(var(--edge-top)_-_0.25rem))]">
         <div className="search-bar pointer-events-auto flex items-center gap-2">
           <label htmlFor={id} className="sr-only">Search stocks, investors and politicians</label>
           <div className="relative min-w-0 flex-1">

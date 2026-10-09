@@ -140,7 +140,7 @@ export function BottomNav() {
       <div aria-hidden="true" className="scroll-edge-bottom pointer-events-none fixed inset-x-0 bottom-0 z-20 h-28 md:hidden" />
       {/* Tab capsule on the left, the round action button on the right. */}
       <div style={{ bottom: "max(1rem, env(safe-area-inset-bottom))" }} className="fixed inset-x-0 bottom-4 z-30 flex items-end justify-between gap-3 px-4 md:hidden">
-        <nav aria-label="Main navigation" className="tab-bar min-w-0">
+        <nav aria-label="Main navigation" className="min-w-0">
           <LiquidGlass radius={999} className={`rounded-full transition-[padding] duration-500 ease-spring ${compact ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
             <div className="flex items-center">
               {TABS.map((t) => {
@@ -161,7 +161,7 @@ export function BottomNav() {
             </div>
           </LiquidGlass>
         </nav>
-        <LiquidGlass radius={999} className="tab-bar-search shrink-0 rounded-full">
+        <LiquidGlass radius={999} className="shrink-0 rounded-full">
           <button
             type="button"
             onClick={openSearch}

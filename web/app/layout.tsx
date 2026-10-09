@@ -46,8 +46,8 @@ export const metadata: Metadata = {
   // The Home Screen app runs full screen, under the clock and battery, so
   // the welcome silk fills the whole display (user, 2026-10-07). iOS then
   // shows those in white everywhere; the header and the set-up leave room
-  // for them with env(safe-area-inset-top). Takes effect once the icon is
-  // removed and added again.
+  // for them and for the blur iOS lays under them (--edge-top in
+  // globals.css). Takes effect once the icon is removed and added again.
   appleWebApp: { capable: true, title: "Outsider", statusBarStyle: "black-translucent" },
   other: { "apple-mobile-web-app-capable": "yes" },
   openGraph: {
@@ -82,8 +82,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Floating navigation layer (HIG): separate glass elements over a
             soft scroll-edge fade, no full-width bar. */}
         <header data-site-header className="sticky top-0 z-20">
-          <div aria-hidden="true" className="scroll-edge-top pointer-events-none absolute inset-x-0 top-0 h-24" />
-          <div className="relative mx-auto flex max-w-5xl items-center gap-3 px-4 py-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+          <div aria-hidden="true" className="scroll-edge-top pointer-events-none absolute inset-x-0 top-0" />
+          <div className="relative mx-auto flex max-w-5xl items-center gap-3 px-4 py-3" style={{ paddingTop: "var(--bar-pad)" }}>
             <Link href="/" aria-label="Outsider – home" className="press-sm flex min-h-11 items-center text-ink">
               <Wordmark height={15} />
             </Link>

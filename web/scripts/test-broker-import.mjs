@@ -256,6 +256,9 @@ console.log("\nMeldeserien im Feed");
     row(3, "NFLX", "2026-08-04", "corporate_insider", "buy"),
   ]);
   ok("Kauf und Verkauf bleiben getrennt", mixed.length === 3, mixed.length, 3);
+  // Der Kauf kommt nach dem Verkauf wieder: eigener Schlüssel, sonst
+  // verwechselt React die Zeilen.
+  ok("Schlüssel bleiben eindeutig", new Set(mixed.map((x) => x.key)).size === mixed.length, new Set(mixed.map((x) => x.key)).size, mixed.length);
   // Gegenprobe: gleicher Tag, gleiche Aktie, aber Insider und Institution
   const kinds = F.groupSeries([
     row(1, "NFLX", "2026-08-04", "corporate_insider", "buy"),

@@ -42,6 +42,8 @@ export function toggleFollow(k: FollowKind, id: string): boolean {
 
 /** Someone you follow who has a page of their own: an investor or a politician. */
 export type WatchedPerson = { kind: "investor" | "politician"; slug: string; name: string; photo: string | null };
+/** One page of the watchlist's swipe view: a person, or a stock (`slug` is its ticker). */
+export type WatchEntry = WatchedPerson | { kind: "stock"; slug: string; name: string; photo: null };
 
 /**
  * The people you follow, in one order everywhere (the list and swipe view of
@@ -65,16 +67,29 @@ export function personHref(p: { kind: WatchedPerson["kind"]; slug: string }): st
   return `/${p.kind}/${encodeURIComponent(p.slug)}`;
 }
 
-/** The star tab's swipe view, opened at this person ("/watchlist?who=politician/nancy-pelosi"). */
-export function swipeHref(p: { kind: WatchedPerson["kind"]; slug: string }): string {
+/**
+ * The stocks you follow, in the order you followed them, one per company
+ * (Alphabet's two share classes would be two pages): the class most
+ * investors hold.
+ */
+export function watchedStocks(stocks: { ticker: string | null; company: string; investors: number }[], followed: string[]): WatchEntry[] {
+  const rows = stocks.filter((s) => s.ticker && followed.includes(s.ticker)).sort((a, b) => b.investors - a.investors);
+  return rows
+    .filter((s, i) => rows.findIndex((o) => o.company === s.company) === i)
+    .sort((a, b) => followed.indexOf(a.ticker!) - followed.indexOf(b.ticker!))
+    .map((s) => ({ kind: "stock" as const, slug: s.ticker!, name: s.company, photo: null }));
+}
+
+/** The star tab's swipe view, opened at this page ("/watchlist?who=politician/nancy-pelosi", "?who=stock/NVDA"). */
+export function swipeHref(p: { kind: WatchEntry["kind"]; slug: string }): string {
   return `/watchlist?who=${p.kind}/${encodeURIComponent(p.slug)}`;
 }
 
-/** Who `?who=` names ("politician/nancy-pelosi"), if anyone. */
-export function personFromWho(who: string | null | undefined): { kind: WatchedPerson["kind"]; slug: string } | null {
+/** Who or what `?who=` names ("politician/nancy-pelosi", "stock/NVDA"), if anything. */
+export function entryFromWho(who: string | null | undefined): { kind: WatchEntry["kind"]; slug: string } | null {
   const [kind, ...rest] = (who ?? "").split("/");
   const slug = rest.join("/");
-  if ((kind !== "investor" && kind !== "politician") || !slug) return null;
+  if ((kind !== "investor" && kind !== "politician" && kind !== "stock") || !slug) return null;
   try {
     return { kind, slug: decodeURIComponent(slug) };
   } catch {

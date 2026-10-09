@@ -218,7 +218,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
         ))}
       </div>
 
-      <div className={`relative flex items-start justify-between px-6 pt-[max(1.25rem,env(safe-area-inset-top))] text-white transition-opacity duration-500 ${finishing ? "pointer-events-none opacity-0" : ""}`}>
+      <div className={`relative flex items-start justify-between px-6 pt-[max(1.25rem,calc(var(--edge-top)_-_0.25rem))] text-white transition-opacity duration-500 ${finishing ? "pointer-events-none opacity-0" : ""}`}>
         <div className="setup-header text-[15px] font-semibold leading-tight">
           Set up
           <br />

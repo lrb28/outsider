@@ -1,21 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Avatar } from "@/components/Avatar";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { InvestorView, loadInvestor } from "@/components/InvestorView";
 import { loadPolitician, PoliticianView } from "@/components/PoliticianView";
 import { Skeleton } from "@/components/Skeleton";
+import { loadStock, StockView } from "@/components/StockView";
 import { type DialHandle, WatchDial } from "@/components/WatchDial";
-import type { InvestorDetail, PoliticianDetail } from "@/lib/types";
-import type { WatchedPerson } from "@/lib/watchlist";
+import type { InvestorDetail, PoliticianDetail, StockDetail } from "@/lib/types";
+import type { WatchEntry } from "@/lib/watchlist";
 
 /*
  * The swipe view of the watchlist (the star tab, user, 2026-10-09; first
- * built after the user's reference video, 2026-10-07): one person's page at
- * a time, swiping sideways to the next, investors and politicians. The page
+ * built after the user's reference video, 2026-10-07): one page at a time,
+ * swiping sideways to the next: the people you follow (investors and
+ * politicians), or the stocks you follow, each the same way. The page
  * follows the finger with the next one beside it, and the names above turn
  * like a wheel (`WatchDial`). A far or quick swipe moves on, a short one
  * springs back; three or more people go round in a loop, two stop at either
@@ -25,9 +28,11 @@ import type { WatchedPerson } from "@/lib/watchlist";
  * Follow capsule (user, 2026-10-09). A tap on the band of names closes the
  * view, back to the list (`onClose`); a drag on it turns the wheel.
  *
- * As in the video, the wheel is the top of the screen, right under the
- * Dynamic Island: on phones the site header gives way while the pager is
- * open (`[data-watch-pager]` in globals.css).
+ * It lives in `WatchSheet`, a layer over the list with its own scrolling
+ * (`scroller`); as in the video, the wheel is the top of the screen, right
+ * under the Dynamic Island. At the top of the page the band is clear and the
+ * page's aura runs up behind the names; scrolled, a backing in the page
+ * colour fades in under them (`--fill`), so no edge ever cuts the aura.
  *
  * Everything that moves is driven by one number, p, the position in the
  * list; React only hears about it when a page has settled (`onTurn`).
@@ -42,14 +47,18 @@ const EASE = bezier(0.32, 0.72, 0, 1);
 // The curve starts 2.25 times faster than linear, used to carry a flick on.
 const EASE_START = 0.72 / 0.32;
 
-type Kind = WatchedPerson["kind"];
-type Entry = WatchedPerson;
-type Detail = { kind: "investor"; inv: InvestorDetail } | { kind: "politician"; pol: PoliticianDetail };
+type Kind = WatchEntry["kind"];
+type Entry = WatchEntry;
+type Detail = { kind: "investor"; inv: InvestorDetail } | { kind: "politician"; pol: PoliticianDetail } | { kind: "stock"; stock: StockDetail };
 type Data = Detail | null | "error";
 
 const keyOf = (e: { kind: Kind; slug: string }) => `${e.kind}:${e.slug}`;
 
 async function load(e: { kind: Kind; slug: string }): Promise<Detail | null> {
+  if (e.kind === "stock") {
+    const stock = await loadStock(e.slug);
+    return stock && { kind: "stock", stock };
+  }
   if (e.kind === "politician") {
     const pol = await loadPolitician(e.slug);
     return pol && { kind: "politician", pol };
@@ -58,15 +67,24 @@ async function load(e: { kind: Kind; slug: string }): Promise<Detail | null> {
   return inv && { kind: "investor", inv };
 }
 
-/** The head of a person's page while it loads: picture and name, where the page will put them. */
+/** The head of a page while it loads: picture (or logo) and name, where the page will put them. */
 function HeadPlaceholder({ entry }: { entry: Entry }) {
   return (
     <div role="status" aria-label="Loading" className="space-y-5">
       <div className="flex flex-col items-center gap-4 text-center">
-        <span data-face className="flex rounded-full">
-          <Avatar name={entry.name} src={entry.photo} kind={entry.kind} size={entry.kind === "politician" ? 104 : 96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
-        </span>
-        <h1 className="large-title">{entry.name}</h1>
+        {entry.kind === "stock" ? (
+          <span data-face className="flex rounded-[24px]">
+            <CompanyLogo ticker={entry.slug} company={entry.name} size={88} rounded="rounded-[24px]" className="logo-lift" />
+          </span>
+        ) : (
+          <span data-face className="flex rounded-full">
+            <Avatar name={entry.name} src={entry.photo} kind={entry.kind} size={entry.kind === "politician" ? 104 : 96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
+          </span>
+        )}
+        <div>
+          <h1 className="large-title">{entry.name}</h1>
+          {entry.kind === "stock" && <div className="mt-1 text-[15px] font-medium text-subtle">{entry.slug}</div>}
+        </div>
       </div>
       <Skeleton className="mx-auto h-4 w-full max-w-xl" />
       <Skeleton className="h-[74px] w-full rounded-[22px]" />
@@ -98,7 +116,7 @@ function bezier(x1: number, y1: number, x2: number, y2: number) {
   };
 }
 
-export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]; start: number; onClose: () => void; onTurn?: (person: Entry) => void }) {
+export function WatchPager({ people, start, scroller, onClose, onTurn }: { people: Entry[]; start: number; scroller: RefObject<HTMLElement>; onClose: () => void; onTurn?: (person: Entry) => void }) {
   // The watchlist as it was on arrival: following or unfollowing meanwhile
   // does not reshuffle the pages under the finger.
   const [ring] = useState(people);
@@ -201,11 +219,11 @@ export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]
         flushSync(() => setCur(target));
         // The new page now sits at the top of the list; scroll so it stays
         // exactly where it slid in.
-        if (top > 0) window.scrollTo({ top: window.scrollY - top, behavior: "instant" });
+        if (top > 0 && scroller.current) scroller.current.scrollTop -= top;
       }
       rest();
     },
-    [rest],
+    [rest, scroller],
   );
 
   /** Turns to `target` (a whole position); `speed` carries on a flick, in pages per ms. */
@@ -260,28 +278,28 @@ export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]
     turned.current?.(current);
   }, [current]);
 
-  // The names under the header get a plain backing once they stick.
+  // The band's backing fades in as the page scrolls under the names, from
+  // nothing at the top (the aura runs up behind them, user, 2026-10-09) to
+  // the full page colour once the aura has scrolled away.
   useEffect(() => {
     const el = band.current;
-    if (!el) return;
+    const sc = scroller.current;
+    if (!el || !sc) return;
     let raf = 0;
     const check = () => {
       raf = 0;
-      const top = parseFloat(getComputedStyle(el).top) || 0;
-      el.toggleAttribute("data-stuck", window.scrollY > 0 && el.getBoundingClientRect().top <= top + 0.5);
+      el.style.setProperty("--fill", Math.min(1, Math.max(0, (sc.scrollTop - 12) / 180)).toFixed(3));
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(check);
     };
     check();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    sc.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      sc.removeEventListener("scroll", onScroll);
     };
-  }, []);
+  }, [scroller]);
 
   /* ── Input ──────────────────────────────────────────────────────────── */
 
@@ -449,7 +467,13 @@ export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]
     const key = keyOf(e);
     const d = data[key];
     if (d && d !== "error")
-      return d.kind === "investor" ? <InvestorView inv={d.inv} preview={o !== 0} still /> : <PoliticianView pol={d.pol} preview={o !== 0} still />;
+      return d.kind === "investor" ? (
+        <InvestorView inv={d.inv} preview={o !== 0} still />
+      ) : d.kind === "politician" ? (
+        <PoliticianView pol={d.pol} preview={o !== 0} still />
+      ) : (
+        <StockView stock={d.stock} preview={o !== 0} still centred />
+      );
     if (o === 0 && d === "error")
       return (
         <ErrorRetry
@@ -487,7 +511,7 @@ export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]
   };
 
   return (
-    <div ref={root} data-noswipe data-watch-pager className="[overflow-anchor:none] max-md:-mt-4">
+    <div ref={root} data-noswipe data-watch-pager className="[overflow-anchor:none]">
       {/* The wheel first, under the Dynamic Island (see globals.css). */}
       <nav ref={band} aria-label="Your watchlist" onClick={tapBand} className="watch-band sticky z-10 -mx-4 cursor-pointer">
         <WatchDial ref={dial} names={names} loop={loop} cur={cur} />
