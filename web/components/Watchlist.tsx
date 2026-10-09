@@ -64,8 +64,9 @@ export function Watchlist() {
     );
   }
 
-  // Opened from here, a person's page swipes through this row.
-  const people = watchedPeople(investors, politicians, follow).map((p) => ({ key: `${p.kind}-${p.slug}`, href: personHref(p, true), name: p.name, src: p.photo, kind: p.kind }));
+  // A person opens their own page; the swipe view lives in the star tab
+  // (user, 2026-10-09), which "See all" opens.
+  const people = watchedPeople(investors, politicians, follow).map((p) => ({ key: `${p.kind}-${p.slug}`, href: personHref(p), name: p.name, src: p.photo, kind: p.kind }));
   // Two share classes of one company (GOOGL, GOOG) made two identical
   // "Alphabet" tiles: one tile per company, the class most investors hold.
   const myStk = [...stocks]
@@ -76,7 +77,7 @@ export function Watchlist() {
 
   return (
     <section className="space-y-3">
-      <SectionHeader title="Your watchlist" />
+      <SectionHeader title="Your watchlist" href="/watchlist" />
       {failed && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
 
       {people.length > 0 && (

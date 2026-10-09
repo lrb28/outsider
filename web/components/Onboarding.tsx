@@ -7,8 +7,8 @@ import { SilkVideo } from "@/components/SilkVideo";
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Icon, type IconName } from "@/components/Icon";
+import { Mark, Wordmark } from "@/components/Wordmark";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { MARK_HEIGHT, MARK_PATH, MARK_WIDTH } from "@/lib/wordmark";
 import type { InvestorsResponse, PoliticiansResponse, StocksResponse } from "@/lib/types";
 import { type FollowKind, getFollowed, toggleFollow } from "@/lib/watchlist";
 
@@ -29,8 +29,9 @@ const STEPS: Step[] = [
 
 /*
  * First screen, after the reference wallet app: its silk animation (the
- * user's video, 1:1) on a white page (black in dark mode), the mark in the
- * upper middle, a three-line headline bottom left and two equal frosted
+ * user's video, 1:1) on a white page (black in dark mode), the OUTSIDER
+ * wordmark with its ring of dots in the upper middle (the dots pop up one
+ * after another), a three-line headline bottom left and two equal frosted
  * capsules, placed where the video had its own. Nothing is focused on
  * arrival: a focus ring on "Get started" read as a pressed button.
  */
@@ -46,9 +47,11 @@ function Welcome({ onStart, onSkip }: { onStart: () => void; onSkip: () => void 
     <div className={`welcome-screen relative flex h-full touch-none select-none flex-col overflow-hidden transition-[opacity,filter] duration-300 ease-out ${leaving ? "opacity-0 blur-sm" : ""}`}>
       <SilkVideo className="pointer-events-none absolute inset-0" />
 
-      <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} role="img" aria-label="AURA" className="welcome-mark absolute left-1/2 top-[36%] w-[3.6rem] -translate-x-1/2 -translate-y-1/2">
-        <path d={MARK_PATH} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="miter" />
-      </svg>
+      <div className="pointer-events-none absolute inset-x-0 top-[36%] flex -translate-y-1/2 justify-center">
+        <div className="welcome-logo">
+          <Wordmark height={28} animate />
+        </div>
+      </div>
 
       <div className="relative mt-auto px-8 pb-[max(2.75rem,calc(env(safe-area-inset-bottom)+0.6rem))]">
         <h2 id="onboarding-title" aria-label="Money leaves clues" className="font-display text-[2.7rem] font-semibold leading-[1] tracking-[-0.025em]">
@@ -104,8 +107,9 @@ function useFlip(host: RefObject<HTMLElement>) {
  * "Secure your wallet": a soft glow in the step's aura colour fills the top
  * and changes colour with each step, finished steps sit above as grey rows,
  * the coming ones below, one full-width button carries the step. At the end
- * the glow clears, "Setting up your ĀURA" turns into "Your ĀURA is ready!"
- * (while the home page's data loads) and the set-up fades into the app.
+ * the glow clears, "Setting up Outsider" (the ring of dots running) turns
+ * into "Outsider is ready!" (while the home page's data loads) and the
+ * set-up fades into the app.
  */
 function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
   const [step, setStep] = useState(0);
@@ -121,14 +125,18 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
   // The glow runs out just above the steps, like the reference: finished
   // steps sit on the page, not on the colour, however tall the screen.
   const [glow, setGlow] = useState<number | null>(null);
-  // More choices below the fold: the grid's lower edge fades.
+  // Every investor, politician and the most held stocks to choose from
+  // (user, 2026-10-09: "scroll, not only 8 options"): the grid scrolls, and
+  // an edge fades where more choices hide.
   const [more, setMore] = useState(false);
+  const [less, setLess] = useState(false);
   const measure = useCallback(() => {
     const r = root.current;
     const l = list.current;
     if (r && l) setGlow(Math.round(Math.max(170, Math.min(r.clientHeight * 0.5, l.getBoundingClientRect().top - r.getBoundingClientRect().top + 70))));
     const g = grid.current;
     setMore(!!g && g.scrollHeight - g.scrollTop - g.clientHeight > 4);
+    setLess(!!g && g.scrollTop > 4);
   }, []);
   useLayoutEffect(() => {
     measure();
@@ -139,10 +147,11 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
   useEffect(() => {
     setChosen({ investor: getFollowed("investor"), politician: getFollowed("politician"), stock: getFollowed("stock") });
     fetchCatalogue<InvestorsResponse>("/api/investors")
-      .then((d) => setOptions((o) => ({ ...o, investor: d.rows.filter((r) => r.person).slice(0, 12).map((r) => ({ id: r.slug, name: r.person ?? r.fund })) })))
+      // People first, then the funds without a known face.
+      .then((d) => setOptions((o) => ({ ...o, investor: [...d.rows.filter((r) => r.person), ...d.rows.filter((r) => !r.person)].map((r) => ({ id: r.slug, name: r.person ?? r.fund })) })))
       .catch(() => setOptions((o) => ({ ...o, investor: [] })));
     fetchCatalogue<PoliticiansResponse>("/api/politicians")
-      .then((d) => setOptions((o) => ({ ...o, politician: d.rows.slice(0, 12).map((r) => ({ id: r.slug, name: r.name, src: r.photo })) })))
+      .then((d) => setOptions((o) => ({ ...o, politician: d.rows.map((r) => ({ id: r.slug, name: r.name, src: r.photo })) })))
       .catch(() => setOptions((o) => ({ ...o, politician: [] })));
     fetchCatalogue<StocksResponse>("/api/stocks")
       .then((d) => {
@@ -153,7 +162,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
           .filter((r) => r.ticker)
           .sort((a, b) => b.investors - a.investors)
           .filter((r) => !seen.has(r.company) && !!seen.add(r.company))
-          .slice(0, 12);
+          .slice(0, 60);
         setOptions((o) => ({ ...o, stock: rows.map((r) => ({ id: r.ticker!, name: r.company, ticker: r.ticker })) }));
       })
       .catch(() => setOptions((o) => ({ ...o, stock: [] })));
@@ -213,7 +222,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
         <div className="setup-header text-[15px] font-semibold leading-tight">
           Set up
           <br />
-          <span className="font-medium text-white/75">your ĀURA</span>
+          <span className="font-medium text-white/75">Outsider</span>
         </div>
         <button onClick={onClose} className="setup-header press-sm -mr-3 min-h-11 rounded-full px-3 text-[15px] font-semibold text-white/90 hover:text-white">
           Close
@@ -245,7 +254,7 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
               {active && (
                 <div className="step-in">
                   <p className="mt-1.5 max-w-[19rem] text-[15px] leading-snug text-subtle">{s.text}</p>
-                  <div ref={grid} onScroll={measure} data-more={more ? "" : undefined} className="pick-grid no-scrollbar -mx-6 mt-5 grid max-h-[min(22rem,44dvh)] grid-cols-4 gap-x-2 gap-y-4 overflow-y-auto px-6 pb-2 pt-1 sm:grid-cols-6">
+                  <div ref={grid} onScroll={measure} data-more={more ? "" : undefined} data-less={less ? "" : undefined} className="pick-grid no-scrollbar -mx-6 mt-5 grid max-h-[min(24rem,46dvh)] grid-cols-4 gap-x-2 gap-y-4 overflow-y-auto overscroll-contain px-6 pb-3 pt-1 sm:grid-cols-6">
                     {items === null
                       ? Array.from({ length: 8 }).map((_, k) => <div key={k} className="mx-auto h-14 w-14 rounded-full shimmer" />)
                       : items.length === 0
@@ -279,14 +288,12 @@ function Setup({ onDone, onClose }: { onDone: () => void; onClose: () => void })
                   <Icon name="check" className="h-3 w-3" />
                 </span>
               ) : (
-                <svg viewBox="0 0 20 20" aria-hidden="true" className="setup-spinner h-[18px] w-[18px]">
-                  <circle cx="10" cy="10" r="8.2" fill="none" stroke="rgb(var(--aura-investor))" strokeWidth="1.6" strokeDasharray="2.6 2.55" strokeLinecap="round" />
-                </svg>
+                <Mark size={18} spin />
               )}
             </span>
             <div key={ready ? "ready" : "busy"} className="step-in">
               <div id="onboarding-title" className={`text-[15px] font-semibold ${ready ? "text-ink" : "text-sweep"}`}>
-                {ready ? "Your ĀURA is ready!" : "Setting up your ĀURA"}
+                {ready ? "Outsider is ready!" : "Setting up Outsider"}
               </div>
               <div className="mt-0.5 max-w-[15rem] text-[14px] leading-snug text-subtle">
                 {ready ? "Everything you follow is waiting on the home page." : "Hold tight while we fetch the latest filings for you."}

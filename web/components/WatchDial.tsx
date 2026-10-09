@@ -2,13 +2,16 @@
 
 import { forwardRef, useCallback, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 
+import { shortFund } from "@/lib/format";
+
 /*
  * The names of the watchlist on a wheel (after the user's reference video,
  * 2026-10-07): the names run along the lower rim of a large circle, the
  * current one level in the middle, its neighbours tilting up and away and
- * fading at the edges. Swiping turns the wheel with the finger. The pager
- * drives it frame by frame through `set(p)`, where p is the position in
- * names (2.4 = four tenths of the way from the third name to the fourth).
+ * fading at the edges. Swiping turns the wheel with the finger; a tap on the
+ * band closes the swipe view (the pager handles both). The pager drives it
+ * frame by frame through `set(p)`, where p is the position in names (2.4 =
+ * four tenths of the way from the third name to the fourth).
  */
 
 const GAP = 30; // arc length between two names, px
@@ -21,14 +24,13 @@ export type DialHandle = { set: (p: number) => void };
 
 const mod = (k: number, n: number) => ((k % n) + n) % n;
 
-/** A fund without a person reads as its short name: "Pershing Square Capital". */
+/** A fund without a person reads as its short name: "PERSHING SQUARE CAPITAL". */
 function dialName(name: string) {
-  let s = name.trim();
-  for (let i = 0; i < 3; i++) s = s.replace(/,?\s+(LLC|L\.?L\.?C\.?|L\.?P\.?|LP|Inc\.?|Ltd\.?|Corp\.?|Corporation|Co\.?|Management)$/i, "");
+  const s = shortFund(name);
   return (s.length > 24 ? `${s.slice(0, 23).trimEnd()}…` : s).toUpperCase();
 }
 
-export const WatchDial = forwardRef<DialHandle, { names: string[]; loop: boolean; cur: number; onPick: (k: number) => void }>(function WatchDial({ names, loop, cur, onPick }, ref) {
+export const WatchDial = forwardRef<DialHandle, { names: string[]; loop: boolean; cur: number }>(function WatchDial({ names, loop, cur }, ref) {
   const arc = `dial-${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const box = useRef<HTMLDivElement>(null);
   const meter = useRef<SVGGElement>(null);
@@ -124,11 +126,7 @@ export const WatchDial = forwardRef<DialHandle, { names: string[]; loop: boolean
               }}
               textAnchor="middle"
               fill="currentColor"
-              // An invisible outline makes a name easy to hit.
-              stroke="transparent"
-              strokeWidth={22}
-              style={{ ...TEXT, cursor: k === cur ? "default" : "pointer", opacity: 0 }}
-              onClick={k === cur ? undefined : () => onPick(k)}
+              style={{ ...TEXT, opacity: 0 }}
             >
               <textPath href={`#${arc}`} startOffset={L / 2}>{dialName(name(k))}</textPath>
             </text>

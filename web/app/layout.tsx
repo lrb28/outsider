@@ -22,14 +22,14 @@ const DESC =
 export const metadata: Metadata = {
   metadataBase: new URL("https://outsider-tracker.vercel.app"),
   title: {
-    default: "ĀURA — investors, insiders and politicians",
-    template: "%s · ĀURA",
+    default: "Outsider — investors, insiders and politicians",
+    template: "%s · Outsider",
   },
   description: DESC,
-  applicationName: "AURA",
+  applicationName: "Outsider",
   manifest: "/manifest.webmanifest",
-  // The website icon is the app icon: the Ā tile in black on white, or white
-  // on black in dark mode (icon.svg switches by itself; favicon.ico is the
+  // The website icon is the app icon: the ring of dots in black on white, or
+  // white on black in dark mode (icon.svg switches by itself; favicon.ico is the
   // light tile for browsers without SVG tab icons, such as Safari). Listed
   // here because an `icons` entry replaces Next's automatic icon links.
   // sizes="32x32" on the ICO keeps Chrome on the SVG.
@@ -48,18 +48,18 @@ export const metadata: Metadata = {
   // shows those in white everywhere; the header and the set-up leave room
   // for them with env(safe-area-inset-top). Takes effect once the icon is
   // removed and added again.
-  appleWebApp: { capable: true, title: "AURA", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Outsider", statusBarStyle: "black-translucent" },
   other: { "apple-mobile-web-app-capable": "yes" },
   openGraph: {
-    title: "ĀURA — understand public disclosures",
+    title: "Outsider — understand public disclosures",
     description: DESC,
-    siteName: "AURA",
+    siteName: "Outsider",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ĀURA — understand public disclosures",
+    title: "Outsider — understand public disclosures",
     description: DESC,
   },
 };
@@ -84,10 +84,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <header data-site-header className="sticky top-0 z-20">
           <div aria-hidden="true" className="scroll-edge-top pointer-events-none absolute inset-x-0 top-0 h-24" />
           <div className="relative mx-auto flex max-w-5xl items-center gap-3 px-4 py-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
-            <Link href="/" aria-label="AURA – home" className="press-sm flex min-h-11 items-center text-ink">
-              <Wordmark height={17} />
+            <Link href="/" aria-label="Outsider – home" className="press-sm flex min-h-11 items-center text-ink">
+              <Wordmark height={15} />
             </Link>
-            <div className="ml-auto flex items-center gap-2.5">
+            {/* On phones the search is the loupe beside the tab bar. */}
+            <div className="ml-auto hidden items-center gap-2.5 md:flex">
               <SearchBox />
               <Nav />
             </div>
@@ -107,7 +108,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="mx-auto max-w-5xl px-4 py-6 pb-28 md:pb-10">
             <div className="flex flex-col gap-5 border-t border-hair pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <Wordmark height={13} className="text-subtle" />
+                <Wordmark height={12} className="text-subtle" />
                 <nav aria-label="Information" className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-subtle">
                   <Link href="/methodik" className="hover:text-ink">Sources & methodology</Link>
                   <Link href="/status" className="hover:text-ink">Data status</Link>

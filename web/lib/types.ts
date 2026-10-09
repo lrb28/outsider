@@ -304,7 +304,7 @@ export interface LetterStock {
   company: string;
   stance: Stance;
   note?: string;
-  /** ĀURA has a page for it. */
+  /** Outsider has a page for it. */
   known: boolean;
 }
 

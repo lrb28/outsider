@@ -128,7 +128,7 @@ def row(letter: dict) -> dict:
         "risks": json.dumps(letter.get("risks", [])),
         "quotes": json.dumps(letter.get("quotes", [])),
         "stocks": json.dumps(letter.get("stocks", [])),
-        "summarized_by": letter.get("summarized_by", "ĀURA editors"),
+        "summarized_by": letter.get("summarized_by", "Outsider editors"),
     }
 
 

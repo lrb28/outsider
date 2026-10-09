@@ -1,41 +1,39 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Avatar } from "@/components/Avatar";
 import { ErrorRetry } from "@/components/ErrorRetry";
-import { FollowButton } from "@/components/FollowButton";
 import { InvestorView, loadInvestor } from "@/components/InvestorView";
 import { loadPolitician, PoliticianView } from "@/components/PoliticianView";
-import { SearchBox } from "@/components/SearchBox";
 import { Skeleton } from "@/components/Skeleton";
-import { BackButton } from "@/components/ui";
 import { type DialHandle, WatchDial } from "@/components/WatchDial";
-import { fetchCatalogue } from "@/lib/fetchJson";
-import type { InvestorDetail, InvestorsResponse, PoliticianDetail, PoliticiansResponse, PoliticianRow } from "@/lib/types";
-import { getFollowed, personHref, watchedPeople, type WatchedPerson } from "@/lib/watchlist";
+import type { InvestorDetail, PoliticianDetail } from "@/lib/types";
+import type { WatchedPerson } from "@/lib/watchlist";
 
 /*
- * A person's page opened from "Your watchlist" on Home swipes sideways to
- * the other people of that row, investors and politicians (after the user's
- * reference video, 2026-10-07). The page follows the finger with the next
- * one beside it, and the names above turn like a wheel (`WatchDial`). A far
- * or quick swipe moves on, a short one springs back; three or more people go
- * round in a loop, two stop at either end. Arrow keys, a sideways trackpad
- * swipe and a tap on a neighbour's name move too.
+ * The swipe view of the watchlist (the star tab, user, 2026-10-09; first
+ * built after the user's reference video, 2026-10-07): one person's page at
+ * a time, swiping sideways to the next, investors and politicians. The page
+ * follows the finger with the next one beside it, and the names above turn
+ * like a wheel (`WatchDial`). A far or quick swipe moves on, a short one
+ * springs back; three or more people go round in a loop, two stop at either
+ * end. Arrow keys and a sideways trackpad swipe move too.
+ *
+ * Nothing sits between the wheel and the picture: no back button, no
+ * Follow capsule (user, 2026-10-09). A tap on the band of names closes the
+ * view, back to the list (`onClose`); a drag on it turns the wheel.
  *
  * As in the video, the wheel is the top of the screen, right under the
- * Dynamic Island: on phones the site header (wordmark and search) gives way
- * while the pager is open (`[data-watch-pager]` in globals.css), and the
- * search moves into the row with the back button below the wheel.
+ * Dynamic Island: on phones the site header gives way while the pager is
+ * open (`[data-watch-pager]` in globals.css).
  *
  * Everything that moves is driven by one number, p, the position in the
- * list; React only hears about it when a page has settled. The URL follows
- * (replaced, so Back still returns to Home). Touches on things that drag
- * sideways themselves (card rows, charts, the 3D allocation) are left alone,
- * and so are the outer 24 px, the system's back gesture.
+ * list; React only hears about it when a page has settled (`onTurn`).
+ * Touches on things that drag sideways themselves (card rows, charts, the
+ * 3D allocation) are left alone, and so are the outer 24 px, the system's
+ * back gesture.
  */
 
 const GAP = 32; // between two pages, px
@@ -45,7 +43,7 @@ const EASE = bezier(0.32, 0.72, 0, 1);
 const EASE_START = 0.72 / 0.32;
 
 type Kind = WatchedPerson["kind"];
-type Entry = { kind: Kind; slug: string; name: string; photo: string | null };
+type Entry = WatchedPerson;
 type Detail = { kind: "investor"; inv: InvestorDetail } | { kind: "politician"; pol: PoliticianDetail };
 type Data = Detail | null | "error";
 
@@ -60,13 +58,15 @@ async function load(e: { kind: Kind; slug: string }): Promise<Detail | null> {
   return inv && { kind: "investor", inv };
 }
 
-/** The head of a person's page while it loads: picture and name, as far as known. */
+/** The head of a person's page while it loads: picture and name, where the page will put them. */
 function HeadPlaceholder({ entry }: { entry: Entry }) {
   return (
     <div role="status" aria-label="Loading" className="space-y-5">
       <div className="flex flex-col items-center gap-4 text-center">
-        {entry.name ? <Avatar name={entry.name} src={entry.photo} kind={entry.kind} size={entry.kind === "politician" ? 104 : 96} /> : <Skeleton className="h-24 w-24 rounded-full" />}
-        {entry.name ? <h1 className="large-title">{entry.name}</h1> : <Skeleton className="h-8 w-56" />}
+        <span data-face className="flex rounded-full">
+          <Avatar name={entry.name} src={entry.photo} kind={entry.kind} size={entry.kind === "politician" ? 104 : 96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
+        </span>
+        <h1 className="large-title">{entry.name}</h1>
       </div>
       <Skeleton className="mx-auto h-4 w-full max-w-xl" />
       <Skeleton className="h-[74px] w-full rounded-[22px]" />
@@ -98,11 +98,11 @@ function bezier(x1: number, y1: number, x2: number, y2: number) {
   };
 }
 
-export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
-  // The page that was opened; later URL changes are this pager's own.
-  const [first] = useState(start);
-  const [ring, setRing] = useState<Entry[]>([{ ...first, name: "", photo: null }]);
-  const [cur, setCur] = useState(0);
+export function WatchPager({ people, start, onClose, onTurn }: { people: Entry[]; start: number; onClose: () => void; onTurn?: (person: Entry) => void }) {
+  // The watchlist as it was on arrival: following or unfollowing meanwhile
+  // does not reshuffle the pages under the finger.
+  const [ring] = useState(people);
+  const [cur, setCur] = useState(() => Math.max(0, Math.min(start, people.length - 1)));
   const [data, setData] = useState<Record<string, Data>>({});
   const [attempt, setAttempt] = useState(0);
 
@@ -110,7 +110,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
   const band = useRef<HTMLElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const dial = useRef<DialHandle>(null);
-  const m = useRef({ p: 0, cur: 0, w: 0, top: 0, raf: 0, moving: false, n: 1, loop: false });
+  const m = useRef({ p: cur, cur, w: 0, top: 0, raf: 0, moving: false, n: 1, loop: false, dragged: 0 });
 
   const n = ring.length;
   const loop = n >= 3;
@@ -118,34 +118,6 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
   const at = (k: number) => ring[mod(k, n)];
   m.current.n = n;
   m.current.loop = loop;
-
-  // The watchlist, in Home's order, snapshotted on arrival: following or
-  // unfollowing here does not reshuffle the pages under the finger.
-  useEffect(() => {
-    let live = true;
-    Promise.all([
-      fetchCatalogue<InvestorsResponse>("/api/investors"),
-      fetchCatalogue<PoliticiansResponse>("/api/politicians").catch(() => ({ rows: [] as PoliticianRow[] })),
-    ])
-      .then(([iv, po]) => {
-        if (!live) return;
-        const list = watchedPeople(iv.rows, po.rows, { investor: getFollowed("investor"), politician: getFollowed("politician") });
-        const i = list.findIndex((e) => keyOf(e) === keyOf(first));
-        if (i >= 0) {
-          setRing(list);
-          setCur(i);
-        } else {
-          // No longer followed: just this one, named.
-          const all = watchedPeople(iv.rows, po.rows, { investor: [first.slug], politician: [first.slug] });
-          const self = all.find((e) => keyOf(e) === keyOf(first));
-          if (self) setRing([self]);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [first]);
 
   // The current investor first, then the two beside it, so a swipe finds
   // them ready. Investors further away are let go.
@@ -282,10 +254,11 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
   }, [cur, apply]);
   useLayoutEffect(() => placeSides(m.current.moving));
   const current = at(cur);
-  const url = personHref(current, true);
+  const turned = useRef(onTurn);
+  turned.current = onTurn;
   useEffect(() => {
-    if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
-  }, [url]);
+    turned.current?.(current);
+  }, [current]);
 
   // The names under the header get a plain backing once they stick.
   useEffect(() => {
@@ -399,6 +372,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
         return;
       }
       state = "idle";
+      m.current.dragged = performance.now();
       const a = trail[0];
       const b = trail[trail.length - 1];
       const v = a && b && b.t > a.t ? -(b.x - a.x) / (b.t - a.t) / (m.current.w + GAP) : 0;
@@ -429,6 +403,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
         p0 = m.current.p;
       }
       acc += e.deltaMode === 1 ? e.deltaX * 16 : e.deltaX;
+      m.current.dragged = now;
       apply(bounded(p0 + acc / (m.current.w + GAP)));
       window.clearTimeout(wheelTimer);
       wheelTimer = window.setTimeout(() => {
@@ -474,7 +449,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
     const key = keyOf(e);
     const d = data[key];
     if (d && d !== "error")
-      return d.kind === "investor" ? <InvestorView inv={d.inv} preview={o !== 0} /> : <PoliticianView pol={d.pol} preview={o !== 0} />;
+      return d.kind === "investor" ? <InvestorView inv={d.inv} preview={o !== 0} still /> : <PoliticianView pol={d.pol} preview={o !== 0} still />;
     if (o === 0 && d === "error")
       return (
         <ErrorRetry
@@ -488,7 +463,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
       return (
         <div className="py-16 text-center text-[15px] text-subtle">
           Not found.{" "}
-          <Link href="/" className="text-ink underline">Back to Home</Link>
+          <button type="button" onClick={onClose} className="!min-h-0 text-ink underline">Back to the list</button>
         </div>
       );
     return <HeadPlaceholder entry={e} />;
@@ -500,53 +475,59 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
     .filter((o) => o === 0 || exists(cur + o))
     .map((o) => ({ o, k: cur + o, entry: at(cur + o) }))
     .sort((a, b) => mod(a.k, n) - mod(b.k, n));
-  const names = ring.map((e) => {
-    const d = data[keyOf(e)];
-    return e.name || (d && d !== "error" ? (d.kind === "investor" ? d.inv.person ?? d.inv.fund : d.pol.name) : "");
-  });
+  const names = ring.map((e) => e.name);
   const prevName = exists(cur - 1) ? names[mod(cur - 1, n)] : null;
   const nextName = exists(cur + 1) ? names[mod(cur + 1, n)] : null;
+
+  // A tap on the band closes the view; the click that ends a drag of the
+  // wheel does not.
+  const tapBand = () => {
+    if (performance.now() - m.current.dragged < 400 || m.current.raf) return;
+    onClose();
+  };
 
   return (
     <div ref={root} data-noswipe data-watch-pager className="[overflow-anchor:none] max-md:-mt-4">
       {/* The wheel first, under the Dynamic Island (see globals.css). */}
-      <nav ref={band} aria-label="Your watchlist" className="watch-band sticky z-10 -mx-4">
-        {names.every(Boolean) && (
-          <WatchDial
-            ref={dial}
-            names={names}
-            loop={loop}
-            cur={cur}
-            onPick={(k) => {
-              if (k !== m.current.cur) step(k > m.current.cur ? 1 : -1);
-            }}
-          />
-        )}
-        {!names.every(Boolean) && <div className="h-16" />}
+      <nav ref={band} aria-label="Your watchlist" onClick={tapBand} className="watch-band sticky z-10 -mx-4 cursor-pointer">
+        <WatchDial ref={dial} names={names} loop={loop} cur={cur} />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className="btn-capsule sr-only focus-visible:not-sr-only focus-visible:!absolute focus-visible:bottom-2 focus-visible:left-1/2 focus-visible:-translate-x-1/2"
+        >
+          Back to the list
+        </button>
         {prevName && (
-          <button type="button" onClick={() => step(-1)} className="btn-capsule sr-only focus-visible:not-sr-only focus-visible:!absolute focus-visible:bottom-2 focus-visible:left-4">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              step(-1);
+            }}
+            className="btn-capsule sr-only focus-visible:not-sr-only focus-visible:!absolute focus-visible:bottom-2 focus-visible:left-4"
+          >
             Previous: {prevName}
           </button>
         )}
         {nextName && (
-          <button type="button" onClick={() => step(1)} className="btn-capsule sr-only focus-visible:not-sr-only focus-visible:!absolute focus-visible:bottom-2 focus-visible:right-4">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              step(1);
+            }}
+            className="btn-capsule sr-only focus-visible:not-sr-only focus-visible:!absolute focus-visible:bottom-2 focus-visible:right-4"
+          >
             Next: {nextName}
           </button>
         )}
       </nav>
 
-      <div className="relative z-[1] mt-1 flex min-h-11 items-center justify-between gap-3">
-        <BackButton href="/" label="Home" />
-        <div className="flex items-center gap-2.5">
-          <FollowButton kind={current.kind} id={current.slug} />
-          {/* The header's search, which gives way to the wheel on phones. */}
-          <div className="md:hidden">
-            <SearchBox openWidth="w-40" />
-          </div>
-        </div>
-      </div>
-
-      <div className="isolate -mx-4 overflow-x-clip px-4 pt-5">
+      <div className="isolate -mx-4 overflow-x-clip px-4 pt-3">
         <div ref={rail} className="relative">
           {slots.map(({ o, entry }) => (
             <div

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * ĀURA design tokens. Plain, iOS-like surfaces: a quiet grouped background,
+ * Outsider design tokens. Plain, iOS-like surfaces: a quiet grouped background,
  * white cards without borders, one monochrome primary action. Colour is kept
  * for meaning — price moves and the three "auras" (investors, insiders,
  * politicians). Values are "R G B" so Tailwind opacity modifiers work.
@@ -513,10 +513,19 @@ h1, h2, h3 {
   animation: glowDrift 9s ease-in-out infinite alternate;
 }
 .setup-glow i[data-on] { opacity: 1; }
-/* The set-up's choices scroll on small phones: the cut-off row fades. */
+/* The set-up's choices scroll (every investor and politician): an edge
+   fades where more of them hide, above or below. */
 .pick-grid[data-more] {
-  -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent);
-  mask-image: linear-gradient(to bottom, #000 78%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent);
+  mask-image: linear-gradient(to bottom, #000 80%, transparent);
+}
+.pick-grid[data-less] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2.75rem);
+  mask-image: linear-gradient(to bottom, transparent, #000 2.75rem);
+}
+.pick-grid[data-less][data-more] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2.75rem, #000 80%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 2.75rem, #000 80%, transparent);
 }
 .setup-glow i[data-glow="investor"] { --g1: 24 132 230; --g2: 70 196 255; }
 .setup-glow i[data-glow="politician"] { --g1: 184 62 162; --g2: 138 92 246; }
@@ -527,14 +536,12 @@ h1, h2, h3 {
 }
 .setup-header { text-shadow: 0 1px 10px rgb(0 0 0 / 0.14); }
 .step-in { animation: fadeUp 0.5s cubic-bezier(0.32, 0.72, 0, 1) 0.06s both; }
-.setup-spinner { animation: setupSpin 2.6s linear infinite; }
-@keyframes setupSpin { to { transform: rotate(360deg); } }
 .check-pop { animation: checkPop 0.45s cubic-bezier(0.32, 0.72, 0, 1) both; }
 @keyframes checkPop {
   from { opacity: 0; transform: scale(0.4); }
   to { opacity: 1; transform: none; }
 }
-/* A highlight runs over "Setting up your ĀURA" while it works. */
+/* A highlight runs over "Setting up Outsider" while it works. */
 .text-sweep {
   background: linear-gradient(90deg, rgb(var(--subtle)) 0%, rgb(var(--ink)) 35%, rgb(var(--ink)) 50%, rgb(var(--subtle)) 85%);
   background-size: 250% 100%;
@@ -547,12 +554,34 @@ h1, h2, h3 {
   from { background-position: 100% 0; }
   to { background-position: -150% 0; }
 }
-@keyframes welcomeMark {
-  from { opacity: 0; transform: translate(-50%, -50%) scale(0.86); }
-  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+/* The wordmark on the welcome screen: the word comes out of a blur, then
+   the eight dots pop up one after another, clockwise from the top. */
+@keyframes welcomeLogo {
+  from { opacity: 0; transform: scale(0.94); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
 }
-.welcome-mark {
-  animation: welcomeMark 0.9s cubic-bezier(0.32, 0.72, 0, 1) 0.1s both;
+.welcome-logo {
+  animation: welcomeLogo 0.9s cubic-bezier(0.32, 0.72, 0, 1) 0.1s both;
+}
+@keyframes dotPop {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: none; }
+}
+.mark-pop circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dotPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(0.45s + var(--i) * 70ms);
+}
+/* The ring as an activity indicator (iOS spinner): a bright dot runs round
+   clockwise, the ones behind it dim. */
+@keyframes dotWave {
+  from { opacity: 1; }
+  to { opacity: 0.2; }
+}
+.mark-spin circle {
+  animation: dotWave 0.96s linear infinite;
+  animation-delay: calc(var(--i) * 0.12s - 0.96s);
 }
 @keyframes welcomeLine {
   from { opacity: 0; transform: translateY(0.45em); filter: blur(6px); }
@@ -679,6 +708,36 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
   opacity: 1;
 }
 
+/* Star tab (app/watchlist): list and swipe view. Between them the picture
+   flies (View Transitions): from the row to the page and back home, while
+   the band of names drops in from the top and the rest of the page rises.
+   The tab bar keeps still. Without View Transitions the views just fade. */
+.watch-band { view-transition-name: watch-band; }
+[data-watch-pager] [data-o="0"] [data-face] { view-transition-name: watch-face; }
+.tab-bar { view-transition-name: tab-bar; }
+.tab-bar-search { view-transition-name: tab-bar-search; }
+::view-transition-group(watch-face) {
+  animation-duration: 0.52s;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* One picture growing, not two crossfading. */
+::view-transition-old(watch-face) { animation: none; opacity: 0; }
+::view-transition-new(watch-face) { animation: none; }
+::view-transition-old(root) { animation: 0.2s ease-out both vtFadeOut; }
+::view-transition-new(root) { animation: 0.46s cubic-bezier(0.32, 0.72, 0, 1) both vtRise; }
+::view-transition-new(watch-band):only-child { animation: 0.5s cubic-bezier(0.32, 0.72, 0, 1) both vtBandIn; }
+::view-transition-old(watch-band):only-child { animation: 0.22s ease-in both vtBandOut; }
+@keyframes vtFadeOut { to { opacity: 0; } }
+@keyframes vtRise { from { opacity: 0; transform: translateY(18px); } }
+@keyframes vtBandIn { from { opacity: 0; transform: translateY(-28px); } }
+@keyframes vtBandOut { to { opacity: 0; transform: translateY(-18px); } }
+/* backwards only: a kept transform would hold the sticky band's ancestor. */
+.pager-in, .list-in { animation: fadeUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+.watch-rows-in .watch-row {
+  animation: fadeUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  animation-delay: calc(min(var(--i, 0), 12) * 32ms);
+}
+
 /* A tab glyph pops when its tab becomes current. */
 @keyframes tabPop {
   0% { transform: scale(0.82); }
@@ -689,39 +748,51 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
   animation: tabPop 0.42s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* Action menu items rise into place one after another. */
-@keyframes actionIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.96); }
-  to { opacity: 1; transform: none; }
-}
-.action-item {
-  animation: actionIn 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
-}
-.action-list[data-closing] .action-item {
-  animation: none;
-  opacity: 0;
-  transform: translateY(8px) scale(0.97);
-  transition: opacity 0.14s ease-in, transform 0.14s ease-in;
-}
-/* The page behind the action menu: blur and tint rise first, the actions
-   follow once the page has gone soft (they wait ~170 ms). */
-.menu-scrim {
+/* Search on phones (SearchSheet, behind the loupe beside the tab bar): the
+   page goes soft behind frosted glass, the field drops in from the top and
+   the results rise row by row. Hidden once faded, so no blur layer sits over
+   the page while scrolling. */
+.search-sheet {
   pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s linear 0.32s;
+}
+.search-sheet[data-open] {
+  pointer-events: auto;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.search-scrim {
   background-color: rgb(var(--bg) / 0);
   -webkit-backdrop-filter: blur(0px) saturate(100%);
   backdrop-filter: blur(0px) saturate(100%);
-  /* Hidden once faded, so no blur layer sits over the page while scrolling. */
-  visibility: hidden;
-  transition: background-color 0.26s ease-out 0.12s, -webkit-backdrop-filter 0.26s ease-out 0.12s, backdrop-filter 0.26s ease-out 0.12s, visibility 0s linear 0.4s;
+  transition: background-color 0.28s ease-out, -webkit-backdrop-filter 0.28s ease-out, backdrop-filter 0.28s ease-out;
 }
-.menu-scrim[data-open] {
-  pointer-events: auto;
-  visibility: visible;
-  background-color: rgb(var(--bg) / 0.55);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
-  backdrop-filter: blur(22px) saturate(150%);
-  transition-delay: 0s;
-  transition-duration: 0.22s;
+.search-sheet[data-open] .search-scrim {
+  background-color: rgb(var(--bg) / 0.62);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(26px) saturate(160%);
+  transition-duration: 0.24s;
+}
+.search-bar {
+  opacity: 0;
+  transform: translateY(-14px) scale(0.98);
+  transition: opacity 0.18s ease-in, transform 0.22s ease-in;
+}
+.search-sheet[data-open] .search-bar {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.3s ease-out 0.04s, transform 0.5s cubic-bezier(0.32, 0.72, 0, 1) 0.04s;
+}
+.search-results { opacity: 0; transition: opacity 0.16s ease-in; }
+.search-sheet[data-open] .search-results { opacity: 1; transition: none; }
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.search-row {
+  animation: rowIn 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation-delay: calc(0.08s + var(--i, 0) * 28ms);
 }
 
 /* Loading: a slow sheen across placeholders instead of a blink. */

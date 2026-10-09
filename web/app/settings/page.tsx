@@ -8,6 +8,8 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { Icon, type IconName } from "@/components/Icon";
 import { Sheet } from "@/components/Sheet";
 import { PageTitle } from "@/components/ui";
+import { Mark } from "@/components/Wordmark";
+import { PORTFOLIO } from "@/lib/features";
 import { fetchCatalogue } from "@/lib/fetchJson";
 import { companyName, stockHref } from "@/lib/format";
 import { loadCurrency } from "@/lib/money";
@@ -15,7 +17,6 @@ import { getTxns, positionsFrom, toCsv } from "@/lib/portfolio";
 import { type Theme, getTheme, setTheme } from "@/lib/theme";
 import type { InvestorsResponse, PoliticiansResponse } from "@/lib/types";
 import { type FollowKind, getFollowed, toggleFollow } from "@/lib/watchlist";
-import { MARK_HEIGHT, MARK_PATH, MARK_WIDTH } from "@/lib/wordmark";
 
 /*
  * Settings, behind the gear in the tab bar (after the Fuse wallet app the
@@ -158,7 +159,7 @@ export default function SettingsPage() {
   const share = async () => {
     const url = window.location.origin;
     try {
-      if (navigator.share) await navigator.share({ title: "ĀURA", text: "What investors, insiders and US politicians disclose.", url });
+      if (navigator.share) await navigator.share({ title: "Outsider", text: "What investors, insiders and US politicians disclose.", url });
       else {
         await navigator.clipboard.writeText(url);
         setShared(true);
@@ -174,7 +175,7 @@ export default function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `aura-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `outsider-portfolio-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -201,12 +202,10 @@ export default function SettingsPage() {
       {/* Set up what you follow (like Fuse's membership card). */}
       <Link href="/?welcome=folgen" className="card fade-up flex items-center gap-3.5 p-4 transition-transform active:scale-[0.99]">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-ink text-card">
-          <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} aria-hidden="true" className="h-[22px]">
-            <path d={MARK_PATH} fill="currentColor" stroke="currentColor" strokeWidth="3" />
-          </svg>
+          <Mark size={22} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[16px] font-semibold">{following ? "Your ĀURA" : "Set up your ĀURA"}</span>
+          <span className="block text-[16px] font-semibold">{following ? "Your Outsider" : "Set up Outsider"}</span>
           <span className="block truncate text-[14px] text-subtle">{following ? `Following ${following} · add more` : "Follow investors, politicians and stocks"}</span>
         </span>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-card">
@@ -222,8 +221,8 @@ export default function SettingsPage() {
 
       <Group title="General">
         <Row icon="show" colour="var(--cat-3)" label="Appearance" value={THEMES.find((t) => t.key === theme)?.label} onClick={() => setOpen("theme")} />
-        <Row icon="graph" colour="var(--cat-1)" label="Portfolio" value={depot ? (depot.positions ? `${depot.positions} positions · ${depot.currency}` : "Empty") : undefined} href="/me" />
-        {!!depot?.positions && <Row icon="download" colour="var(--cat-5)" label="Export portfolio as CSV" onClick={exportCsv} />}
+        {PORTFOLIO && <Row icon="graph" colour="var(--cat-1)" label="Portfolio" value={depot ? (depot.positions ? `${depot.positions} positions · ${depot.currency}` : "Empty") : undefined} href="/me" />}
+        {PORTFOLIO && !!depot?.positions && <Row icon="download" colour="var(--cat-5)" label="Export portfolio as CSV" onClick={exportCsv} />}
       </Group>
 
       <Group title="About">
@@ -231,7 +230,7 @@ export default function SettingsPage() {
         <Row icon="document" colour="var(--cat-6)" label="Sources & methodology" href="/methodik" />
         <Row icon="activity" colour="var(--bull-fill)" label="Data status" href="/status" />
         <Row icon="shield" colour="var(--cat-2)" label="Privacy" href="/datenschutz" />
-        <Row icon="swap" colour="var(--aura-politician)" label={shared ? "Link copied" : "Share ĀURA"} onClick={share} />
+        <Row icon="swap" colour="var(--aura-politician)" label={shared ? "Link copied" : "Share Outsider"} onClick={share} />
       </Group>
 
       <Group>
@@ -239,9 +238,7 @@ export default function SettingsPage() {
       </Group>
 
       <footer className="flex flex-col items-center gap-1.5 pb-2 pt-2 text-center">
-        <svg viewBox={`-2 -2 ${MARK_WIDTH + 4} ${MARK_HEIGHT + 4}`} aria-hidden="true" className="h-4 text-subtle">
-          <path d={MARK_PATH} fill="currentColor" stroke="currentColor" strokeWidth="3" />
-        </svg>
+        <Mark size={16} className="text-subtle" />
         <p className="text-[13px] font-medium text-subtle">
           Version {version}
           {commit && ` (${commit})`}
@@ -285,7 +282,7 @@ export default function SettingsPage() {
       {(open === "investor" || open === "politician" || open === "stock") && <FollowList kind={open} onClose={() => setOpen(null)} />}
 
       {open === "reset" && (
-        <Sheet title="Delete all data?" subtitle="Removes your portfolio and its import, everything you follow and your settings from this device. This can’t be undone." onClose={() => setOpen(null)}>
+        <Sheet title="Delete all data?" subtitle={`Removes ${PORTFOLIO ? "your portfolio and its import, " : ""}everything you follow and your settings from this device. This can’t be undone.`} onClose={() => setOpen(null)}>
           <div className="flex flex-col gap-2.5 px-5 pb-5 pt-1">
             <button type="button" onClick={resetAll} className="inline-flex min-h-[3.25rem] items-center justify-center rounded-full bg-bear-fill text-[16px] font-semibold text-white transition-transform active:scale-[0.98]">
               Delete all data

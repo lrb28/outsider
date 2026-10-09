@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { ErrorRetry } from "@/components/ErrorRetry";
@@ -9,9 +9,8 @@ import { FollowButton } from "@/components/FollowButton";
 import { loadPolitician, PoliticianView } from "@/components/PoliticianView";
 import { SkeletonPage } from "@/components/Skeleton";
 import { DetailTopBar } from "@/components/ui";
-import { WatchPager } from "@/components/WatchPager";
 import type { PoliticianDetail } from "@/lib/types";
-import { personFromPath } from "@/lib/watchlist";
+import { swipeHref } from "@/lib/watchlist";
 
 export default function PoliticianPage() {
   return (
@@ -23,13 +22,16 @@ export default function PoliticianPage() {
 
 function Politician() {
   const params = useParams<{ slug: string }>();
-  const path = usePathname() ?? "";
   const query = useSearchParams();
-  // Opened from "Your watchlist" on Home: swipe through those people. The
-  // path (not the route's params) says who, see the investor page.
-  const [fromWatchlist] = useState(() => query?.get("from") === "watchlist");
-  if (fromWatchlist) return <WatchPager start={personFromPath(path) ?? { kind: "politician", slug: params?.slug as string }} />;
-  return <PoliticianScreen slug={params?.slug as string} />;
+  const router = useRouter();
+  const slug = params?.slug as string;
+  // Links from before the swipe view moved to the star tab (2026-10-09).
+  const fromWatchlist = query?.get("from") === "watchlist";
+  useEffect(() => {
+    if (fromWatchlist && slug) router.replace(swipeHref({ kind: "politician", slug }));
+  }, [fromWatchlist, router, slug]);
+  if (fromWatchlist) return <SkeletonPage />;
+  return <PoliticianScreen slug={slug} />;
 }
 
 function PoliticianScreen({ slug }: { slug: string }) {

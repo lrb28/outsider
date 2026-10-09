@@ -31,7 +31,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** A ticker named in a takeaway: a link where ĀURA has the stock. */
+/** A ticker named in a takeaway: a link where Outsider has the stock. */
 function TickerChip({ ticker, linked }: { ticker: string; linked: boolean }) {
   const cls = "inline-flex h-7 items-center gap-1.5 rounded-full bg-surface2 pl-1 pr-2.5 text-[12px] font-semibold";
   const body = (
@@ -202,7 +202,7 @@ export default function LetterPage() {
           Read the original
         </a>
         <p className="text-[13px] leading-relaxed text-subtle">
-          {letter.sourceName ? `Source: ${letter.sourceName}. ` : ""}Summary by {letter.summarizedBy ?? "ĀURA editors"} from the original document. Quotes are verbatim; figures are as stated by the author.
+          {letter.sourceName ? `Source: ${letter.sourceName}. ` : ""}Summary by {letter.summarizedBy ?? "Outsider editors"} from the original document. Quotes are verbatim; figures are as stated by the author.
           The tone label is our reading of the letter. Not investment advice.
         </p>
       </div>

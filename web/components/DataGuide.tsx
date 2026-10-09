@@ -15,7 +15,7 @@ const SOURCES: { kind: Kind; title: string; form: string; lines: string[] }[] = 
     form: "Form 13F · quarterly",
     lines: [
       "Holdings at quarter end, filed up to 45 days later.",
-      "ĀURA compares two quarters: added to, reduced, new or sold.",
+      "Outsider compares two quarters: added to, reduced, new or sold.",
       "The report shows neither the trade date nor the price paid.",
     ],
   },
