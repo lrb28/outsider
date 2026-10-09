@@ -259,6 +259,26 @@ export interface DiscoverData {
   bestPerformers?: CollectionInvestor[];
 }
 
+// ── Portfolio pull-to-refresh spotlight ─────────────────────────────────────
+export type SpotlightKind = "bought" | "buffett-buying" | "buffett" | "held" | "insiders";
+
+/** One stock shown behind the portfolio page when it is pulled down. */
+export interface SpotlightItem {
+  ticker: string;
+  company: string;
+  kind: SpotlightKind;
+  /** Why it is shown, e.g. "Most bought by star investors". */
+  label: string;
+  /** The figure behind it, e.g. "Added by 9 star investors". */
+  metric: string;
+}
+
+export interface SpotlightData {
+  source: "database" | "sample";
+  /** In the order they take turns, one per pull. */
+  items: SpotlightItem[];
+}
+
 // ── Investor letters ────────────────────────────────────────────────────────
 export type Stance = "bullish" | "neutral" | "bearish";
 export type LetterKind = "annual_letter" | "quarterly_letter" | "memo" | "activist_letter" | "commentary";

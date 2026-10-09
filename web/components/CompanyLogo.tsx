@@ -85,6 +85,50 @@ function inspect(img: HTMLImageElement): Look {
   }
 }
 
+const logoUrl = (t: string) => `/api/logo?t=${encodeURIComponent(t)}`;
+
+/** The colour behind the mark: its own flat field, dark grey for a white mark, else white. */
+const backdropOf = (look: Look) => (look.light ? "rgb(28 28 30)" : look.field ?? "#fff");
+
+/**
+ * Loads a logo off-screen and reads it like the tiles do, for pages that paint
+ * around a logo: the backdrop is the logo's own field colour (NVIDIA green,
+ * Apple black, Microsoft white), `dark` says whether text on it goes white.
+ * Resolves once the image is in the browser's cache; null when there is no
+ * logo. Shares the tiles' cache of what each logo looks like.
+ */
+export function logoBackdrop(ticker: string, size: 128 | 256 = 128): Promise<{ src: string; color: string; dark: boolean } | null> {
+  const t = ticker.toUpperCase();
+  const src = size === 256 ? `${logoUrl(t)}&s=256` : logoUrl(t);
+  const done = (k: Look) => {
+    if (!k.ok) return null;
+    const color = backdropOf(k);
+    // WCAG luminance: white text wherever it out-contrasts black (red, blue,
+    // black fields), black on the light ones (NVIDIA green, white).
+    const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? ["255", "255", "255"]).map((v) => {
+      const c = Number(v) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return { src, color, dark: !color.startsWith("#") && L < 0.2 };
+  };
+  if (known.get(t)?.ok === false) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      const k = known.get(t) ?? inspect(img);
+      known.set(t, k);
+      resolve(done(k));
+    };
+    img.onerror = () => {
+      known.set(t, { ok: false, edge: "none", field: null, margin: 0, light: false });
+      resolve(null);
+    };
+    img.src = src;
+  });
+}
+
 function tile(ticker: string | null, company: string, size: number, rounded: string, className = "") {
   const letter = (company || ticker || "?").trim()[0]?.toUpperCase() ?? "?";
   return (
@@ -130,7 +174,7 @@ export function CompanyLogo({
   // (wordmarks, circles in a circle): shrink it onto its own field colour.
   const pad = loaded && (state.field !== null || state.light || state.edge === "light") && state.margin < (round ? 0.16 : 0.07);
   const inset = pad ? (round ? 0.16 : 0.11) - state.margin : 0;
-  const bg = loaded ? state.light ? "rgb(28 28 30)" : state.field ?? "#fff" : undefined;
+  const bg = loaded ? backdropOf(state) : undefined;
   return (
     <span
       style={{ width: size, height: size, minWidth: size, background: bg }}
@@ -138,7 +182,7 @@ export function CompanyLogo({
     >
       {!loaded && <span className="absolute inset-0 flex">{tile(ticker, company, size, rounded)}</span>}
       <img
-        src={`/api/logo?t=${encodeURIComponent(t)}`}
+        src={logoUrl(t)}
         alt=""
         loading="lazy"
         decoding="async"

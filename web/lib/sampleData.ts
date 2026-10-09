@@ -1,4 +1,5 @@
 import { companyName, investorBio, investorPerson } from "./format";
+import { mixSpotlight, weightLabel } from "./spotlight";
 import {
   CollectionItem,
   FeedRow,
@@ -7,6 +8,7 @@ import {
   InvestorRow,
   PoliticianDetail,
   PoliticianRow,
+  SpotlightItem,
   StockDetail,
   StockRow,
 } from "./types";
@@ -231,4 +233,24 @@ export const SAMPLE_DISCOVER = {
   topPoliticians: [
     { slug: "nancy-pelosi", fund: "Democrat · House", person: "Nancy Pelosi", metric: "6 trades" },
   ],
+};
+
+// Same lists as SAMPLE_DISCOVER plus the sample Berkshire positions.
+const spot = (ticker: string, name: string, kind: SpotlightItem["kind"], label: string, metric: string): SpotlightItem => ({
+  ticker,
+  company: companyName(ticker, name),
+  kind,
+  label,
+  metric,
+});
+const berkshire = SAMPLE_HOLDINGS["berkshire-hathaway"];
+const berkshireTotal = berkshire.reduce((a, [, , v]) => a + v, 0);
+
+export const SAMPLE_SPOTLIGHT = {
+  items: mixSpotlight([
+    SAMPLE_DISCOVER.mostBoughtQ.map((c) => spot(c.ticker!, c.securityName, "bought", "Most bought by star investors", `Added by ${parseInt(c.metric)} star investors`)),
+    berkshire.slice(0, 3).map(([t, name, v], i) => spot(t, name, "buffett", "In Buffett’s portfolio", `No. ${i + 1} position · ${weightLabel(v / berkshireTotal)} of Berkshire`)),
+    SAMPLE_DISCOVER.mostHeld.map((c) => spot(c.ticker!, c.securityName, "held", "Most held by star investors", `Held by ${parseInt(c.metric)} star investors`)),
+    SAMPLE_DISCOVER.insiderBuys.slice(0, 2).map((c) => spot(c.ticker!, c.securityName, "insiders", "Insiders are buying", `${c.metric} in 90 days`)),
+  ]),
 };
