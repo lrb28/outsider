@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { fetchCatalogue } from "@/lib/fetchJson";
 import type { InvestorRow, InvestorsResponse, PoliticianRow, PoliticiansResponse, StockRow, StocksResponse } from "@/lib/types";
-import { FROM_WATCHLIST, getFollowed, watchedInvestors } from "@/lib/watchlist";
+import { getFollowed, personHref, watchedPeople } from "@/lib/watchlist";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
@@ -64,11 +64,8 @@ export function Watchlist() {
     );
   }
 
-  const people = [
-    // Opened from here, the investor page swipes through these investors.
-    ...watchedInvestors(investors, follow.investor).map((i) => ({ key: `i-${i.slug}`, href: `/investor/${i.slug}?${FROM_WATCHLIST}`, name: i.person ?? i.fund, src: null as string | null, kind: "investor" as const })),
-    ...politicians.filter((p) => follow.politician.includes(p.slug)).map((p) => ({ key: `p-${p.slug}`, href: `/politician/${p.slug}`, name: p.name, src: p.photo ?? null, kind: "politician" as const })),
-  ];
+  // Opened from here, a person's page swipes through this row.
+  const people = watchedPeople(investors, politicians, follow).map((p) => ({ key: `${p.kind}-${p.slug}`, href: personHref(p, true), name: p.name, src: p.photo, kind: p.kind }));
   // Two share classes of one company (GOOGL, GOOG) made two identical
   // "Alphabet" tiles: one tile per company, the class most investors hold.
   const myStk = [...stocks]

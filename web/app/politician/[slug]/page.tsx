@@ -1,24 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-import { Avatar } from "@/components/Avatar";
-import { CompanyLogo } from "@/components/CompanyLogo";
 import { ErrorRetry } from "@/components/ErrorRetry";
 import { FollowButton } from "@/components/FollowButton";
-import { Icon } from "@/components/Icon";
+import { loadPolitician, PoliticianView } from "@/components/PoliticianView";
 import { SkeletonPage } from "@/components/Skeleton";
-import { TradeFeed } from "@/components/TradeFeed";
-import { politicianLine, StatRow, DetailTopBar } from "@/components/ui";
-import { fetchJson } from "@/lib/fetchJson";
-import { companyName, formatDate, shortDate, stockHref } from "@/lib/format";
-import type { PoliticianDetail, PoliticianResponse } from "@/lib/types";
+import { DetailTopBar } from "@/components/ui";
+import { WatchPager } from "@/components/WatchPager";
+import type { PoliticianDetail } from "@/lib/types";
+import { personFromPath } from "@/lib/watchlist";
 
 export default function PoliticianPage() {
+  return (
+    <Suspense fallback={<SkeletonPage />}>
+      <Politician />
+    </Suspense>
+  );
+}
+
+function Politician() {
   const params = useParams<{ slug: string }>();
-  const slug = params?.slug as string;
+  const path = usePathname() ?? "";
+  const query = useSearchParams();
+  // Opened from "Your watchlist" on Home: swipe through those people. The
+  // path (not the route's params) says who, see the investor page.
+  const [fromWatchlist] = useState(() => query?.get("from") === "watchlist");
+  if (fromWatchlist) return <WatchPager start={personFromPath(path) ?? { kind: "politician", slug: params?.slug as string }} />;
+  return <PoliticianScreen slug={params?.slug as string} />;
+}
+
+function PoliticianScreen({ slug }: { slug: string }) {
   const [pol, setPol] = useState<PoliticianDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(false);
@@ -26,35 +40,21 @@ export default function PoliticianPage() {
 
   useEffect(() => {
     if (!slug) return;
-    const controller = new AbortController();
+    let live = true;
     setLoading(true);
     setErr(false);
-    fetchJson<PoliticianResponse>(`/api/politician?slug=${encodeURIComponent(slug)}`, { signal: controller.signal })
-      .then((d) => setPol(d.politician))
-      .catch(() => { if (!controller.signal.aborted) setErr(true); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
+    loadPolitician(slug, tick > 0)
+      .then((d) => live && setPol(d))
+      .catch(() => live && setErr(true))
+      .finally(() => live && setLoading(false));
+    return () => {
+      live = false;
+    };
   }, [slug, tick]);
-
-  const summary = useMemo(() => {
-    if (!pol) return null;
-    const buys = pol.trades.filter((t) => t.txnType === "buy");
-    const sells = pol.trades.filter((t) => t.txnType === "sell");
-    const byTicker = new Map<string, { ticker: string; name: string; n: number; buys: number }>();
-    for (const t of pol.trades) {
-      if (!t.ticker) continue;
-      const cur = byTicker.get(t.ticker) ?? { ticker: t.ticker, name: companyName(t.ticker, t.securityName), n: 0, buys: 0 };
-      cur.n++;
-      if (t.txnType === "buy") cur.buys++;
-      byTicker.set(t.ticker, cur);
-    }
-    const top = [...byTicker.values()].sort((a, b) => b.n - a.n).slice(0, 6);
-    return { buys: buys.length, sells: sells.length, top };
-  }, [pol]);
 
   if (loading) return <SkeletonPage />;
   if (err) return <ErrorRetry onRetry={() => setTick((t) => t + 1)} />;
-  if (!pol || !summary)
+  if (!pol)
     return (
       <div className="py-16 text-center text-[15px] text-subtle">
         Politician not found.{" "}
@@ -62,60 +62,5 @@ export default function PoliticianPage() {
       </div>
     );
 
-  const stats = [
-    { label: "Reported trades", value: pol.trades.length.toLocaleString("en-US") },
-    { label: "Buys / sells", value: `${summary.buys} / ${summary.sells}` },
-    { label: "Latest filing", value: shortDate(pol.trades[0]?.disclosedAt) },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
-        <DetailTopBar back="/discover?tab=politicians" label="Politicians" action={<FollowButton kind="politician" id={pol.slug} />} />
-
-        <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-          <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
-          <div className="min-w-0 flex-1">
-            <h1 className="large-title">{pol.name}</h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[15px] text-subtle">
-              <span className="rounded-full bg-politician/10 px-2.5 py-1 text-[13px] font-semibold text-politician">{politicianLine(pol.party, pol.seat)}</span>
-              <span>US House of Representatives</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="fade-up"><StatRow items={stats} /></div>
-      </div>
-
-      {summary.top.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">Most traded</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {summary.top.map((t) => (
-              <Link key={t.ticker} href={stockHref(t.ticker)} className="card lcard-hover press flex items-center gap-3 p-3">
-                <CompanyLogo ticker={t.ticker} company={t.name} size={40} />
-                <div className="min-w-0">
-                  <div className="truncate text-[15px] font-semibold">{t.name}</div>
-                  <div className="text-[13px] text-subtle">{t.n} trades · {t.buys} buys</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="font-display text-[22px] font-bold tracking-[-0.01em]">All filings</h2>
-        <TradeFeed
-          rows={pol.trades}
-          showActor={false}
-          empty="No machine-readable filings yet. Scanned PDFs can’t be read automatically (yet)."
-        />
-      </section>
-
-      <p className="text-[13px] leading-relaxed text-subtle">
-        Source: Periodic Transaction Reports (STOCK Act) of the US House of Representatives. Amounts are ranges, filed up to 45 days after the trade. Official portrait of the US Congress (public domain).
-      </p>
-    </div>
-  );
+  return <PoliticianView pol={pol} top={<DetailTopBar back="/discover?tab=politicians" label="Politicians" action={<FollowButton kind="politician" id={pol.slug} />} />} />;
 }

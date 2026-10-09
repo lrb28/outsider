@@ -40,13 +40,37 @@ export function toggleFollow(k: FollowKind, id: string): boolean {
   return next.includes(id);
 }
 
+/** Someone in the people row of "Your watchlist": an investor or a politician. */
+export type WatchedPerson = { kind: "investor" | "politician"; slug: string; name: string; photo: string | null };
+
 /**
- * The followed investors in the order "Your watchlist" on Home shows them
- * (the catalogue's order), so swiping on the investor page walks the same row.
+ * The people row of "Your watchlist" on Home, in its order: the followed
+ * investors, then the followed politicians, each in the catalogue's order.
+ * The watchlist pager swipes through the same row.
  */
-export function watchedInvestors<T extends { slug: string }>(rows: T[], followed: string[]): T[] {
-  return rows.filter((r) => followed.includes(r.slug));
+export function watchedPeople(
+  investors: { slug: string; fund: string; person: string | null }[],
+  politicians: { slug: string; name: string; photo?: string | null }[],
+  followed: { investor: string[]; politician: string[] },
+): WatchedPerson[] {
+  const inv = followed.investor;
+  const pol = followed.politician;
+  return [
+    ...investors.filter((i) => inv.includes(i.slug)).map((i) => ({ kind: "investor" as const, slug: i.slug, name: i.person ?? i.fund, photo: null })),
+    ...politicians.filter((p) => pol.includes(p.slug)).map((p) => ({ kind: "politician" as const, slug: p.slug, name: p.name, photo: p.photo ?? null })),
+  ];
 }
 
-/** Query that marks an investor page as opened from "Your watchlist". */
+/** Query that marks a person's page as opened from "Your watchlist". */
 export const FROM_WATCHLIST = "from=watchlist";
+
+export function personHref(p: { kind: WatchedPerson["kind"]; slug: string }, fromWatchlist = false): string {
+  return `/${p.kind}/${encodeURIComponent(p.slug)}${fromWatchlist ? `?${FROM_WATCHLIST}` : ""}`;
+}
+
+/** Who a person's URL names ("/politician/nancy-pelosi"), if anyone. */
+export function personFromPath(path: string): { kind: WatchedPerson["kind"]; slug: string } | null {
+  const [, kind, slug] = path.split("/");
+  if ((kind !== "investor" && kind !== "politician") || !slug) return null;
+  return { kind, slug: decodeURIComponent(slug) };
+}
