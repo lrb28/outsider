@@ -681,14 +681,12 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
 .ptr-spin { animation: ptrSpin 900ms linear infinite; }
 @keyframes ptrSpin { to { stroke-dashoffset: -100; } }
 
-/* The watchlist's wheel of names (WatchPager). On phones it is the top of
-   the screen, right under the Dynamic Island, and the site header gives way
-   (user, 2026-10-09); from tablets up the header keeps the tabs and the
-   wheel sticks below it. See-through over the aura at the top of the page,
-   a plain band that fades out at its foot once it sticks. */
-@media (max-width: 767.98px) {
-  body:has([data-watch-pager]) [data-site-header] { display: none; }
-}
+/* The watchlist's wheel of names (WatchPager), the top of the swipe view,
+   right under the Dynamic Island. At the top of the page the band is clear
+   and the page's aura runs up behind the names (user, 2026-10-09: like Bill
+   Gates's page, not with a flat strip cutting the glow off); as the page
+   scrolls under them a backing in the page colour fades in (--fill, set by
+   the pager from the scroll position), its foot fading out, never an edge. */
 .watch-band {
   top: 0;
   /* The names (centred in the 64 px band) below the iOS blur. */
@@ -697,54 +695,26 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
 .watch-band::before {
   content: "";
   position: absolute;
-  inset: 0 0 -1.25rem;
+  inset: 0 0 -2rem;
   z-index: -1;
   pointer-events: none;
   background: rgb(var(--bg));
-  /* Solid behind the names (colour showing through muddied them), fading
-     out only below them. */
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 1.25rem), transparent 100%);
-  mask-image: linear-gradient(180deg, #000 calc(100% - 1.25rem), transparent 100%);
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-@media (min-width: 768px) {
-  .watch-band {
-    top: calc(var(--bar-pad) + 3.5rem);
-    padding-top: 0;
-  }
-  /* Up under the header too, so the two read as one plain top. */
-  .watch-band::before { top: calc(-1 * (var(--bar-pad) + 3.5rem)); }
-}
-.watch-band[data-stuck]::before {
-  opacity: 1;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 2.75rem), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 2.75rem), transparent 100%);
+  opacity: var(--fill, 0);
 }
 
-/* Star tab (app/watchlist): list and swipe view. Between them the picture
-   flies (View Transitions): from the row to the page and back home, while
-   the band of names drops in from the top and the rest of the page rises.
-   The tab bar keeps still. Without View Transitions the views just fade. */
-.watch-band { view-transition-name: watch-band; }
-[data-watch-pager] [data-o="0"] [data-face] { view-transition-name: watch-face; }
-.tab-bar { view-transition-name: tab-bar; }
-.tab-bar-search { view-transition-name: tab-bar-search; }
-::view-transition-group(watch-face) {
-  animation-duration: 0.52s;
-  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+/* The swipe view's layer (WatchSheet): a page of its own over the list, under
+   the tab bar. Behind it a dim that shows while it opens, closes or is
+   pulled down. While a picture flies, the page's own one waits hidden. */
+.watch-sheet-scrim { background: rgb(0 0 0 / 0.22); }
+.watch-sheet-card {
+  background: rgb(var(--bg));
+  transform-origin: 50% 35%;
 }
-/* One picture growing, not two crossfading. */
-::view-transition-old(watch-face) { animation: none; opacity: 0; }
-::view-transition-new(watch-face) { animation: none; }
-::view-transition-old(root) { animation: 0.2s ease-out both vtFadeOut; }
-::view-transition-new(root) { animation: 0.46s cubic-bezier(0.32, 0.72, 0, 1) both vtRise; }
-::view-transition-new(watch-band):only-child { animation: 0.5s cubic-bezier(0.32, 0.72, 0, 1) both vtBandIn; }
-::view-transition-old(watch-band):only-child { animation: 0.22s ease-in both vtBandOut; }
-@keyframes vtFadeOut { to { opacity: 0; } }
-@keyframes vtRise { from { opacity: 0; transform: translateY(18px); } }
-@keyframes vtBandIn { from { opacity: 0; transform: translateY(-28px); } }
-@keyframes vtBandOut { to { opacity: 0; transform: translateY(-18px); } }
-/* backwards only: a kept transform would hold the sticky band's ancestor. */
-.pager-in, .list-in { animation: fadeUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+.watch-sheet[data-flying] [data-o="0"] [data-face] { visibility: hidden; }
+
+/* The watchlist's rows rise in one after another on arrival. */
 .watch-rows-in .watch-row {
   animation: fadeUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) backwards;
   animation-delay: calc(min(var(--i, 0), 12) * 32ms);

@@ -66,10 +66,14 @@ export const WatchDial = forwardRef<DialHandle, { names: string[]; loop: boolean
         path.setAttribute("startOffset", (L / 2 + o).toFixed(2));
         const dist = Math.abs(k - p);
         const fade = dist <= 1 ? 1 - 0.4 * dist : Math.max(0, 0.6 - 0.3 * (dist - 1));
-        text.style.opacity = Math.abs(o) > L / 2 - 80 ? "0" : fade.toFixed(3);
+        // Round a short loop the far names are the near ones again (three
+        // stocks: MICROSOFT NVIDIA APPLE MICROSOFT NVIDIA on a wide screen):
+        // past half the loop a name fades out as its twin fades in.
+        const once = loop ? Math.min(1, Math.max(0, (n / 2 - dist) / 0.5)) : 1;
+        text.style.opacity = Math.abs(o) > L / 2 - 80 ? "0" : (fade * once).toFixed(3);
       }
     },
-    [n, L],
+    [n, L, loop],
   );
   useImperativeHandle(ref, () => ({ set }), [set]);
 

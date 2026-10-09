@@ -118,8 +118,8 @@ column names and decimal commas.
 - Swiping the page sideways switches between the main tabs of the tab bar
   (`SwipeNav`), never between a page's chips or filters (user,
   2026-09-30); detail pages swipe from the tab they belong to. One
-  exception: the star tab's swipe view swipes through the people you
-  follow instead (see Watchlist). Rows that
+  exception: the star tab's swipe view swipes through the people or the
+  stocks you follow instead (see Watchlist). Rows that
   scroll sideways, charts, the 3D allocation (`data-noswipe`), fields, open
   sheets and the outer 24 px (system back gesture) are left alone.
 - Portfolio matches (after Eaves, needs a Portfolio): an investor's match is
@@ -400,44 +400,55 @@ Set the flag to true to bring it all back.
 ## Watchlist (the star tab, 2026-10-09)
 
 - Everything you follow (`/watchlist`, the star in the tab bar, where the
-  Portfolio was). A segmented control under the title switches between
-  List and Swipe; the choice and the person you were at are remembered on
-  the device (`outsider:watch-view`, `outsider:watch-last`), so the tab
-  opens the way you left it. `?who=politician/cleo-fields` opens the swipe
-  view at that person; old `?from=watchlist` links on person pages land
-  there too.
-- List: grouped rows, people (investors, then politicians, `watchedPeople`)
-  and stocks: picture, name, aura dot and "Investor · Berkshire Hathaway" /
-  "Politician · Democrat · LA-6", a star on the right. The star unfollows;
-  the row stays, hollow and dimmed, until you come back, so a slip is undone
-  with a second tap. A person's row opens the swipe view at them, a stock's
-  the stock. "Follow more" opens the set-up. Rows rise in one by one on
-  arrival. Home's "Your watchlist" row opens the plain person pages and
-  "See all" this tab.
-- Swipe (`WatchPager`, after the user's reference video, 2026-10-07): one
-  person's page at a time, swiping sideways to the next, in the list's
-  order, snapshotted on arrival. Three or more go round in a loop; two stop
-  at either end with a little give.
+  Portfolio was), as a list: grouped rows, people (investors, then
+  politicians, `watchedPeople`) and stocks (`watchedStocks`, one per
+  company): picture or logo, name, aura dot and "Investor · Berkshire
+  Hathaway" / "Politician · Democrat · LA-6" / "NVDA · 13 investors", a
+  star on the right. The star unfollows; the row stays, hollow and dimmed,
+  until you come back, so a slip is undone with a second tap. "Follow more"
+  opens the set-up. Rows rise in one by one on arrival. No List/Swipe
+  switch (user, 2026-10-09): a row opens the swipe view.
+- Swipe view (`WatchSheet` + `WatchPager`, after the user's reference
+  video, 2026-10-07): a person's row opens the people's pages, a stock's row
+  the stocks' pages (`StockView`, logo and name centred), the same way:
+  one page at a time, swiping sideways to the next, in the list's order,
+  snapshotted on arrival. Three or more go round in a loop; two stop at
+  either end with a little give. The URL follows (`?who=investor/…`,
+  `?who=stock/NVDA`); old `?from=watchlist` links on person pages land
+  there too. Home's "Your watchlist" row opens the plain pages and "See
+  all" this tab.
+- It is a layer over the list, like iOS's zoom transition: the page grows
+  out of the tapped row (a clip from the row to the screen, the page fading
+  in over the first stretch) while the picture or logo flies from the row
+  to its place; the row shows no picture while its page is up. Closing
+  shrinks it back into the row of whatever is shown now, the picture flying
+  home. Close: tap the band of names, pull the page down from the top (it
+  follows the finger, shrinks a little and rounds its corners, the dimmed
+  list behind; past 120 px, with a haptic tick, or a flick, it goes, else it
+  springs back), tap the star tab again, or Escape. The layer scrolls on its
+  own (the list keeps its place) and sits under the tab bar, which stays as
+  it is.
 - Nothing sits between the wheel and the picture: no back button, no
-  Follow capsule (user, 2026-10-09). A tap on the band of names closes the
-  view, back to the list; a drag on it turns the wheel (the click that ends
-  a drag is ignored). Tapping the star tab again closes it too.
-- Between list and swipe the picture flies (View Transitions, `data-face`
-  and `view-transition-name: watch-face`): from the row up to the page,
-  growing, while the band of names drops in from the top and the rest of
-  the page rises; closing, it flies home to the row of the person you were
-  at. The tab bar keeps still. Browsers without View Transitions fade
-  (`.pager-in`, `.list-in`); reduced motion switches at once.
-- The wheel is the top of the screen, as in the video: on phones it sits
-  right under the Dynamic Island, below the iOS blur (`--edge-top`), and
-  the site header with the wordmark gives way. From tablets up the header
-  keeps its tabs and the wheel sticks under it.
+  Follow capsule (user, 2026-10-09). A drag on the band turns the wheel
+  (the click that ends a drag is ignored).
+- The tab bar never gets `view-transition-name`, `filter`, `opacity` or
+  `isolation` on it or its wrappers: each makes a backdrop root, and the
+  liquid glass then shows the page sharp through it instead of frosted (it
+  happened once, user, 2026-10-09).
+- The wheel is the top of the screen, as in the video, right under the
+  Dynamic Island (below the iOS status-bar blur, `--edge-top`).
+- Colour at the top (user, 2026-10-09, Bill Gates's page, not Jim
+  Simons's): at the top of the page the band is clear and the page's aura
+  runs up behind the names. As the page scrolls under them a backing in the
+  page colour fades in with the scroll (`--fill`, 0 at the top, full after
+  about 190 px), its foot fading out over 2.75rem, so no edge ever cuts the
+  aura (a backing switched on by "stuck" once drew a flat strip over it).
 - Picture, name and the text under it are centred, here as on every
   investor, politician and insider page (`InvestorView` /
   `PoliticianView`, the insider page; user, 2026-10-09); each person keeps
-  their own aura (investor blue, politician magenta). In the swipe view the
-  picture and name don't fade in (`still`): the placeholder already shows
-  them while the page loads.
+  their own aura (investor blue, politician magenta), a stock its rise or
+  fall (emerald or rose). In the swipe view the picture and name don't fade
+  in (`still`): the placeholder already shows them while the page loads.
 - The names run along the lower rim of a large
   circle (`WatchDial`, SVG text on a path): the current one level in the
   middle, the neighbours tilting up and away, dimmer, and fading out at
@@ -445,17 +456,13 @@ Set the flag to true to bring it all back.
   gap between names whatever their length; funds without a person lose
   "LLC", "L.P." and the like (`shortFund`). Swiping turns the wheel with the
   finger.
-- The page follows the finger with the next person beside it (32 px
-  apart); a far (a third) or quick swipe moves on, a short one springs
-  back, on the `ease-spring` curve, carrying the flick's speed. Scrolled
-  down, the next person slides in with their head right under the names,
-  and stays there.
-- The names stick at the top; once stuck they sit on a plain band in the
-  page colour that fades out below them (no glass: colour showing through
-  muddied the names). At the top of the page the band is clear, so the
-  aura shows behind it.
+- The page follows the finger with the next one beside it (32 px apart);
+  a far (a third) or quick swipe moves on, a short one springs back, on the
+  `ease-spring` curve, carrying the flick's speed. Scrolled down, the next
+  page slides in with its head right under the names, and stays there.
 - Arrow keys, a sideways trackpad swipe and hidden "Previous" / "Next" /
   "Back to the list" buttons (shown on keyboard focus) work too; the
   current name and "2 of 5" are announced. Reduced motion turns the page at
-  once. Touches on rows that scroll sideways, charts, the 3D allocation and
-  the outer 24 px are left alone, as with `SwipeNav`.
+  once and opens and closes without motion. Touches on rows that scroll
+  sideways, charts (the price chart too), the 3D allocation and the outer
+  24 px are left alone, as with `SwipeNav`.

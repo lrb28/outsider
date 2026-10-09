@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type CSSProperties, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
+import { type CSSProperties, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { CompanyLogo } from "@/components/CompanyLogo";
@@ -12,76 +11,35 @@ import { Icon } from "@/components/Icon";
 import { loadInvestor } from "@/components/InvestorView";
 import { loadPolitician } from "@/components/PoliticianView";
 import { Skeleton, SkeletonList } from "@/components/Skeleton";
-import { EmptyState, PageTitle, politicianLine, SegmentedControl } from "@/components/ui";
-import { WatchPager } from "@/components/WatchPager";
+import { loadStock } from "@/components/StockView";
+import { EmptyState, PageTitle, politicianLine } from "@/components/ui";
+import { WatchSheet } from "@/components/WatchSheet";
 import { fetchCatalogue } from "@/lib/fetchJson";
-import { fixTicker, shortFund, stockHref } from "@/lib/format";
+import { fixTicker, shortFund } from "@/lib/format";
 import type { InvestorRow, InvestorsResponse, PoliticianRow, PoliticiansResponse, StockRow, StocksResponse } from "@/lib/types";
-import { type FollowKind, getFollowed, personFromWho, toggleFollow, watchedPeople, type WatchedPerson } from "@/lib/watchlist";
+import { entryFromWho, type FollowKind, getFollowed, toggleFollow, type WatchEntry, watchedPeople, watchedStocks } from "@/lib/watchlist";
 
 /*
  * The star tab (user, 2026-10-09; it took the Portfolio's place): everything
- * you follow, as a list or as the swipe view. The choice is a segmented
- * control under the title and is remembered on this device, with the person
- * you were at, so the tab opens the way you left it.
+ * you follow, people (investors, then politicians) and stocks, in grouped
+ * rows, each with a star to unfollow. An unstarred row stays, hollow, until
+ * you come back, so a slip of the thumb is undone with a second tap.
  *
- * List: people (investors, then politicians) and stocks in grouped rows,
- * each with a star to unfollow. An unstarred row stays, hollow, until you
- * come back, so a slip of the thumb is undone with a second tap. A person's
- * row opens the swipe view at them; a stock's row opens the stock.
- *
- * Swipe: `WatchPager`. A tap on the band of names closes it, back to the
- * list, as does tapping the star tab again. Both ways the picture flies
- * between the row and the page (View Transitions where the browser has
- * them; elsewhere the views fade).
+ * A row opens the swipe view right there (`WatchSheet`): the people's
+ * pages, or the stocks' pages, one at a time, swiping sideways to the next.
+ * It grows out of the row and goes back into it: tap the band of names, pull
+ * the page down, or tap the star tab again. The URL follows the page shown
+ * (`?who=investor/…`, `?who=stock/NVDA`), so a reload or a shared link opens
+ * it again.
  */
 
-type View = "list" | "swipe";
 type Follows = Record<FollowKind, string[]>;
-const VIEW = "outsider:watch-view";
-const LAST = "outsider:watch-last";
-const VIEWS = [
-  ["list", "List"],
-  ["swipe", "Swipe"],
-] as const;
+type Open = { start: number; from: string | null };
 
 const keyOf = (p: { kind: string; slug: string }) => `${p.kind}/${p.slug}`;
-const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-function stored(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function store(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    /* private mode: not remembered */
-  }
-}
-
-type Transition = { finished: Promise<void>; ready: Promise<void> };
-/**
- * Runs `update` inside a view transition where there is one, else plainly.
- * Resolves when the motion is over. A transition the browser skips (a
- * hidden tab) still runs `update`; its rejected promises are expected.
- */
-function morph(update: () => void): Promise<void> | null {
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => Transition };
-  if (!doc.startViewTransition || reducedMotion()) {
-    update();
-    return null;
-  }
-  const t = doc.startViewTransition(() => flushSync(update));
-  t.ready.catch(() => {});
-  return t.finished.catch(() => {});
-}
-
-function prefetch(p: { kind: WatchedPerson["kind"]; slug: string }) {
-  (p.kind === "investor" ? loadInvestor(p.slug) : loadPolitician(p.slug)).catch(() => {});
+function prefetch(p: { kind: WatchEntry["kind"]; slug: string }) {
+  (p.kind === "investor" ? loadInvestor(p.slug) : p.kind === "politician" ? loadPolitician(p.slug) : loadStock(p.slug)).catch(() => {});
 }
 
 function Star({ on, label, onToggle }: { on: boolean; label: string; onToggle: () => void }) {
@@ -95,6 +53,32 @@ function Star({ on, label, onToggle }: { on: boolean; label: string; onToggle: (
     >
       <Icon key={on ? "on" : "off"} name={on ? "starFill" : "star"} className={`h-[22px] w-[22px] ${on ? "tab-pop" : ""}`} />
     </button>
+  );
+}
+
+/** One row: the face (picture or logo), two lines, the star. Tapping it opens the swipe view. */
+function Row({ entry, i, on, away, face, line, onOpen, onToggle }: { entry: WatchEntry; i: number; on: boolean; away: boolean; face: ReactNode; line: ReactNode; onOpen: () => void; onToggle: () => void }) {
+  return (
+    <div data-row={keyOf(entry)} className="watch-row relative flex items-center pr-2 after:absolute after:bottom-0 after:left-[4.6rem] after:right-0 after:h-px after:bg-hair last:after:hidden" style={{ "--i": i } as CSSProperties}>
+      <button
+        type="button"
+        onPointerDown={() => on && prefetch(entry)}
+        onClick={() => on && onOpen()}
+        aria-disabled={!on}
+        aria-label={on ? `${entry.name}, open` : `${entry.name} (unfollowed)`}
+        className={`flex min-h-[4.25rem] min-w-0 flex-1 items-center gap-3.5 py-2.5 pl-4 pr-2 text-left transition-[background-color,opacity] duration-300 ${on ? "hover:bg-ink/[0.03] active:bg-ink/[0.06]" : "cursor-default opacity-[0.45]"}`}
+      >
+        {/* While its page is up in the swipe view, the row shows no picture. */}
+        <span data-face className="flex" style={away ? { visibility: "hidden" } : undefined}>
+          {face}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold leading-tight">{entry.name}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-subtle">{line}</span>
+        </span>
+      </button>
+      <Star on={on} label={entry.name} onToggle={onToggle} />
+    </div>
   );
 }
 
@@ -114,16 +98,11 @@ function Watchlist() {
   const [cat, setCat] = useState<{ investors: InvestorRow[]; politicians: PoliticianRow[]; stocks: StockRow[] } | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
-  const [view, setView] = useState<View>("list");
-  // The swipe view's person (`kind/slug`), and the one whose picture flies.
-  const [at, setAt] = useState<string | null>(null);
-  const [flying, setFlying] = useState<string | null>(null);
-  // Who the swipe view shows right now (it turns without telling React).
-  const shownNow = useRef<string | null>(null);
-  const [plainIn, setPlainIn] = useState(false);
-  // The rows rise in one after another only on arrival, not on the way back
-  // from the swipe view (the picture flies home then).
-  const [fresh, setFresh] = useState(true);
+  const [open, setOpen] = useState<Open | null>(null);
+  // The pages the swipe view goes through, as they were when it opened.
+  const ring = useRef<WatchEntry[]>([]);
+  // The row whose page is up in the swipe view.
+  const [away, setAway] = useState<string | null>(null);
   const started = useRef(false);
 
   useEffect(() => {
@@ -158,94 +137,49 @@ function Watchlist() {
       .catch(() => setFailed(true));
   }, [any, retry]);
 
-  // The swipe view goes through the people you follow now; the list also
-  // keeps the ones unstarred on this visit.
+  // The swipe view goes through what you follow now; the list also keeps
+  // what was unstarred on this visit.
   const people = useMemo(() => (cat && follow ? watchedPeople(cat.investors, cat.politicians, follow) : []), [cat, follow]);
-  const listed = useMemo(() => (cat ? watchedPeople(cat.investors, cat.politicians, shown) : []), [cat, shown]);
-  const stocks = useMemo(() => {
-    if (!cat) return [];
-    // One row per company: Alphabet's two share classes would be two rows.
-    const rows = cat.stocks.filter((s) => s.ticker && shown.stock.includes(s.ticker)).sort((a, b) => b.investors - a.investors);
-    return rows.filter((s, i) => rows.findIndex((o) => o.company === s.company) === i).sort((a, b) => shown.stock.indexOf(a.ticker!) - shown.stock.indexOf(b.ticker!));
-  }, [cat, shown.stock]);
+  const stocks = useMemo(() => (cat && follow ? watchedStocks(cat.stocks, follow.stock) : []), [cat, follow]);
+  const listedPeople = useMemo(() => (cat ? watchedPeople(cat.investors, cat.politicians, shown) : []), [cat, shown]);
+  const listedStocks = useMemo(() => (cat ? watchedStocks(cat.stocks, shown.stock) : []), [cat, shown.stock]);
   const invById = useMemo(() => new Map((cat?.investors ?? []).map((i) => [i.slug, i])), [cat]);
   const polById = useMemo(() => new Map((cat?.politicians ?? []).map((p) => [p.slug, p])), [cat]);
+  const stockById = useMemo(() => new Map((cat?.stocks ?? []).filter((s) => s.ticker).map((s) => [s.ticker!, s])), [cat]);
 
   const setUrl = (url: string) => {
     if (window.location.pathname + window.location.search !== url) window.history.replaceState(null, "", url);
   };
 
-  /** Into the swipe view at `key` (or where you were, or the first person). */
-  const open = useCallback(
-    (key?: string | null) => {
-      if (!people.length) return;
-      const target = people.find((p) => keyOf(p) === key) ?? people.find((p) => keyOf(p) === stored(LAST)) ?? people[0];
-      const k = keyOf(target);
-      prefetch(target);
-      store(VIEW, "swipe");
-      setFresh(false);
-      // The row's picture is named first, so the transition sees it go.
-      flushSync(() => setFlying(k));
-      const t = morph(() => {
-        setView("swipe");
-        setAt(k);
-        setPlainIn(false);
-        window.scrollTo({ top: 0, behavior: "instant" });
-      });
-      if (!t) setPlainIn(true);
-      t?.then(() => setFlying(null));
-    },
-    [people],
-  );
+  /** Opens the swipe view at `key`, among the people or among the stocks; `from` is the row it grows out of. */
+  const openAt = (key: string, from: string | null) => {
+    const list = key.startsWith("stock/") ? stocks : people;
+    const start = list.findIndex((e) => keyOf(e) === key);
+    if (start < 0) return false;
+    prefetch(list[start]);
+    ring.current = list;
+    setOpen({ start, from });
+    return true;
+  };
 
-  /** Back to the list, the picture flying home to its row. */
-  const close = useCallback(() => {
-    store(VIEW, "list");
-    const k = shownNow.current ?? at;
-    const t = morph(() => {
-      setView("list");
-      setFlying(k);
-      setPlainIn(false);
-      window.scrollTo({ top: 0, behavior: "instant" });
-      const row = k ? document.querySelector<HTMLElement>(`[data-row="${CSS.escape(k)}"]`) : null;
-      if (row && row.getBoundingClientRect().bottom > window.innerHeight - 120) row.scrollIntoView({ block: "center", behavior: "instant" });
-    });
-    if (!t) {
-      setPlainIn(true);
-      setFlying(null);
-    }
-    t?.then(() => setFlying(null));
-    setUrl("/watchlist");
-  }, [at]);
-
-  // Arrival: `?who=` opens that person, otherwise the view you left.
+  // Arrival: `?who=` opens that page.
   useEffect(() => {
     if (started.current || !cat || !follow) return;
     started.current = true;
-    const who = personFromWho(params.get("who"));
-    const want = who || params.get("view") === "swipe" || stored(VIEW) === "swipe";
-    if (want && people.length) {
-      const target = (who && people.find((p) => keyOf(p) === keyOf(who))) || people.find((p) => keyOf(p) === stored(LAST)) || people[0];
-      prefetch(target);
-      setAt(keyOf(target));
-      setView("swipe");
-      setPlainIn(true);
-    }
-  }, [cat, follow, people, params]);
+    const who = entryFromWho(params.get("who"));
+    if (who && !openAt(keyOf(who), null)) setUrl("/watchlist");
+    // `openAt` reads `people` and `stocks`, which are ready with `cat`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cat, follow, params]);
 
-  // Tapping the star tab again from the swipe view goes back to the list.
-  useEffect(() => {
-    const again = (e: Event) => {
-      if ((e as CustomEvent<string>).detail === "/watchlist" && view === "swipe") close();
-    };
-    window.addEventListener("outsider:tab-again", again);
-    return () => window.removeEventListener("outsider:tab-again", again);
-  }, [view, close]);
-
-  const onTurn = useCallback((p: WatchedPerson) => {
-    shownNow.current = keyOf(p);
-    store(LAST, keyOf(p));
-    setUrl(`/watchlist?who=${keyOf(p)}`);
+  const onTurn = useCallback((e: WatchEntry) => {
+    setAway(keyOf(e));
+    setUrl(`/watchlist?who=${keyOf(e)}`);
+  }, []);
+  const onClosed = useCallback(() => {
+    setOpen(null);
+    setAway(null);
+    setUrl("/watchlist");
   }, []);
 
   const unfollow = (kind: FollowKind, id: string) => {
@@ -256,23 +190,14 @@ function Watchlist() {
     }
   };
 
-  if (view === "swipe" && at && people.length) {
-    const start = Math.max(0, people.findIndex((p) => keyOf(p) === at));
-    return (
-      <div className={plainIn ? "pager-in" : undefined}>
-        <WatchPager people={people} start={start} onClose={close} onTurn={onTurn} />
-      </div>
-    );
-  }
-
   const loading = follow === null || (any && !cat && !failed);
-  const empty = follow !== null && !any && listed.length === 0 && stocks.length === 0;
+  const empty = follow !== null && !any && listedPeople.length === 0 && listedStocks.length === 0;
 
   return (
-    <div className={`space-y-6 ${plainIn ? "list-in" : ""} ${fresh ? "watch-rows-in" : ""}`}>
-      <PageTitle title="Watchlist">
-        {people.length > 0 && <SegmentedControl label="View" options={VIEWS} value={view} onChange={(v) => v === "swipe" && open()} />}
-      </PageTitle>
+    // The rows rise in once, when they arrive; the list stays put under the
+    // swipe view, so coming back never replays it.
+    <div className="watch-rows-in space-y-6">
+      <PageTitle title="Watchlist" />
 
       {failed && <ErrorRetry onRetry={() => setRetry((r) => r + 1)} />}
 
@@ -292,64 +217,62 @@ function Watchlist() {
         </EmptyState>
       )}
 
-      {!loading && listed.length > 0 && (
+      {!loading && listedPeople.length > 0 && (
         <section className="space-y-1.5">
           <h2 className="px-4 text-[13px] font-medium text-subtle">People</h2>
           <div className="card overflow-hidden">
-            {listed.map((p, i) => {
+            {listedPeople.map((p, i) => {
               const k = keyOf(p);
-              const on = follow![p.kind].includes(p.slug);
-              const inv = p.kind === "investor" ? invById.get(p.slug) : undefined;
-              const pol = p.kind === "politician" ? polById.get(p.slug) : undefined;
-              const line = inv ? `Investor${inv.person ? ` · ${shortFund(inv.fund)}` : " · 13F"}` : `Politician · ${politicianLine(pol?.party, pol?.seat)}`;
+              const kind = p.kind === "politician" ? "politician" : "investor";
+              const inv = kind === "investor" ? invById.get(p.slug) : undefined;
+              const pol = kind === "politician" ? polById.get(p.slug) : undefined;
               return (
-                <div key={k} data-row={k} className="watch-row relative flex items-center pr-2 after:absolute after:bottom-0 after:left-[4.6rem] after:right-0 after:h-px after:bg-hair last:after:hidden" style={{ "--i": i } as CSSProperties}>
-                  <button
-                    type="button"
-                    onPointerDown={() => prefetch(p)}
-                    onClick={() => on && open(k)}
-                    aria-disabled={!on}
-                    aria-label={on ? `${p.name}, open in the swipe view` : `${p.name} (unfollowed)`}
-                    className={`flex min-h-[4.25rem] min-w-0 flex-1 items-center gap-3.5 py-2.5 pl-4 pr-2 text-left transition-[background-color,opacity] duration-300 ${on ? "hover:bg-ink/[0.03] active:bg-ink/[0.06]" : "cursor-default opacity-[0.45]"}`}
-                  >
-                    <span data-face className="flex rounded-full" style={flying === k ? { viewTransitionName: "watch-face" } as CSSProperties : undefined}>
-                      <Avatar name={p.name} src={p.photo} kind={p.kind} size={44} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[16px] font-semibold leading-tight">{p.name}</span>
-                      <span className="mt-0.5 flex items-center gap-1.5 truncate text-[13px] text-subtle">
-                        <i aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: `rgb(var(--aura-${p.kind}))` }} />
-                        <span className="truncate">{line}</span>
-                      </span>
-                    </span>
-                  </button>
-                  <Star on={on} label={p.name} onToggle={() => unfollow(p.kind, p.slug)} />
-                </div>
+                <Row
+                  key={k}
+                  entry={p}
+                  i={i}
+                  on={follow![kind].includes(p.slug)}
+                  away={away === k}
+                  face={<Avatar name={p.name} src={p.photo} kind={kind} size={44} />}
+                  line={
+                    <>
+                      <i aria-hidden="true" className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: `rgb(var(--aura-${kind}))` }} />
+                      <span className="truncate">{inv ? `Investor${inv.person ? ` · ${shortFund(inv.fund)}` : " · 13F"}` : `Politician · ${politicianLine(pol?.party, pol?.seat)}`}</span>
+                    </>
+                  }
+                  onOpen={() => openAt(k, k)}
+                  onToggle={() => unfollow(kind, p.slug)}
+                />
               );
             })}
           </div>
         </section>
       )}
 
-      {!loading && stocks.length > 0 && (
+      {!loading && listedStocks.length > 0 && (
         <section className="space-y-1.5">
           <h2 className="px-4 text-[13px] font-medium text-subtle">Stocks</h2>
           <div className="card overflow-hidden">
-            {stocks.map((s, i) => {
-              const on = follow!.stock.includes(s.ticker!);
+            {listedStocks.map((s, i) => {
+              const k = keyOf(s);
+              const row = stockById.get(s.slug);
               return (
-                <div key={s.ticker} className="watch-row relative flex items-center pr-2 after:absolute after:bottom-0 after:left-[4.6rem] after:right-0 after:h-px after:bg-hair last:after:hidden" style={{ "--i": listed.length + i } as CSSProperties}>
-                  <Link href={stockHref(s.ticker!)} className={`flex min-h-[4.25rem] min-w-0 flex-1 items-center gap-3.5 py-2.5 pl-4 pr-2 transition-[background-color,opacity] duration-300 hover:bg-ink/[0.03] active:bg-ink/[0.06] ${on ? "" : "opacity-[0.45]"}`}>
-                    <CompanyLogo ticker={s.ticker} company={s.company} size={44} rounded="rounded-[13px]" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[16px] font-semibold leading-tight">{s.company}</span>
-                      <span className="mt-0.5 block truncate text-[13px] text-subtle">
-                        {fixTicker(s.ticker, s.company) ?? s.ticker} · {s.investors} {s.investors === 1 ? "investor" : "investors"}
-                      </span>
+                <Row
+                  key={k}
+                  entry={s}
+                  i={listedPeople.length + i}
+                  on={follow!.stock.includes(s.slug)}
+                  away={away === k}
+                  face={<CompanyLogo ticker={s.slug} company={s.name} size={44} rounded="rounded-[13px]" />}
+                  line={
+                    <span className="truncate">
+                      {fixTicker(s.slug, s.name) ?? s.slug}
+                      {row ? ` · ${row.investors} ${row.investors === 1 ? "investor" : "investors"}` : ""}
                     </span>
-                  </Link>
-                  <Star on={on} label={s.company} onToggle={() => unfollow("stock", s.ticker!)} />
-                </div>
+                  }
+                  onOpen={() => openAt(k, k)}
+                  onToggle={() => unfollow("stock", s.slug)}
+                />
               );
             })}
           </div>
@@ -364,6 +287,8 @@ function Watchlist() {
           </Link>
         </div>
       )}
+
+      {open && <WatchSheet key={`${keyOf(ring.current[open.start])}`} entries={ring.current} start={open.start} from={open.from} onTurn={onTurn} onClosed={onClosed} />}
     </div>
   );
 }

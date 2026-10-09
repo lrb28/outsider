@@ -119,14 +119,21 @@ export function groupSeries<
     transactionCode?: string | null;
   },
 >(rows: T[]): ({ key: string; rows: T[] })[] {
-  const out: { key: string; rows: T[] }[] = [];
+  const out: { key: string; base: string; rows: T[] }[] = [];
+  // The same day, stock and kind can come back further down the feed: each
+  // run gets its own key ("…#1"), or React mixes the rows up.
+  const seen = new Map<string, number>();
   for (const r of rows) {
-    const key = [r.disclosedAt ?? "", r.ticker ?? "", r.entityType, r.txnType, r.putCall ?? "", r.transactionCode ?? ""].join("|");
+    const base = [r.disclosedAt ?? "", r.ticker ?? "", r.entityType, r.txnType, r.putCall ?? "", r.transactionCode ?? ""].join("|");
     const last = out[out.length - 1];
-    if (last && last.key === key) last.rows.push(r);
-    else out.push({ key, rows: [r] });
+    if (last && last.base === base) last.rows.push(r);
+    else {
+      const n = seen.get(base) ?? 0;
+      seen.set(base, n + 1);
+      out.push({ key: n ? `${base}#${n}` : base, base, rows: [r] });
+    }
   }
-  return out;
+  return out.map(({ key, rows }) => ({ key, rows }));
 }
 
 export function weightPct(v: number | null): string {
