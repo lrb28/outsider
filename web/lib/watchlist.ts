@@ -39,3 +39,14 @@ export function toggleFollow(k: FollowKind, id: string): boolean {
   write(k, next);
   return next.includes(id);
 }
+
+/**
+ * The followed investors in the order "Your watchlist" on Home shows them
+ * (the catalogue's order), so swiping on the investor page walks the same row.
+ */
+export function watchedInvestors<T extends { slug: string }>(rows: T[], followed: string[]): T[] {
+  return rows.filter((r) => followed.includes(r.slug));
+}
+
+/** Query that marks an investor page as opened from "Your watchlist". */
+export const FROM_WATCHLIST = "from=watchlist";

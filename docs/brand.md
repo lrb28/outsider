@@ -102,7 +102,9 @@ column names and decimal commas.
   solid ink, aura dot for people categories. Same look on every tab.
 - Swiping the page sideways switches between the main tabs of the tab bar
   (`SwipeNav`), never between a page's chips or filters (user,
-  2026-09-30); detail pages swipe from the tab they belong to. Rows that
+  2026-09-30); detail pages swipe from the tab they belong to. One
+  exception: an investor opened from "Your watchlist" on Home swipes
+  through the watchlist's investors instead (see Watchlist pager). Rows that
   scroll sideways, charts, the 3D allocation (`data-noswipe`), fields, open
   sheets and the outer 24 px (system back gesture) are left alone.
 - Portfolio matches (after Eaves, needs a Portfolio): an investor's match is
@@ -358,3 +360,32 @@ without WebGL2.
   runs. Releasing reloads the live prices and the investor matches; the
   stock stays up at least 1.1 s. Touch only, from the very top, mostly
   vertical, so the sideways tab swipe is unaffected.
+
+## Watchlist pager (after the user's reference video, 2026-10-07)
+
+- An investor opened from "Your watchlist" on Home (`?from=watchlist`)
+  swipes sideways to the other investors of that row, in the same order
+  (`watchedInvestors`), snapshotted on arrival. Three or more go round in
+  a loop; two stop at either end with a little give. Back returns to Home
+  (the URL is replaced, not pushed); reloading keeps the investor.
+- Under the back button, the names run along the lower rim of a large
+  circle (`WatchDial`, SVG text on a path): the current one level in the
+  middle, the neighbours tilting up and away, dimmer, and fading out at
+  both edges. Uppercase, 14 px semibold, 0.06 em tracking, an even 30 px
+  gap between names whatever their length; funds without a person lose
+  "LLC", "L.P." and the like. Swiping turns the wheel with the finger;
+  tapping a neighbour's name moves one step towards it.
+- The page follows the finger with the next investor beside it (32 px
+  apart), each with its own aura; a far (a third) or quick swipe moves on,
+  a short one springs back, on the `ease-spring` curve, carrying the
+  flick's speed. Scrolled down, the next investor slides in with its head
+  right under the names, and stays there.
+- The names stick under the header; once stuck they sit on a plain band in
+  the page colour that fades out below them (no glass: colour showing
+  through muddied the names). At the top of the page the band is clear, so
+  the aura shows behind it.
+- Arrow keys, a sideways trackpad swipe and two hidden "Previous" / "Next"
+  buttons (shown on keyboard focus) move too; the current name and "2 of 5"
+  are announced. Reduced motion turns the page at once. Touches on rows
+  that scroll sideways, charts, the 3D allocation and the outer 24 px are
+  left alone, as with `SwipeNav`.
