@@ -19,9 +19,9 @@ export function loadPolitician(slug: string, fresh = false): Promise<PoliticianD
  * Everything a politician page shows about one member of the House. Same
  * options as `InvestorView`: `top` is the back button row, `preview` draws
  * only the head and the most traded stocks (the neighbour in the watchlist
- * pager), `centred` stacks picture, name and seat down the middle.
+ * pager). Picture, name and seat stand centred (user, 2026-10-09).
  */
-export function PoliticianView({ pol, top, preview = false, centred = false }: { pol: PoliticianDetail; top?: ReactNode; preview?: boolean; centred?: boolean }) {
+export function PoliticianView({ pol, top, preview = false }: { pol: PoliticianDetail; top?: ReactNode; preview?: boolean }) {
   const summary = useMemo(() => {
     const buys = pol.trades.filter((t) => t.txnType === "buy");
     const sells = pol.trades.filter((t) => t.txnType === "sell");
@@ -48,11 +48,11 @@ export function PoliticianView({ pol, top, preview = false, centred = false }: {
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-politician)", ["--aura-2" as string]: "var(--aura-investor)" }}>
         {top}
 
-        <div className={`fade-up flex flex-col gap-4 ${centred ? "items-center text-center" : "items-start sm:flex-row sm:items-center"}`}>
+        <div className="fade-up flex flex-col items-center gap-4 text-center">
           <Avatar name={pol.name} src={pol.photo} kind="politician" size={104} className="shadow-[0_10px_30px_rgb(0_0_0/0.16)]" />
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{pol.name}</h1>
-            <div className={`mt-1.5 flex flex-wrap items-center gap-2 text-[15px] text-subtle ${centred ? "justify-center" : ""}`}>
+            <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-[15px] text-subtle">
               <span className="rounded-full bg-politician/10 px-2.5 py-1 text-[13px] font-semibold text-politician">{politicianLine(pol.party, pol.seat)}</span>
               <span>US House of Representatives</span>
             </div>

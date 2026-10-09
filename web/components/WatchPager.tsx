@@ -474,7 +474,7 @@ export function WatchPager({ start }: { start: { kind: Kind; slug: string } }) {
     const key = keyOf(e);
     const d = data[key];
     if (d && d !== "error")
-      return d.kind === "investor" ? <InvestorView inv={d.inv} preview={o !== 0} centred /> : <PoliticianView pol={d.pol} preview={o !== 0} centred />;
+      return d.kind === "investor" ? <InvestorView inv={d.inv} preview={o !== 0} /> : <PoliticianView pol={d.pol} preview={o !== 0} />;
     if (o === 0 && d === "error")
       return (
         <ErrorRetry

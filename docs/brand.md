@@ -377,9 +377,10 @@ without WebGL2.
   Follow and the search loupe (the header's, narrower when open) are one
   row below it. From tablets up the header keeps its tabs and the wheel
   sticks under it.
-- Picture, name and the text under it are centred on these pages
-  (`centred` on `InvestorView` / `PoliticianView`; user, 2026-10-09); each
-  person keeps their own aura (investor blue, politician magenta).
+- Picture, name and the text under it are centred, here as on every
+  investor and politician page (`InvestorView` / `PoliticianView`; user,
+  2026-10-09); each person keeps their own aura (investor blue,
+  politician magenta).
 - The names run along the lower rim of a large
   circle (`WatchDial`, SVG text on a path): the current one level in the
   middle, the neighbours tilting up and away, dimmer, and fading out at
