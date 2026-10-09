@@ -39,6 +39,13 @@ it, colour only where it carries meaning.
   iOS gives web apps only white status bar icons in that mode, also in light
   mode; the header and the set-up leave room with `env(safe-area-inset-top)`.
   A Safari tab can't do this: Safari fills the status bar strip itself.
+- iOS 26 blurs the status bar and a band below it, over fixed and sticky
+  elements too (the system's scroll edge effect; it fades out about 2.5rem
+  below the safe area). Whatever is read at the top starts below it, at
+  `--edge-top` in `globals.css`: the wordmark (`--bar-pad`), the search
+  field, the set-up's "Set up Outsider" and Close, the watchlist's wheel of
+  names (user, 2026-10-09). Without a safe area it is 0, so desktop is as
+  before.
 - Stored keys keep their old `aura:` and `outsider:` prefixes, so nobody
   loses what they follow or set up.
 
@@ -422,9 +429,9 @@ Set the flag to true to bring it all back.
   at. The tab bar keeps still. Browsers without View Transitions fade
   (`.pager-in`, `.list-in`); reduced motion switches at once.
 - The wheel is the top of the screen, as in the video: on phones it sits
-  right under the Dynamic Island (`env(safe-area-inset-top)`) and the site
-  header with the wordmark gives way. From tablets up the header keeps its
-  tabs and the wheel sticks under it.
+  right under the Dynamic Island, below the iOS blur (`--edge-top`), and
+  the site header with the wordmark gives way. From tablets up the header
+  keeps its tabs and the wheel sticks under it.
 - Picture, name and the text under it are centred, here as on every
   investor, politician and insider page (`InvestorView` /
   `PoliticianView`, the insider page; user, 2026-10-09); each person keeps

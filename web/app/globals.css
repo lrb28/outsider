@@ -9,6 +9,16 @@
  * politicians). Values are "R G B" so Tailwind opacity modifiers work.
  */
 :root {
+  /* Where the top is sharp again. iOS 26 blurs the status bar and a band
+     below it, over fixed and sticky elements too (the system's scroll edge
+     effect; measured on an iPhone: it fades out about 2.5rem below the safe
+     area). The wordmark, the search field, the set-up and the wheel of names
+     start below it (user, 2026-10-09). Nothing extra where there is no safe
+     area (desktop, a Safari tab), so there it is 0. */
+  --edge-top: calc(env(safe-area-inset-top) + min(2.5rem, env(safe-area-inset-top)));
+  /* The site header's top padding: its 44 px row centres the 15 px wordmark,
+     which so starts at --edge-top. */
+  --bar-pad: max(0.75rem, calc(var(--edge-top) - 0.875rem));
   color-scheme: light;
   --bg: 245 245 247;
   --surface: 255 255 255;
@@ -633,6 +643,7 @@ h1, h2, h3 {
 
 /* Scroll edge effect: content fades softly under floating bars. */
 .scroll-edge-top {
+  height: max(6rem, calc(var(--edge-top) + 1.5rem));
   background: linear-gradient(180deg, rgb(var(--bg) / 0.94) 0%, rgb(var(--bg) / 0.72) 55%, rgb(var(--bg) / 0) 100%);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
@@ -680,7 +691,8 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
 }
 .watch-band {
   top: 0;
-  padding-top: max(0.5rem, env(safe-area-inset-top));
+  /* The names (centred in the 64 px band) below the iOS blur. */
+  padding-top: max(0.5rem, calc(var(--edge-top) - 1rem));
 }
 .watch-band::before {
   content: "";
@@ -698,11 +710,11 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
 }
 @media (min-width: 768px) {
   .watch-band {
-    top: calc(max(0.75rem, env(safe-area-inset-top)) + 3.5rem);
+    top: calc(var(--bar-pad) + 3.5rem);
     padding-top: 0;
   }
   /* Up under the header too, so the two read as one plain top. */
-  .watch-band::before { top: calc(-1 * (max(0.75rem, env(safe-area-inset-top)) + 3.5rem)); }
+  .watch-band::before { top: calc(-1 * (var(--bar-pad) + 3.5rem)); }
 }
 .watch-band[data-stuck]::before {
   opacity: 1;
