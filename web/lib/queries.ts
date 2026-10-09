@@ -26,8 +26,12 @@ import {
   StockDetail,
   StockHolder,
   StockMove,
+  SpotlightData,
+  SpotlightItem,
+  SpotlightKind,
   StockRow,
 } from "./types";
+import { mixSpotlight, quarterOf, weightLabel } from "./spotlight";
 
 export interface TradeFilters {
   type?: string;
@@ -658,31 +662,66 @@ export async function getPrices(
 }
 
 // ── Discover collections ────────────────────────────────────────────────────
+const W_CTE = `
+  ${CUR_CTE},
+  tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id),
+  w as (
+    select c.security_id, c.entity_id, c.market_value,
+           c.market_value / nullif(t.v, 0) as weight
+    from cur c join tot t on t.entity_id = c.entity_id where c.put_call is null
+  )
+`;
+
+// Shared by Discover and the portfolio's pull-to-refresh spotlight.
+const MOST_HELD_SQL = (limit: number) => `
+  ${W_CTE}
+  select s.ticker, s.name as security_name, count(distinct w.entity_id) as n
+  from w join securities s on s.id = w.security_id
+  where s.ticker is not null
+  group by s.id, s.ticker, s.name
+  order by n desc, sum(w.market_value) desc
+  limit ${limit}
+`;
+
+// Meistgekaufte Aktien im aktuellen Quartal (institutionelle Käufe).
+const MOST_BOUGHT_SQL = (limit: number) => `
+  select s.ticker, s.name as security_name, count(distinct t.entity_id) as n
+  from transactions t
+  join entities e on e.id = t.entity_id and e.type = 'institution'
+  join securities s on s.id = t.security_id
+  join filings f on f.id = t.filing_id
+  where t.txn_type = 'buy' and s.ticker is not null and nullif(t.put_call,'') is null
+    and not t.superseded
+    and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
+  group by s.id, s.ticker, s.name order by n desc, s.ticker limit ${limit}
+`;
+
+// Ranked by how many different insiders bought, then by the money they put in.
+const INSIDER_BUYS_SQL = (limit: number) => `
+  select s.ticker, s.name as security_name, count(distinct t.entity_id) as insiders,
+    sum(t.shares * t.price) filter (where t.shares > 0 and t.price > 0) as value
+  from transactions t
+  join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
+  join securities s on s.id = t.security_id
+  where t.txn_type = 'buy' and s.ticker is not null and t.transaction_code = 'P'
+    and not t.is_derivative and not t.superseded
+    and t.disclosed_at >= current_date - 90
+  group by s.id, s.ticker, s.name order by insiders desc, value desc nulls last, s.ticker limit ${limit}
+`;
+
+const insiderMetric = (r: Record<string, unknown>) => {
+  const insiders = Number(r.insiders);
+  const value = r.value == null ? null : Number(r.value);
+  return `${insiders} ${insiders === 1 ? "insider" : "insiders"}${value ? ` · ${abbrevMoney(value)}` : ""}`;
+};
+
 export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
   const pool = getPool();
   if (!pool) throw new Error("DATABASE_URL not configured");
 
-  const wCte = `
-    ${CUR_CTE},
-    tot as (select entity_id, sum(market_value) as v from cur where put_call is null group by entity_id),
-    w as (
-      select c.security_id, c.entity_id, c.market_value,
-             c.market_value / nullif(t.v, 0) as weight
-      from cur c join tot t on t.entity_id = c.entity_id where c.put_call is null
-    )
-  `;
-
-  const mostHeldQ = pool.query(`
-    ${wCte}
-    select s.ticker, s.name as security_name, count(distinct w.entity_id) as n
-    from w join securities s on s.id = w.security_id
-    where s.ticker is not null
-    group by s.id, s.ticker, s.name
-    order by n desc, sum(w.market_value) desc
-    limit 12
-  `);
+  const mostHeldQ = pool.query(MOST_HELD_SQL(12));
   const convictionQ = pool.query(`
-    ${wCte}
+    ${W_CTE}
     select s.ticker, s.name as security_name, max(w.weight) as mw
     from w join securities s on s.id = w.security_id
     where s.ticker is not null
@@ -691,7 +730,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
   const biggestQ = pool.query(`
-    ${wCte}
+    ${W_CTE}
     select s.ticker, s.name as security_name, max(w.market_value) as mv
     from w join securities s on s.id = w.security_id
     where s.ticker is not null
@@ -700,30 +739,8 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
     limit 12
   `);
 
-  // Meistgekaufte Aktien im aktuellen Quartal (institutionelle Käufe).
-  const boughtQ = pool.query(`
-    select s.ticker, s.name as security_name, count(distinct t.entity_id) as n
-    from transactions t
-    join entities e on e.id = t.entity_id and e.type = 'institution'
-    join securities s on s.id = t.security_id
-    join filings f on f.id = t.filing_id
-    where t.txn_type = 'buy' and s.ticker is not null and nullif(t.put_call,'') is null
-      and not t.superseded
-      and coalesce(f.period_of_report, t.txn_date) = (select max(h.as_of_date) from holdings h where h.entity_id=t.entity_id)
-    group by s.id, s.ticker, s.name order by n desc, s.ticker limit 12
-  `);
-  // Ranked by how many different insiders bought, then by the money they put in.
-  const insiderBuysQ = pool.query(`
-    select s.ticker, s.name as security_name, count(distinct t.entity_id) as insiders,
-      sum(t.shares * t.price) filter (where t.shares > 0 and t.price > 0) as value
-    from transactions t
-    join entities e on e.id = t.entity_id and e.type = 'corporate_insider'
-    join securities s on s.id = t.security_id
-    where t.txn_type = 'buy' and s.ticker is not null and t.transaction_code = 'P'
-      and not t.is_derivative and not t.superseded
-      and t.disclosed_at >= current_date - 90
-    group by s.id, s.ticker, s.name order by insiders desc, value desc nulls last, s.ticker limit 12
-  `);
+  const boughtQ = pool.query(MOST_BOUGHT_SQL(12));
+  const insiderBuysQ = pool.query(INSIDER_BUYS_SQL(12));
   // Größte Fonds (nach Portfolio-Wert).
   const fundsQ = pool.query(`
     ${CUR_CTE}
@@ -805,11 +822,7 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       return item(r, abbrevMoney(mv));
     }),
     mostBoughtQ: bought.rows.map((r) => item(r, `${Number(r.n)} added`)),
-    insiderBuys: insiderBuys.rows.map((r) => {
-      const insiders = Number(r.insiders);
-      const value = r.value == null ? null : Number(r.value);
-      return item(r, `${insiders} ${insiders === 1 ? "insider" : "insiders"}${value ? ` · ${abbrevMoney(value)}` : ""}`);
-    }),
+    insiderBuys: insiderBuys.rows.map((r) => item(r, insiderMetric(r))),
     biggestFunds: funds.rows.map((r) => inv(r, abbrevMoney(Number(r.v)))),
     mostConcentrated: conc.rows.map((r) =>
       inv(r, `${pctOf(Number(r.mw) || 0, 0, false)} top position`),
@@ -822,6 +835,73 @@ export async function getDiscover(): Promise<Omit<DiscoverData, "source">> {
       metric: `${Number(r.n)} trades`,
       photo: (r.photo as string) ?? null,
     })),
+  };
+}
+
+// ── Portfolio pull-to-refresh spotlight ─────────────────────────────────────
+// Berkshire by its SEC number: the slug comes from the filer's name.
+const BERKSHIRE_CIK = "0001067983";
+
+// Berkshire's latest 13F: what it added that quarter first, then the rest by
+// size. Weights are of the stock positions (options left out).
+const BUFFETT_SQL = `
+  with b as (select id from entities where type = 'institution' and external_ids->>'cik' = $1 limit 1),
+  latest as (select max(as_of_date) as as_of from holdings where entity_id = (select id from b)),
+  cur as (
+    select h.security_id, h.market_value from holdings h, latest l
+    where h.entity_id = (select id from b) and h.as_of_date = l.as_of and nullif(h.put_call,'') is null
+  ),
+  tot as (select sum(market_value) as v from cur),
+  added as (
+    select distinct t.security_id from transactions t join filings f on f.id = t.filing_id
+    where t.entity_id = (select id from b) and t.txn_type = 'buy' and not t.superseded
+      and nullif(t.put_call,'') is null
+      and coalesce(f.period_of_report, t.txn_date) = (select as_of from latest)
+  )
+  select s.ticker, s.name as security_name, c.market_value / nullif(t.v, 0) as weight,
+         c.security_id in (select security_id from added) as added,
+         to_char((select as_of from latest), 'YYYY-MM-DD') as as_of
+  from cur c cross join tot t join securities s on s.id = c.security_id
+  where s.ticker is not null
+  order by c.market_value desc nulls last
+  limit 40
+`;
+
+export async function getSpotlight(): Promise<Omit<SpotlightData, "source">> {
+  const pool = getPool();
+  if (!pool) throw new Error("DATABASE_URL not configured");
+
+  const [bought, held, insiders, buffett] = await Promise.all([
+    pool.query(MOST_BOUGHT_SQL(4)),
+    pool.query(MOST_HELD_SQL(4)),
+    pool.query(INSIDER_BUYS_SQL(2)),
+    pool.query(BUFFETT_SQL, [BERKSHIRE_CIK]),
+  ]);
+
+  const item = (r: Record<string, unknown>, kind: SpotlightKind, label: string, metric: string): SpotlightItem => ({
+    ticker: r.ticker as string,
+    company: companyName((r.ticker as string) ?? null, (r.security_name as string) ?? null),
+    kind,
+    label,
+    metric,
+  });
+
+  const quarter = quarterOf((buffett.rows[0]?.as_of as string) ?? null);
+  const buying = buffett.rows
+    .filter((r) => r.added)
+    .slice(0, 2)
+    .map((r) => item(r, "buffett-buying", "Buffett is buying", `Added${quarter ? ` in ${quarter}` : ""} · ${weightLabel(Number(r.weight) || 0)} of Berkshire`));
+  const holding = buffett.rows
+    .slice(0, 3)
+    .map((r, i) => item(r, "buffett", "In Buffett’s portfolio", `No. ${i + 1} position · ${weightLabel(Number(r.weight) || 0)} of Berkshire`));
+
+  return {
+    items: mixSpotlight([
+      bought.rows.map((r) => item(r, "bought", "Most bought by star investors", `Added by ${Number(r.n)} star investors`)),
+      [...buying, ...holding],
+      held.rows.map((r) => item(r, "held", "Most held by star investors", `Held by ${Number(r.n)} star investors`)),
+      insiders.rows.map((r) => item(r, "insiders", "Insiders are buying", `${insiderMetric(r)} in 90 days`)),
+    ]),
   };
 }
 

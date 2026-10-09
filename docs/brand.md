@@ -337,3 +337,24 @@ without WebGL2.
   currency (prefilled with the latest price, converted if the listing trades
   in another currency) and date (today, never in the future). Then "Added to
   your Portfolio" with "Done" and "Open Portfolio".
+
+## Pull to refresh (My portfolio, 2026-10-07)
+
+- Pulling My portfolio down at the top slides the whole page (header
+  included) off a panel in one stock's own colours, with the page's top edge
+  rounded like a sheet: NVIDIA green with the NVIDIA logo, Apple black,
+  Microsoft white. The colour is the field of the stock's logo tile, read
+  from the logo itself (`logoBackdrop`), never a hand-kept table; text on it
+  goes black or white by contrast.
+- Under the logo: why the stock is shown, the company and the figure
+  ("Most bought by star investors · Amazon · Added by 9 star investors").
+  The stocks take turns, one per refresh (`/api/spotlight`): most bought in
+  the latest 13Fs, Buffett (what Berkshire added that quarter, then its
+  biggest positions), most held, what insiders bought in 90 days. Real
+  filings only: a "Buffett test" would need fundamentals ĀURA does not have,
+  so the Buffett slot is what Buffett actually holds and buys.
+- The logo grows in with the pull and a rounded-square ring around it fills
+  up; at the threshold it pops with a haptic tick, while refreshing the ring
+  runs. Releasing reloads the live prices and the investor matches; the
+  stock stays up at least 1.1 s. Touch only, from the very top, mostly
+  vertical, so the sideways tab swipe is unaffected.

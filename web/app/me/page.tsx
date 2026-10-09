@@ -91,8 +91,9 @@ import {
 import { type AssetMeta, classify } from "@/lib/sectors";
 import { useAssetMeta } from "@/lib/useAssetMeta";
 import { MatchResponse, MatchRow } from "@/lib/types";
-import { useQuotes } from "@/lib/useQuotes";
+import { useQuoteFeed } from "@/lib/useQuotes";
 import { Icon } from "@/components/Icon";
+import { PullToRefresh } from "@/components/PullToRefresh";
 
 // ── Konfiguration ───────────────────────────────────────────────────────────
 
@@ -397,10 +398,11 @@ export default function MePage() {
 
   const toDepot = useCallback((symbol: string): Bar[] => depotBars.get(symbol) ?? [], [depotBars]);
 
-  const quotes = useQuotes(symbols);
+  const { quotes, reload: reloadQuotes } = useQuoteFeed(symbols);
   const listingMeta = useAssetMeta(symbols);
 
   // ── Investoren-Überschneidung ─────────────────────────────────────────────
+  const [matchTick, setMatchTick] = useState(0);
   useEffect(() => {
     if (symbols.length === 0) {
       setMatches(null);
@@ -413,7 +415,7 @@ export default function MePage() {
     return () => {
       on = false;
     };
-  }, [symbols]);
+  }, [symbols, matchTick]);
 
   // ── Abgeleitete Daten ─────────────────────────────────────────────────────
 
@@ -538,6 +540,13 @@ export default function MePage() {
     setHistFailed(false);
     setHist((current) => Object.fromEntries(Object.entries(current).filter(([, e]) => e.source !== "none")));
     setMapTick((t) => t + 1);
+  };
+
+  /** Pull to refresh: live prices and the investor matches now; failed price histories again. */
+  const refresh = async () => {
+    if (histFailed) retryPrices();
+    setMatchTick((t) => t + 1);
+    await reloadQuotes();
   };
 
   /** Hat der Export echte Ein- und Auszahlungen? Dann ist das die bessere Bezugsgröße. */
@@ -984,6 +993,7 @@ export default function MePage() {
 
   return (
     <div className="space-y-6">
+      <PullToRefresh onRefresh={refresh} />
       {/* Header */}
       <div className="fade-up space-y-3">
         <div className="flex flex-wrap items-center gap-2">

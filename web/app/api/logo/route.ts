@@ -40,16 +40,16 @@ async function isinOf(t: string): Promise<string | null> {
   }
 }
 
-function candidates(t: string, isin: string | null): string[] {
+function candidates(t: string, isin: string | null, size: number): string[] {
   const dash = t.replace(/\./g, "-");
   const base = t.split(/[.-]/)[0];
-  const out = isin ? [`https://assets.parqet.com/logos/isin/${isin}?format=png&size=128`] : [];
+  const out = isin ? [`https://assets.parqet.com/logos/isin/${isin}?format=png&size=${size}`] : [];
   if (!WRONG_BY_SYMBOL.has(t)) {
     out.push(
-      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(t)}?format=png&size=128`,
-      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(dash)}?format=png&size=128`,
+      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(t)}?format=png&size=${size}`,
+      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(dash)}?format=png&size=${size}`,
       `https://financialmodelingprep.com/image-stock/${encodeURIComponent(dash)}.png`,
-      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(base)}?format=png&size=128`,
+      `https://assets.parqet.com/logos/symbol/${encodeURIComponent(base)}?format=png&size=${size}`,
     );
   }
   return [...new Set(out)];
@@ -60,7 +60,9 @@ export async function GET(req: NextRequest) {
   if (!SYMBOL_RE.test(t)) return new NextResponse(null, { status: 400 });
   const limited = limitUpstream("logo", req, LOGO_RULE);
   if (limited) return limited;
-  for (const url of candidates(t, await isinOf(t))) {
+  // 128 px for the tiles; 256 for the big logo behind the portfolio's pull to refresh.
+  const size = req.nextUrl.searchParams.get("s") === "256" ? 256 : 128;
+  for (const url of candidates(t, await isinOf(t), size)) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(4000), headers: { "User-Agent": "Mozilla/5.0 (aura-tracker)" } });
       const type = res.headers.get("content-type") || "";

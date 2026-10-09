@@ -616,6 +616,31 @@ h1, h2, h3 {
   mask-image: linear-gradient(0deg, #000 40%, transparent 100%);
 }
 
+/* Pull to refresh (My portfolio, components/PullToRefresh.tsx): the page's
+   flow slides down by --ptr-y over a panel in one stock's own colours. The
+   panel's last 26 px are a lip in the page colour with round top corners, so
+   the page reads as a sheet being pulled off the colour. */
+[data-ptr-move] { transform: translate3d(0, var(--ptr-y, 0px), 0); }
+.ptr-panel { height: calc(var(--ptr-y, 0px) + 26px); visibility: hidden; }
+html[data-ptr] .ptr-panel { visibility: visible; }
+html[data-ptr="settle"] [data-ptr-move] { transition: transform 520ms cubic-bezier(0.32, 0.72, 0, 1); }
+html[data-ptr="settle"] .ptr-panel { transition: height 520ms cubic-bezier(0.32, 0.72, 0, 1); }
+html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
+/* The stock sits still behind the page, centred where the page comes to rest
+   while refreshing (HOLD), and is uncovered as the page slides off it. */
+.ptr-stage { height: max(var(--ptr-y, 0px), calc(172px + env(safe-area-inset-top))); padding-top: env(safe-area-inset-top); }
+/* The logo grows in with the pull; the text comes in over the last stretch. */
+.ptr-logo { transform: scale(calc(0.55 + 0.45 * var(--ptr-p, 0))); }
+.ptr-text { opacity: calc((var(--ptr-p, 0) - 0.5) * 2); transform: translateY(calc((1 - var(--ptr-p, 0)) * 10px)); }
+.ptr-pop > img, .ptr-pop > span { animation: ptrPop 380ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes ptrPop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.ptr-spin { animation: ptrSpin 900ms linear infinite; }
+@keyframes ptrSpin { to { stroke-dashoffset: -100; } }
+
 /* A tab glyph pops when its tab becomes current. */
 @keyframes tabPop {
   0% { transform: scale(0.82); }
