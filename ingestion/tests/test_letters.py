@@ -17,7 +17,7 @@ GOOD = {
 def test_repository_letters_are_valid():
     letters, errors = load_files()
     assert errors == []
-    assert len(letters) >= 8
+    assert len(letters) >= 18
     assert len({l["slug"] for l in letters}) == len(letters)
 
 

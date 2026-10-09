@@ -25,6 +25,11 @@ export const PORTRAITS: Record<string, Portrait> = {
   "Howard_Marks": { name: "Howard Marks", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Howard_Marks_2.17.12_%28cropped%29.jpg/330px-Howard_Marks_2.17.12_%28cropped%29.jpg", author: "kellywritershouse", license: "CC BY 2.0", page: "https://commons.wikimedia.org/wiki/File:Howard_Marks_2.17.12_(cropped).jpg" },
   "Brad_Gerstner": { name: "Brad Gerstner", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8d/Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg/330px-Brad_Gerstner_at_the_White_House_2025_%2854581192563%29.jpg", author: "The White House", license: "Public domain", page: "https://commons.wikimedia.org/wiki/File:Brad_Gerstner_at_the_White_House_2025_(54581192563).jpg", focus: { x: 36, y: 28, zoom: 1.9 } },
   "Prem_Watsa": { name: "Prem Watsa", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/Prem_Watsa.jpg/330px-Prem_Watsa.jpg", author: "செல்வா at Tamil Wikipedia", license: "CC BY 3.0", page: "https://commons.wikimedia.org/wiki/File:Prem_Watsa.jpg" },
+  "Paul_Singer": { name: "Paul Singer", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/The_Global_Financial_Context_Paul_Singer_%28cropped%29.jpg/330px-The_Global_Financial_Context_Paul_Singer_%28cropped%29.jpg", author: "World Economic Forum", license: "CC BY-SA 2.0", page: "https://commons.wikimedia.org/wiki/File:The_Global_Financial_Context_Paul_Singer_(cropped).jpg" },
+  "Jim_Simons": { name: "Jim Simons", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7f/Jim_Simons_at_MSRI.jpg/330px-Jim_Simons_at_MSRI.jpg", author: "Gleuschk", license: "CC BY-SA 3.0", page: "https://commons.wikimedia.org/wiki/File:Jim_Simons_at_MSRI.jpg" },
+  "Paul_Tudor_Jones": { name: "Paul Tudor Jones", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1d/Paul_Tudor_Jones_2006.jpg/330px-Paul_Tudor_Jones_2006.jpg", author: "U.S. Department of the Interior", license: "Public domain", page: "https://commons.wikimedia.org/wiki/File:Paul_Tudor_Jones_2006.jpg" },
+  "Chris_Hohn": { name: "Chris Hohn", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Chris_Hohn_GFSS_2023.jpg/330px-Chris_Hohn_GFSS_2023.jpg", author: "Foreign, Commonwealth & Development Office", license: "CC BY 2.0", page: "https://commons.wikimedia.org/wiki/File:Chris_Hohn_GFSS_2023.jpg" },
+  "Peter_Thiel": { name: "Peter Thiel", src: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3e/Peter_Thiel_by_Gage_Skidmore.jpg/330px-Peter_Thiel_by_Gage_Skidmore.jpg", author: "Gage Skidmore", license: "CC BY-SA 3.0", page: "https://commons.wikimedia.org/wiki/File:Peter_Thiel_by_Gage_Skidmore.jpg" },
 };
 
 // Investors without a freely licensed portrait show the logo of their fund
@@ -50,4 +55,22 @@ export const FUND_LOGOS: Record<string, { src: string; fund: string; tile?: bool
   Chuck_Akre: { src: "/funds/akre.svg", fund: "Akre Capital Management", tile: true },
   Li_Lu: { src: "/funds/himalaya.png", fund: "Himalaya Capital", tile: true },
   Michael_Burry: { src: "/funds/scion.png", fund: "Scion Asset Management", tile: true },
+  // The Commons files for Bruce Berkowitz and Lee Ainslie come from a hedge-fund
+  // letters site whose free licence is doubtful, so they get their fund's mark.
+  David_Einhorn: { src: "/funds/greenlight.png", fund: "Greenlight Capital" },
+  Mason_Hawkins: { src: "/funds/southeastern.png", fund: "Southeastern Asset Management", tile: true },
+  Mason_Morfit: { src: "/funds/valueact.png", fund: "ValueAct Capital", tile: true },
+  David_Abrams: { src: "/funds/abrams.png", fund: "Abrams Capital", tile: true },
+  Bruce_Berkowitz: { src: "/funds/fairholme.png", fund: "Fairholme Capital Management", tile: true },
+  Dev_Kantesaria: { src: "/funds/valley-forge.png", fund: "Valley Forge Capital Management" },
+  Chris_Bloomstran: { src: "/funds/semper-augustus.png", fund: "Semper Augustus Investments Group" },
+  Francois_Rochon: { src: "/funds/giverny.svg", fund: "Giverny Capital" },
+  John_Paulson: { src: "/funds/paulson.png", fund: "Paulson & Co." },
+  Lee_Ainslie: { src: "/funds/maverick.png", fund: "Maverick Capital", tile: true },
+  Nick_Train: { src: "/funds/lindsell-train.svg", fund: "Lindsell Train", tile: true },
+  Bill_Nygren: { src: "/funds/oakmark.png", fund: "Harris | Oakmark", tile: true },
+  Pat_Dorsey: { src: "/funds/dorsey.png", fund: "Dorsey Asset Management", tile: true },
+  Bill_Miller: { src: "/funds/miller-value.svg", fund: "Miller Value Partners" },
+  Henry_Ellenbogen: { src: "/funds/durable.svg", fund: "Durable Capital Partners" },
+  Barry_Rosenstein: { src: "/funds/jana.svg", fund: "JANA Partners", tile: true },
 };

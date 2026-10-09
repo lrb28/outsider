@@ -235,7 +235,8 @@ exited (each fund's latest 13F against the quarter before).
 
 People: official congressional portraits; credited Commons photos for
 investors (`web/lib/portraits.ts`, matched by fund or person name; no
-caricatures: Stephen Mandel shows Lone Pine's mark); else the
+caricatures: Stephen Mandel shows Lone Pine's mark; no files whose free licence
+is doubtful: Bruce Berkowitz and Lee Ainslie show their funds' marks); else the
 fund's logo (`FUND_LOGOS`, files in `web/public/funds`: website icons or the
 public-domain text logos on Commons cut down to the mark; `tile` files are
 finished round tiles); insiders show their company's logo. Company logos load

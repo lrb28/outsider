@@ -134,6 +134,98 @@ institutions:
     full_name: Glenview Capital Management, LLC     # Larry Robbins
     cik: "0001138995"
     highlight: true
+  - slug: greenlight-capital
+    full_name: DME Capital Management, LP    # Greenlight Capital, David Einhorn (Greenlight's 13F filer since 2024)
+    cik: "0001489933"
+    highlight: true
+  - slug: elliott-management
+    full_name: Elliott Investment Management L.P.    # Paul Singer
+    cik: "0001791786"
+    highlight: true
+  - slug: renaissance-technologies
+    full_name: Renaissance Technologies LLC    # Jim Simons (founder, 1938–2024)
+    cik: "0001037389"
+    highlight: true
+  - slug: tudor-investment
+    full_name: Tudor Investment Corp    # Paul Tudor Jones
+    cik: "0000923093"
+    highlight: true
+  - slug: tci-fund-management
+    full_name: TCI Fund Management Ltd    # Chris Hohn
+    cik: "0001647251"
+    highlight: true
+  - slug: h-and-h-international
+    full_name: H&H International Investment, LLC    # Duan Yongping
+    cik: "0001759760"
+    highlight: true
+  - slug: southeastern-asset-management
+    full_name: Southeastern Asset Management Inc    # Mason Hawkins (Longleaf Partners)
+    cik: "0000807985"
+    highlight: true
+  - slug: valueact
+    full_name: ValueAct Holdings, L.P.    # Mason Morfit
+    cik: "0001418814"
+    highlight: true
+  - slug: abrams-capital
+    full_name: Abrams Capital Management, L.P.    # David Abrams
+    cik: "0001358706"
+    highlight: true
+  - slug: fairholme
+    full_name: Fairholme Capital Management LLC    # Bruce Berkowitz
+    cik: "0001056831"
+    highlight: true
+  - slug: valley-forge-capital
+    full_name: Valley Forge Capital Management, LP    # Dev Kantesaria
+    cik: "0001697868"
+    highlight: true
+  - slug: semper-augustus
+    full_name: Semper Augustus Investments Group LLC    # Chris Bloomstran
+    cik: "0001115373"
+    highlight: true
+  - slug: giverny-capital
+    full_name: Giverny Capital Inc.    # François Rochon
+    cik: "0001641864"
+    highlight: true
+  - slug: paulson-and-co
+    full_name: Paulson & Co. Inc.    # John Paulson
+    cik: "0001035674"
+    highlight: true
+  - slug: maverick-capital
+    full_name: Maverick Capital Ltd    # Lee Ainslie
+    cik: "0000934639"
+    highlight: true
+  - slug: lindsell-train
+    full_name: Lindsell Train Ltd    # Nick Train
+    cik: "0001484150"
+    highlight: true
+  - slug: harris-associates
+    full_name: Harris Associates L.P.    # Bill Nygren (Oakmark)
+    cik: "0000813917"
+    highlight: true
+  - slug: dorsey-asset-management
+    full_name: Dorsey Asset Management, LLC    # Pat Dorsey
+    cik: "0001671657"
+    highlight: true
+  - slug: brave-warrior
+    full_name: Brave Warrior Advisors, LLC    # Glenn Greenberg
+    cik: "0001553733"
+    highlight: true
+  - slug: miller-value-partners
+    full_name: Miller Value Partners, LLC    # Bill Miller
+    cik: "0001135778"
+    highlight: true
+  - slug: durable-capital
+    full_name: Durable Capital Partners LP    # Henry Ellenbogen
+    cik: "0001798849"
+    highlight: true
+  - slug: thiel-macro
+    full_name: Thiel Macro LLC    # Peter Thiel
+    cik: "0001562087"
+    highlight: true
+  - slug: jana-partners
+    full_name: JANA Partners Management, LP    # Barry Rosenstein
+    cik: "0001998597"
+    highlight: true
 
 politicians:
   - slug: nancy-pelosi
@@ -161,3 +253,36 @@ form4_issuers:
   - "0000050863"   # Intel Corp
   - "0000019617"   # JPMorgan Chase
   - "0000021344"   # Coca-Cola Co
+  - "0001730168"   # Broadcom Inc.
+  - "0000059478"   # Eli Lilly and Company
+  - "0001403161"   # Visa Inc.
+  - "0001141391"   # Mastercard Inc.
+  - "0000104169"   # Walmart Inc.
+  - "0000909832"   # Costco Wholesale
+  - "0000731766"   # UnitedHealth Group
+  - "0000354950"   # Home Depot
+  - "0001744489"   # Walt Disney Co.
+  - "0000320187"   # Nike, Inc.
+  - "0000829224"   # Starbucks
+  - "0001543151"   # Uber Technologies
+  - "0001559720"   # Airbnb
+  - "0001535527"   # CrowdStrike
+  - "0001640147"   # Snowflake
+  - "0001783879"   # Robinhood Markets
+  - "0001375365"   # Super Micro Computer
+  - "0000723125"   # Micron Technology
+  - "0000804328"   # Qualcomm
+  - "0000796343"   # Adobe
+  - "0001373715"   # ServiceNow
+  - "0000012927"   # Boeing
+  - "0001050446"   # Strategy (MicroStrategy)
+  - "0001819994"   # Rocket Lab
+  - "0001818874"   # SoFi Technologies
+  - "0001713445"   # Reddit
+  - "0001058090"   # Chipotle Mexican Grill
+  - "0001792789"   # DoorDash
+  - "0001571996"   # Dell Technologies
+  - "0001326380"   # GameStop
+  - "0001751008"   # AppLovin
+  - "0001596532"   # Arista Networks
+  - "0001773751"   # Hims & Hers Health

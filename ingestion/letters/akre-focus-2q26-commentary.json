@@ -1,0 +1,46 @@
+{
+  "slug": "akre-focus-2q26-commentary",
+  "investor": "akre-capital-management-llc",
+  "author": "John Neff",
+  "org": "Akre Capital Management",
+  "kind": "quarterly_letter",
+  "title": "Akre Focus ETF Second Quarter 2026 Commentary",
+  "published_on": "2026-07-01",
+  "published_precision": "month",
+  "source_url": "https://www.akrefund.com/documents/commentary/akre-focus-etf-quarterly-commentary-2026-q2/",
+  "source_name": "akrefund.com",
+  "stance": "bullish",
+  "headline": "Akre is down 24% over a year as AI hardware soars. The team sees its software and payments holdings at a decade-low 17x free cash flow.",
+  "summary": "The Akre Focus ETF gained 0.66% in the second quarter against 15.20% for the S&P 500 and lost 24.01% over twelve months. The team says its companies keep growing: free cash flow per share rose 23% in the first quarter, and the portfolio trades at just over 17 times free cash flow, the lowest since 2016. Around AI it sees classic signs of speculation: semiconductors at about 20% of the S&P 500, record margin debt and leveraged ETFs, and SpaceX valued at nearly 120 times annualised revenue. The market brands its software and information-services holdings as AI victims; Akre argues they are adopting AI and stays “lashed to the mast”.",
+  "takeaways": [
+    { "label": "View", "text": "The fund looks stronger and cheaper than at any point in ten years: projected free-cash-flow-per-share growth near 16% a year, a free-cash-flow return on capital of about 42% and debt of 1.4 times EBITDA.", "tickers": [] },
+    { "label": "View", "text": "AI can deliver on its promise and still destroy value for many investors, as railroads, cars and the internet did before.", "tickers": [] },
+    { "label": "Watch", "text": "AI labs’ moats: among OpenRouter users, the share of tokens going to Anthropic, OpenAI and Gemini fell from 72% to 33% in a year as users moved to cheaper open-source models.", "tickers": [] },
+    { "label": "Watch", "text": "Memory: new Chinese capacity from CXMT and Yangtze Memory could arrive as early as 2027 and end the shortage behind Micron’s and Sandisk’s surge.", "tickers": ["MU", "SNDK"] },
+    { "label": "Move", "text": "Cash fell from 4.4% to 1.7% of net assets during the quarter.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "Speculation is spreading: record retail trading, about $218 billion in leveraged ETFs and $1.4 trillion of margin debt." },
+    { "scope": "Industry", "text": "AI model makers lack switching costs and pricing power; Anthropic has revenue comparable to Mastercard’s but no net profit." },
+    { "scope": "Macro", "text": "If AI causes mass job losses, resource shortages or inflation, politicians may respond in ways that undercut the AI leaders’ growth." }
+  ],
+  "quotes": [
+    { "text": "What keeps history rhyming is not faulty foundations, but the towering speculative excesses built on top of them that eventually collapse.", "context": "On the AI boom" },
+    { "text": "We do not see our portfolio companies stalled on the tracks of an oncoming AI train.", "context": "On its software holdings" },
+    { "text": "We remain securely lashed to the mast of our process and convictions, bound by our focus on the strong fundamentals and attractive valuations of our portfolio companies.", "context": "On staying the course" }
+  ],
+  "stocks": [
+    { "ticker": "MA", "company": "Mastercard", "stance": "bullish", "note": "Largest holding (13.9%); its tokenisation will matter for AI-driven commerce." },
+    { "ticker": null, "company": "Constellation Software", "stance": "bullish", "note": "No material customer losses to AI-native start-ups across about 1,500 businesses." },
+    { "ticker": "V", "company": "Visa", "stance": "bullish", "note": "Top contributor in the quarter." },
+    { "ticker": "FICO", "company": "Fair Isaac", "stance": "bullish", "note": "Has filed 137 AI-based patents; a top-five contributor." },
+    { "ticker": "BN", "company": "Brookfield Corp.", "stance": "bullish", "note": "Top-five contributor; 8.0% of the fund." },
+    { "ticker": "MCO", "company": "Moody’s", "stance": "bullish", "note": "Rated over $100 billion of AI-related debt in the first quarter." },
+    { "ticker": "CRM", "company": "Salesforce", "stance": "bullish", "note": "Agentforce and Data 360 revenue run rate up 225% to $3.4 billion; still a detractor." },
+    { "ticker": "NOW", "company": "ServiceNow", "stance": "bullish", "note": "Raised its 2026 AI revenue guidance by 50%." },
+    { "ticker": "CCC", "company": "CCC Intelligent Solutions", "stance": "bullish", "note": "Emerging Solutions revenue +50%, with AI the largest part." },
+    { "ticker": "CSGP", "company": "CoStar Group", "stance": "bullish", "note": "Detractor; launched AI search on Homes.com and Apartments.com." },
+    { "ticker": "CPRT", "company": "Copart", "stance": "bullish", "note": "Among the bottom five performers in the quarter." },
+    { "ticker": "SPCX", "company": "SpaceX", "stance": "neutral", "note": "A sign of speculation to Akre: valued at nearly 120 times annualised revenue after its June IPO." }
+  ]
+}

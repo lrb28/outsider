@@ -1,0 +1,37 @@
+{
+  "slug": "amazon-2025-shareholder-letter",
+  "author": "Andy Jassy",
+  "org": "Amazon",
+  "kind": "annual_letter",
+  "title": "Amazon 2025 Letter to Shareholders",
+  "published_on": "2026-04-09",
+  "published_precision": "day",
+  "source_url": "https://www.sec.gov/Archives/edgar/data/1018724/000110465926041036/tm263815d4_ars.pdf",
+  "source_name": "sec.gov",
+  "stance": "bullish",
+  "headline": "Andy Jassy: AI is a once-in-a-lifetime shift, so Amazon spends about $200 billion in 2026 and accepts weaker free cash flow for now.",
+  "summary": "Jassy frames 2025 around “inflections”: progress is never a straight line, so Amazon invents new ones, runs parallel bets and is willing to start over. Revenue grew 12% to $717 billion and operating income 17% to $80 billion, but free cash flow fell from $38 billion to $11 billion on AI spending. He rejects the bubble worry for Amazon: AWS’s AI revenue run rate passed $15 billion in Q1 2026, its own chips run above $20 billion a year, and customer commitments, including over $100 billion from OpenAI, cover a substantial portion of 2026 AWS capex. Robotics, drones, grocery and the Leo satellite network are the other bets.",
+  "takeaways": [
+    { "label": "Move", "text": "Amazon plans about $200 billion of capex in 2026, mostly for AI; much of the AWS share is already backed by customer commitments and should be billed in 2027 and 2028.", "tickers": ["AMZN"] },
+    { "label": "View", "text": "Is AI over-hyped, a bubble, or a poor return? For Amazon his answer is no, no, and yes: margins and returns on capital will be appealing.", "tickers": ["AMZN"] },
+    { "label": "View", "text": "Its own chips change the economics: Trainium2 beat comparable GPUs on price-performance by about 30%, Trainium3 is 30 to 40% better again, and at scale Trainium should save tens of billions of capex a year.", "tickers": ["AMZN", "NVDA"] },
+    { "label": "Watch", "text": "Amazon Leo, the satellite network with more than 200 satellites in orbit, launches in mid-2026; Delta will start with 500 planes in 2028.", "tickers": ["DAL"] },
+    { "label": "Watch", "text": "AWS still turns away demand: it added 3.9 gigawatts of power in 2025 and expects to double total capacity by the end of 2027.", "tickers": ["AMZN"] }
+  ],
+  "risks": [
+    { "scope": "Company", "text": "While capex grows faster than revenue, free cash flow stays under pressure; servers are billed only 6 to 24 months after the cash goes out." },
+    { "scope": "Industry", "text": "AI could change how people want to shop, so even Amazon’s most familiar retail experience may have to be rebuilt from scratch." }
+  ],
+  "quotes": [
+    { "text": "My strong conviction, at least for Amazon, is that the answers are no, no, and yes.", "context": "On an AI bubble" },
+    { "text": "We’re not investing approximately $200 billion in capex in 2026 on a hunch.", "context": "On capital spending" },
+    { "text": "Our chips business is on fire, changes the economics for AWS, and will be much larger than most think.", "context": "On Trainium and Graviton" }
+  ],
+  "stocks": [
+    { "ticker": "AMZN", "company": "Amazon", "stance": "bullish", "note": "Revenue +12% to $717 billion in 2025; free cash flow down to $11 billion on AI capex." },
+    { "ticker": "NVDA", "company": "NVIDIA", "stance": "neutral", "note": "A close partner, but AWS customers are moving inference to Amazon’s own Trainium chips." },
+    { "ticker": "INTC", "company": "Intel", "stance": "neutral", "note": "Cloud CPUs ran almost only on Intel until Graviton, now used by 98% of the top 1,000 EC2 customers." },
+    { "ticker": "DAL", "company": "Delta Air Lines", "stance": "neutral", "note": "Chose Amazon Leo for in-flight Wi-Fi, starting with 500 planes in 2028." },
+    { "ticker": null, "company": "OpenAI", "stance": "neutral", "note": "Committed over $100 billion to AWS." }
+  ]
+}

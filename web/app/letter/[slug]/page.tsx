@@ -103,7 +103,10 @@ export default function LetterPage() {
           ) : (
             <div className="flex items-center gap-2.5">
               <Avatar name={letter.author} size={40} />
-              <span className="text-[15px] font-semibold">{letter.author}</span>
+              <span className="leading-tight">
+                <span className="block text-[15px] font-semibold">{letter.author}</span>
+                {letter.org && <span className="block text-[13px] text-subtle">{letter.org}</span>}
+              </span>
             </div>
           )}
           <h1 className="font-display text-[clamp(26px,7.4vw,34px)] font-bold leading-[1.08] tracking-[-0.02em]">{letter.title}</h1>
