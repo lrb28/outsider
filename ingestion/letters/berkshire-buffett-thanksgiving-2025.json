@@ -1,0 +1,34 @@
+{
+  "slug": "berkshire-buffett-thanksgiving-2025",
+  "investor": "berkshire-hathaway-inc",
+  "author": "Warren Buffett",
+  "org": "Berkshire Hathaway",
+  "kind": "commentary",
+  "title": "Warren Buffett’s Thanksgiving Letter to Shareholders",
+  "published_on": "2025-11-10",
+  "published_precision": "day",
+  "source_url": "https://www.berkshirehathaway.com/news/nov1025.pdf",
+  "source_name": "berkshirehathaway.com",
+  "stance": "neutral",
+  "headline": "Warren Buffett is “going quiet”: Greg Abel takes over at year-end, and Buffett speeds up gifts of his Berkshire shares to his children’s foundations.",
+  "summary": "At 95, Buffett tells shareholders he will stop writing the annual report and talking at the annual meeting, but will keep sending a Thanksgiving message. Greg Abel becomes CEO at year-end, and Buffett cannot think of anyone he would rather have handle their savings. He converted 1,800 A shares into 2.7 million B shares for four family foundations and will speed up lifetime gifts, while keeping a significant amount of A shares until shareholders are as comfortable with Abel as they were with him and Charlie Munger. He sees moderately better-than-average prospects for Berkshire, but expects many companies to do better as its size takes its toll.",
+  "takeaways": [
+    { "label": "Move", "text": "Converted 1,800 A shares into 2.7 million B shares and gave them to four family foundations; gifts to his children’s foundations will speed up.", "tickers": ["BRK.B"] },
+    { "label": "View", "text": "The faster giving says nothing about Berkshire’s prospects: Greg Abel has more than met Buffett’s high expectations.", "tickers": ["BRK.B"] },
+    { "label": "View", "text": "Prospects are moderately better than average, led by a few sizable gems, but in a decade or two many companies will have done better than Berkshire.", "tickers": ["BRK.B"] },
+    { "label": "View", "text": "With Berkshire’s size and today’s market levels, ideas are few, but not zero.", "tickers": [] },
+    { "label": "Watch", "text": "Buffett keeps a significant amount of A shares until shareholders trust Abel as they trusted him and Munger.", "tickers": ["BRK.B"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "The share price will move capriciously and can fall 50% or so, as it has three times in 60 years." },
+    { "scope": "Company", "text": "A loyal CEO of the parent or a subsidiary may succumb to dementia or another long illness; Buffett and Munger failed to act several times." }
+  ],
+  "quotes": [
+    { "text": "As the British would say, I’m “going quiet.”", "context": "On stepping back" },
+    { "text": "I can’t think of a CEO, a management consultant, an academic, a member of government – you name it – that I would select over Greg to handle your savings and mine.", "context": "On Greg Abel" },
+    { "text": "Our stock price will move capriciously, occasionally falling 50% or so as has happened three times in 60 years under present management.", "context": "On the share price" }
+  ],
+  "stocks": [
+    { "ticker": "BRK.B", "company": "Berkshire Hathaway", "stance": "neutral", "note": "Moderately better-than-average prospects; less risk of disaster than any business Buffett knows." }
+  ]
+}

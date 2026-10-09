@@ -1,0 +1,33 @@
+{
+  "slug": "elliott-northern-star-2026",
+  "investor": "elliott-investment-management-l-p",
+  "author": "John Pike",
+  "org": "Elliott Management",
+  "kind": "activist_letter",
+  "title": "Elliott Letter to the Northern Star Resources Board",
+  "published_on": "2026-08-12",
+  "published_precision": "day",
+  "source_url": "https://elliottletters.com/wp-content/uploads/Elliott-Management-Sends-Letter-to-Northern-Star-Resources-Ltd-Board-of-Directors_08122026.pdf",
+  "source_name": "elliottletters.com",
+  "stance": "bullish",
+  "headline": "Elliott, with about 5.6% of Northern Star, names six director candidates and wants a new board to run a full strategic review.",
+  "summary": "Elliott, one of Northern Star’s largest investors with an economic interest of about 5.6%, says the Australian gold miner owns world-class mines and a skilled workforce but has badly lagged its peers during record gold prices, which it blames on years of execution and governance failures. After private talks led nowhere, it now publicly proposes six independent director candidates, among them former Anglo American chief executive Mark Cutifani and former Barrick finance chief Graham Shuttleworth. Elliott says it wants neither control of the board nor seats for its own employees, but a substantially stronger board to back the incoming chief executive and oversee a comprehensive operating and strategic review.",
+  "takeaways": [
+    { "label": "Move", "text": "Elliott holds an economic interest of about 5.6% and went public with six independent director candidates after talks with the board stalled.", "tickers": [] },
+    { "label": "View", "text": "The gap to peers comes from execution and governance failures, not from the quality of the mines or the workforce.", "tickers": [] },
+    { "label": "Watch", "text": "Whether the board agrees to substantial change. Elliott says it has added more than 150 directors to boards over 15 years, almost always by agreement.", "tickers": [] },
+    { "label": "Watch", "text": "A comprehensive operating and strategic review under the incoming chair and chief executive.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Company", "text": "If underperformance continues, shareholders, the workforce and Australians whose pension savings are invested in the company all lose." },
+    { "scope": "Company", "text": "Elliott and the board have not agreed on candidates; Elliott warns that unilateral action by the company would serve shareholders worse than working together." }
+  ],
+  "quotes": [
+    { "text": "This gap is a reflection of execution and governance failures over this period, not the quality of the Company’s assets or the people who mine them.", "context": "On the underperformance" },
+    { "text": "During a period of record gold prices, a company with assets of this caliber should be among its sector’s strongest performers.", "context": "On gold prices" },
+    { "text": "To be clear, we do not seek to add any Elliott employees to the Board and do not seek control of the Board.", "context": "On its intentions" }
+  ],
+  "stocks": [
+    { "ticker": null, "company": "Northern Star Resources", "stance": "bullish", "note": "ASX-listed gold miner; Elliott sees world-class assets held back by governance." }
+  ]
+}

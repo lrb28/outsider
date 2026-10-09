@@ -1,0 +1,45 @@
+{
+  "slug": "giverny-2025-annual-letter",
+  "investor": "giverny-capital-inc",
+  "author": "François Rochon",
+  "org": "Giverny Capital",
+  "kind": "annual_letter",
+  "title": "Giverny Capital Annual Letter to our Partners 2025",
+  "published_on": "2026-03-01",
+  "published_precision": "month",
+  "source_url": "https://givernycapital.com/wp-content/uploads/2026/03/giverny-capital-annual-letter-2025-1.pdf",
+  "source_name": "givernycapital.com",
+  "stance": "neutral",
+  "headline": "François Rochon after a weak 2025 (+2.7% vs 13.7%): he sold CarMax and Fiserv, keeps Constellation and warns AI spending rhymes with the railways.",
+  "summary": "The Rochon Global Portfolio returned 2.7% in 2025 against 13.7% for its benchmark, though it has compounded at 14.7% a year since 1993. Rochon explains rather than excuses: CarMax and Fiserv both fell more than 50% and were sold, and Constellation Software, the largest holding, dropped 26% on fears that AI will replace software, even as its earnings per share rose 21%. He estimates his companies’ intrinsic value grew about 13%. On AI he sees a real revolution but circular deals and short-lived GPUs, and recalls that railways and fiber optics rarely paid off for early investors. Gold and Bitcoin he dismisses as assets without intrinsic value.",
+  "takeaways": [
+    { "label": "Move", "text": "Sold CarMax after 18 years as Carvana and dealers took share, and Fiserv after its CEO left for government; both fell more than 50% in 2025.", "tickers": ["KMX", "FISV", "CVNA"] },
+    { "label": "View", "text": "Constellation Software is less threatened by AI than feared: revenue grew 15% and adjusted EPS 21%, and cheaper acquisition targets may even help. He keeps the shares.", "tickers": [] },
+    { "label": "View", "text": "AI is a revolution, but deals that loop money from Nvidia to OpenAI to Oracle and back are hard to value, and GPUs stay competitive for only three to five years.", "tickers": ["NVDA", "ORCL"] },
+    { "label": "Watch", "text": "The ten largest S&P 500 stocks trade at about 28 times next year’s earnings, the other 490 at about 19 times.", "tickers": [] }
+  ],
+  "risks": [
+    { "scope": "Industry", "text": "Companies with little revenue are borrowing tens of billions for AI data centers whose GPUs may be obsolete in five years." },
+    { "scope": "Market", "text": "The S&P 500 trades at 25 times earnings against a median of about 18 since 1996; at 18 it would be 28% lower." },
+    { "scope": "Market", "text": "Wall Street sells software, information-services and even engineering stocks first on AI fears and checks the facts later." }
+  ],
+  "quotes": [
+    { "text": "Wall Street's typical approach is to sell first and examine the facts later.", "context": "On the AI selloff in software" },
+    { "text": "it seems unrealistic to believe that an operator of a dozen mini-golf courses is going to start coding their own AI-powered reservation software to save something like $5,000 in annual fees!", "context": "On Constellation Software" },
+    { "text": "history has repeatedly shown that this type of investment is rarely, on the whole, profitable for early investors.", "context": "On AI infrastructure" }
+  ],
+  "stocks": [
+    { "ticker": null, "company": "Constellation Software", "stance": "bullish", "note": "Largest holding; stock −26% in 2025 while adjusted EPS rose 21%." },
+    { "ticker": null, "company": "Dollarama", "stance": "bullish", "note": "Other major Canadian holding; up 46% in 2025." },
+    { "ticker": "GOOGL", "company": "Alphabet", "stance": "bullish", "note": "Owned since 2011; one of only two AI-basket stocks in the portfolio." },
+    { "ticker": "META", "company": "Meta Platforms", "stance": "bullish", "note": "Owned since 2018." },
+    { "ticker": "V", "company": "Visa", "stance": "bullish", "note": "Owned since 2010; the widest moat in payments." },
+    { "ticker": "BKNG", "company": "Booking Holdings", "stance": "bullish", "note": "Punished on AI fears, not on results." },
+    { "ticker": "SCHW", "company": "Charles Schwab", "stance": "bullish", "note": "Punished on AI fears, not on results." },
+    { "ticker": "FIVE", "company": "Five Below", "stance": "bullish", "note": "Bought at about $71 in 2020; now $222, about 21% a year." },
+    { "ticker": "KMX", "company": "CarMax", "stance": "bearish", "note": "Sold after 18 years; fell more than 50% in 2025." },
+    { "ticker": "FISV", "company": "Fiserv", "stance": "bearish", "note": "Bought at $118 in 2023, sold at $74; his bronze-medal mistake." },
+    { "ticker": "NFLX", "company": "Netflix", "stance": "neutral", "note": "Silver-medal mistake: studied it at 18x earnings in 2022 but never bought." },
+    { "ticker": "CNI", "company": "Canadian National Railway", "stance": "neutral", "note": "Gold-medal mistake: passed at the 1995 IPO; about 17% a year since." }
+  ]
+}

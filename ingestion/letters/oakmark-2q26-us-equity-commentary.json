@@ -1,0 +1,41 @@
+{
+  "slug": "oakmark-2q26-us-equity-commentary",
+  "investor": "harris-associates-l-p",
+  "author": "Bill Nygren",
+  "org": "Harris | Oakmark",
+  "kind": "quarterly_letter",
+  "title": "The Discipline to Stay Boring: Oakmark U.S. Equity Commentary 2Q 2026",
+  "published_on": "2026-06-30",
+  "published_precision": "day",
+  "source_url": "https://oakmark.com/wp-content/uploads/sites/3/2026/07/The-discipline-to-stay-boring_U.S.-equity-market-commentary_2Q26_vF.pdf",
+  "source_name": "oakmark.com",
+  "stance": "neutral",
+  "headline": "Bill Nygren: the Oakmark Fund is flat for 2026 while AI hardware soars. He won’t buy Micron or Dell without a margin of safety.",
+  "summary": "The Oakmark Fund was flat through June while the S&P 500 and the Russell 1000 Value Index posted double-digit gains. Ten richly valued tech hardware stocks such as Sandisk, Micron and Intel made nearly half of the value index’s gain, and the index now holds more growth than value. Nygren sees dot-com-like investor behaviour, but notes that today’s leaders are highly profitable. He cannot tell whether memory and chip margins are a new normal or a cyclical peak, so he passes on AI hardware without calling it overvalued. His portfolio trades at 11.7 times 2026 earnings, and holdings such as Capital One, AIG and Alphabet should gain from AI.",
+  "takeaways": [
+    { "label": "View", "text": "Without AI-related stocks and the energy companies powering them, the S&P 500 would be down for the year.", "tickers": [] },
+    { "label": "View", "text": "Not an AI bear: Capital One uses AI to cut the cost of credit decisions and service, AIG to speed up underwriting, and Alphabet and AWS see AI demand.", "tickers": ["COF", "AIG", "GOOGL", "AMZN"] },
+    { "label": "Watch", "text": "Corebridge Financial trades below 6 times next year’s expected earnings; Nygren thinks 9 times would be reasonable.", "tickers": ["CRBG"] },
+    { "label": "Watch", "text": "After June’s Russell rebalance, Apple and Microsoft joined the value index and Amazon became its largest holding.", "tickers": ["AAPL", "MSFT", "AMZN"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "Investor behaviour echoes the dot-com era: a growing belief that exceptional stock returns are easy to achieve." },
+    { "scope": "Industry", "text": "Memory, semiconductors and computers have always been cyclical; today’s shortages and margins may prove a peak, as oil did at $150 a barrel." }
+  ],
+  "quotes": [
+    { "text": "If you exclude AI-related stocks and the energy companies powering them, the S&P 500 would be down year to date.", "context": "On the market" },
+    { "text": "That doesn’t mean we believe they’re wildly overvalued.", "context": "On AI hardware stocks" },
+    { "text": "We stay grounded by following the operating performance of the businesses we own rather than the share prices of the businesses we don’t.", "context": "On staying disciplined" }
+  ],
+  "stocks": [
+    { "ticker": "CRBG", "company": "Corebridge Financial", "stance": "bullish", "note": "Below 6x next year’s earnings; Nygren sees 9x as reasonable." },
+    { "ticker": "COF", "company": "Capital One", "stance": "bullish", "note": "Uses AI to cut the cost of credit authorisation and customer service." },
+    { "ticker": "AIG", "company": "AIG", "stance": "bullish", "note": "Applies AI to improve and speed up underwriting." },
+    { "ticker": "GOOGL", "company": "Alphabet", "stance": "bullish", "note": "Investing heavily in Gemini and Google Cloud." },
+    { "ticker": "AMZN", "company": "Amazon", "stance": "bullish", "note": "AWS growth is accelerating on AI demand." },
+    { "ticker": "MU", "company": "Micron", "stance": "neutral", "note": "Up 297% this year; not owned, as memory margins may be cyclical." },
+    { "ticker": "SNDK", "company": "Sandisk", "stance": "neutral", "note": "Up 781% this year from 100x 2025 earnings; not owned." },
+    { "ticker": "INTC", "company": "Intel", "stance": "neutral", "note": "Up 278% this year from 95x 2025 earnings; not owned." },
+    { "ticker": "DELL", "company": "Dell Technologies", "stance": "neutral", "note": "Up 245%; seen as an obvious AI winner, not owned." }
+  ]
+}

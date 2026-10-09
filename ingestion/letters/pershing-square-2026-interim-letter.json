@@ -1,0 +1,48 @@
+{
+  "slug": "pershing-square-2026-interim-letter",
+  "investor": "pershing-square-capital-management-l-p",
+  "author": "Bill Ackman",
+  "org": "Pershing Square",
+  "kind": "quarterly_letter",
+  "title": "Pershing Square Holdings June 2026 Interim Letter to Shareholders",
+  "published_on": "2026-08-13",
+  "published_precision": "day",
+  "source_url": "https://assets.pershingsquareholdings.com/wp-content/uploads/2026/08/13002306/Pershing-Square-Holdings-Ltd.-June-2026-Interim.pdf",
+  "source_name": "pershingsquareholdings.com",
+  "stance": "bullish",
+  "headline": "Bill Ackman after a −12.6% half year: with AI hardware driving the market, he bought Visa, Mastercard, Netflix, S&P Global, ICE and Alcon.",
+  "summary": "Pershing Square Holdings’ NAV fell 12.6% in the first half of 2026 while the S&P 500 rose 10.2%; Fannie Mae, Freddie Mac and Universal Music were the biggest drags. Ackman and CIO Ryan Israel note that semiconductors and tech hardware, 8% of the index’s companies, delivered nearly 85% of its gains, while nearly 40% of its stocks fell. They used the dislocation to buy six long-followed quality companies: Visa, Mastercard, Netflix, S&P Global, Intercontinental Exchange and Alcon. They expect the portfolio to grow earnings about 20% a year at 19 times earnings, against 12% and 20 times for the S&P 500, and plan more marketing to narrow PSH’s 35% discount to NAV.",
+  "takeaways": [
+    { "label": "Move", "text": "New positions in Visa, Mastercard, Netflix, S&P Global, Intercontinental Exchange and Alcon, companies Pershing has followed for years.", "tickers": ["V", "MA", "NFLX", "SPGI", "ICE", "ALC"] },
+    { "label": "Move", "text": "Sold Universal Music Group and Alphabet in the first half and Hertz in July.", "tickers": ["GOOGL", "HTZ"] },
+    { "label": "View", "text": "Every holding should grow earnings per share by 15% or more a year over three to five years, about half of them by 20% or more.", "tickers": [] },
+    { "label": "View", "text": "Microsoft trades at one of its lowest multiples in a decade; Copilot should make Microsoft 365 more resilient to AI than point-solution software.", "tickers": ["MSFT"] },
+    { "label": "Watch", "text": "Fannie Mae and Freddie Mac fell about 40% this year as privatization stalled; Pershing still expects them to be worth many times today’s prices once it happens.", "tickers": ["FNMA", "FMCC"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "In the short run a falling P/E multiple can swamp earnings growth, producing mark-to-market losses even when businesses do well." },
+    { "scope": "Industry", "text": "Robotaxis and a strained relationship with Waymo weigh on Uber’s shares." },
+    { "scope": "Industry", "text": "Investors worry about the heavy AI spending at Amazon, Microsoft and Meta." }
+  ],
+  "quotes": [
+    { "text": "We are fortunate in that the current market backdrop has created a highly attractive environment for Pershing Square to deploy capital into new investments.", "context": "On the market" },
+    { "text": "In the short term, the impact of a reduction in a company’s P/E multiple can easily overwhelm the positive impact of a company’s earnings growth.", "context": "On the losses" },
+    { "text": "We believe PSH is an excellent long-term investment when purchased at NAV.", "context": "On the discount" }
+  ],
+  "stocks": [
+    { "ticker": "V", "company": "Visa", "stance": "bullish", "note": "New position; a capital-light toll-taker de-rated on stablecoin and regulation worries." },
+    { "ticker": "MA", "company": "Mastercard", "stance": "bullish", "note": "New position; value-added services are about 40% of revenue." },
+    { "ticker": "NFLX", "company": "Netflix", "stance": "bullish", "note": "New position; 21x earnings, about 19% expected EPS growth." },
+    { "ticker": "SPGI", "company": "S&P Global", "stance": "bullish", "note": "New position; 19x earnings, about 15% expected EPS growth." },
+    { "ticker": "ICE", "company": "Intercontinental Exchange", "stance": "bullish", "note": "New position, bought after June 30." },
+    { "ticker": "ALC", "company": "Alcon", "stance": "bullish", "note": "New position after June 30; 18x earnings, mid-teens growth, new $1.5 billion buyback." },
+    { "ticker": "UBER", "company": "Uber", "stance": "bullish", "note": "Down 12% at 19x earnings while earnings grow about 35% this year." },
+    { "ticker": "BN", "company": "Brookfield Corp.", "stance": "bullish", "note": "Down 7% at 14x earnings; little exposure to private-credit worries." },
+    { "ticker": "MSFT", "company": "Microsoft", "stance": "bullish", "note": "Down 8% at 19x earnings; Azure well placed in a supply-constrained market." },
+    { "ticker": "META", "company": "Meta Platforms", "stance": "bullish", "note": "Down 15% at 18x earnings; ad revenue growing at its fastest pace since 2021." },
+    { "ticker": "AMZN", "company": "Amazon", "stance": "bullish", "note": "Up 3%; AWS growth accelerated to more than 30% this year." },
+    { "ticker": "QSR", "company": "Restaurant Brands International", "stance": "bullish", "note": "Up 8%; Burger King same-store sales +7% in the first half." },
+    { "ticker": "HHH", "company": "Howard Hughes Holdings", "stance": "bullish", "note": "Down 10%; bought insurer Vantage and hired former Arch CEO Marc Grandisson." },
+    { "ticker": "FNMA", "company": "Fannie Mae", "stance": "bullish", "note": "Down 39% as privatization stalled; intrinsic value keeps growing." }
+  ]
+}

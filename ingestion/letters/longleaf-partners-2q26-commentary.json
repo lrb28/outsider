@@ -1,0 +1,47 @@
+{
+  "slug": "longleaf-partners-2q26-commentary",
+  "investor": "southeastern-asset-management-inc",
+  "author": "Southeastern Asset Management",
+  "org": "Longleaf Partners Fund",
+  "kind": "quarterly_letter",
+  "title": "Longleaf Partners Fund 2Q26 Commentary",
+  "published_on": "2026-07-01",
+  "published_precision": "month",
+  "source_url": "https://southeasternasset.com/commentary/2q26-partners-fund-commentary/",
+  "source_name": "southeasternasset.com",
+  "stance": "bearish",
+  "headline": "Southeastern says markets have gotten crazy: Longleaf made 3.9% while the S&P 500 jumped 15.2%, and it won’t chase the AI winners.",
+  "summary": "The Longleaf Partners Fund gained 3.87% in the second quarter against 15.20% for the S&P 500 and is down 0.77% for the year; almost 90% of the gap came from owning little technology. Southeastern argues the market has turned more speculative: hyperscaler free cash flow is below 2019 levels on a forward basis, earnings and the CAPE multiple are both further from their long-run averages than ever, and it views the SpaceX, Anthropic and OpenAI IPOs as it viewed last year’s Fermi IPO. It believes its returns are deferred, not lost: the 17 holdings trade in the high 50s percent of appraised value, with value being unlocked at Fortune Brands, Mattel and People Inc.",
+  "takeaways": [
+    { "label": "Move", "text": "Bought one new holding, a healthcare company it has owned profitably before; sold Bio-Rad after another disappointing quarter and the FedEx Freight shares received in the spin-off.", "tickers": ["BIO", "FDXF"] },
+    { "label": "Move", "text": "Published a letter to Mattel after private engagement fell short; things have gone well since, though not yet in the share price.", "tickers": ["MAT"] },
+    { "label": "View", "text": "The extended AI group stays unattractive: money circles between hyperscalers, venture capital and debt-funded buyers and inflates revenue and adjusted EBITDA.", "tickers": [] },
+    { "label": "Watch", "text": "People Inc.’s bid for control of MGM Resorts. Southeastern likes the idea, but the details will matter.", "tickers": ["PPLI", "MGM"] },
+    { "label": "Watch", "text": "FedEx spent only 4% of revenue on capex, the lowest in its history; the market still underrates the cash the parcel network can produce.", "tickers": ["FDX"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "Both earnings and the multiple on them sit far above long-run averages, so owners of broad indices can lose on both." },
+    { "scope": "Market", "text": "Pressure is building in an unstable market structure before something dramatic happens; regulation will then turn stricter." },
+    { "scope": "Company", "text": "Regeneron’s pipeline went one for three, and Albertsons faces intense competition from Walmart and Aldi." }
+  ],
+  "quotes": [
+    { "text": "We believe that our absolute and relative returns have been deferred, not foregone, with considerably less risk going forward.", "context": "On the shortfall" },
+    { "text": "now is not the time to chase what has worked, but rather it is the time to go on record that things have gotten crazy.", "context": "On the market" },
+    { "text": "In short, multiples keep moving up while real earnings power struggles to keep up.", "context": "On the AI winners" }
+  ],
+  "stocks": [
+    { "ticker": "FBIN", "company": "Fortune Brands Innovations", "stance": "bullish", "note": "Contributor: reviewing options for Fiberon and hired former AZEK chief Jesse Singh as CEO." },
+    { "ticker": "MICC", "company": "Magnum Ice Cream", "stance": "bullish", "note": "Contributor: targets over €1.50 of free cash flow per share within two years." },
+    { "ticker": "PPLI", "company": "People Inc.", "stance": "bullish", "note": "Formerly IAC; bid for control of MGM and is slimming down to publishing and MGM." },
+    { "ticker": "MGM", "company": "MGM Resorts", "stance": "bullish", "note": "Las Vegas revenue grew for the first time in almost two years." },
+    { "ticker": "AVTR", "company": "Avantor", "stance": "bullish", "note": "Stabilising; the new CEO guides to growth and strong free cash flow in the second half." },
+    { "ticker": "FDX", "company": "FedEx", "stance": "bullish", "note": "Core segment revenue +14%, adjusted operating income +13%." },
+    { "ticker": "ACI", "company": "Albertsons", "stance": "bullish", "note": "Detractor, but Kroger’s purchase of Giant Eagle affirmed Southeastern’s appraisal." },
+    { "ticker": "REGN", "company": "Regeneron", "stance": "bullish", "note": "Detractor after a trial miss; Dupixent has outgrown expectations." },
+    { "ticker": "CNX", "company": "CNX Resources", "stance": "bullish", "note": "Detractor; one of the best share repurchasers, added back at lower prices." },
+    { "ticker": "MAT", "company": "Mattel", "stance": "bullish", "note": "Public letter after engagement; progress not yet in the price." },
+    { "ticker": null, "company": "Exor", "stance": "bullish", "note": "Among the lowest multiples of real free cash flow, punished most in the quarter." },
+    { "ticker": "BIO", "company": "Bio-Rad Laboratories", "stance": "bearish", "note": "Sold after another disappointing operational quarter." },
+    { "ticker": "FDXF", "company": "FedEx Freight", "stance": "neutral", "note": "Spin-off shares sold once they traded above the appraisal." }
+  ]
+}

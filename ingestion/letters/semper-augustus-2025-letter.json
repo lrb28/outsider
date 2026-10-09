@@ -1,0 +1,45 @@
+{
+  "slug": "semper-augustus-2025-letter",
+  "investor": "semper-augustus-investments-group-llc",
+  "author": "Chris Bloomstran",
+  "org": "Semper Augustus",
+  "kind": "annual_letter",
+  "title": "Semper Augustus 2025 Letter to Clients: Both Sides Now",
+  "published_on": "2026-02-25",
+  "published_precision": "day",
+  "source_url": "https://static.fmgsuite.com/media/documents/35496d1f-21fa-496b-aa89-108c8a479d2a.pdf",
+  "source_name": "semperaugustus.com",
+  "stance": "bearish",
+  "headline": "Chris Bloomstran after a 41.4% year: the S&P 500 sits on a “secular plateau”, and AI is a classic capital-cycle bubble apt to end badly.",
+  "summary": "Semper Augustus returned 41.4% net in 2025 against 17.9% for the S&P 500, helped by dollar stores and gold miners; its stocks have earned 12.4% a year since 1999. Bloomstran argues that the cap-weighted US market has never been more concentrated or overvalued, at 26 times earnings on a near-record profit margin. He calls AI a classic capital-cycle bubble built on debt, circular financing and accounting gimmicks, with OpenAI valued at 65 times 2025 sales while burning at least $17 billion a year. His own portfolio trades at 12.2 times earnings. Berkshire, his largest holding, ended 2025 at 88% of his $1.23 trillion value estimate as Greg Abel takes over.",
+  "takeaways": [
+    { "label": "Move", "text": "Bought Deckers Outdoor near its 2025 low after a 49% fall, and added to Five Below during the tariff sell-off.", "tickers": ["DECK", "FIVE"] },
+    { "label": "Move", "text": "Trimmed Kinross Gold heavily after a 204% rise to pay for other purchases.", "tickers": ["KGC"] },
+    { "label": "View", "text": "Dollar General, Dollar Tree and Five Below grew from 17.1% to 25.9% of holdings during the year and drove much of the return.", "tickers": ["DG", "DLTR", "FIVE"] },
+    { "label": "View", "text": "Berkshire trades at 88% of his intrinsic-value estimate of $570 per B share: about 14% upside plus annual growth in value.", "tickers": ["BRK.B"] },
+    { "label": "Watch", "text": "OpenAI is seeking $100 billion at an $830 billion valuation; Nvidia’s investments in it look to him like a gift card to buy more Nvidia chips.", "tickers": ["NVDA"] }
+  ],
+  "risks": [
+    { "scope": "Market", "text": "The cap-weighted US market has never been more concentrated or overvalued; perhaps 60 to 100 of the largest companies are priced to perfection." },
+    { "scope": "Industry", "text": "Formerly capital-light tech giants are leveraging their balance sheets in an AI arms race, and their margins may come under pressure of their own making." },
+    { "scope": "Market", "text": "High prices combined with high profit margins usually mean mediocre future returns, or worse." }
+  ],
+  "quotes": [
+    { "text": "This one is apt to end badly.", "context": "On the AI capital cycle" },
+    { "text": "High prices mixed with high margins are typically a recipe for mediocre future returns – or worse.", "context": "On the S&P 500" },
+    { "text": "It’s hard to see AI disrupting a dollar store in Knob Knoster, Missouri.", "context": "On his holdings" }
+  ],
+  "stocks": [
+    { "ticker": "BRK.B", "company": "Berkshire Hathaway", "stance": "bullish", "note": "Largest holding for two decades; at 88% of a $1.23 trillion appraisal." },
+    { "ticker": "DG", "company": "Dollar General", "stance": "bullish", "note": "Part of the retail trio that grew to 25.9% of holdings." },
+    { "ticker": "DLTR", "company": "Dollar Tree", "stance": "bullish", "note": "Part of the retail trio that grew to 25.9% of holdings." },
+    { "ticker": "FIVE", "company": "Five Below", "stance": "bullish", "note": "Added at lower prices when the tariff war began in early 2025." },
+    { "ticker": "DECK", "company": "Deckers Outdoor", "stance": "bullish", "note": "New in 2025, bought near the low after a 49% decline." },
+    { "ticker": "KGC", "company": "Kinross Gold", "stance": "bullish", "note": "Up 204% in 2025; trimmed heavily, still constructive on gold." },
+    { "ticker": "NEM", "company": "Newmont", "stance": "bullish", "note": "Gold miner whose profitability is surging." },
+    { "ticker": "OLN", "company": "Olin", "stance": "bullish", "note": "One of the largest holdings; the lowest-cost chlor-alkali producer in the world." },
+    { "ticker": "KHC", "company": "Kraft Heinz", "stance": "bearish", "note": "Berkshire’s $5 billion write-down: a lousy investment, though not as bad as reported." },
+    { "ticker": "NVDA", "company": "NVIDIA", "stance": "bearish", "note": "Up 534.8% in four years to a record 7.7% of the S&P 500; funds its own customers." },
+    { "ticker": null, "company": "OpenAI", "stance": "bearish", "note": "Valued at 65 times 2025 sales while burning at least $17 billion a year." }
+  ]
+}
