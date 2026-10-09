@@ -307,6 +307,36 @@ const INVESTOR_PEOPLE: [string, string, string][] = [
   // Starboard's letters are signed with the full first name.
   ["jeffrey smith", "Jeff_Smith", "Jeff Smith"],
   ["glenview", "Larry_Robbins", "Larry Robbins"],
+  // Greenlight files its 13F as DME Capital Management since 2024.
+  ["dme capital", "David_Einhorn", "David Einhorn"],
+  ["greenlight", "David_Einhorn", "David Einhorn"],
+  ["elliott investment", "Paul_Singer", "Paul Singer"],
+  ["elliott management", "Paul_Singer", "Paul Singer"],
+  ["renaissance tech", "Jim_Simons", "Jim Simons"],
+  ["tudor investment", "Paul_Tudor_Jones", "Paul Tudor Jones"],
+  ["tci fund", "Chris_Hohn", "Chris Hohn"],
+  ["h&h international", "Duan_Yongping", "Duan Yongping"],
+  ["southeastern asset", "Mason_Hawkins", "Mason Hawkins"],
+  ["longleaf", "Mason_Hawkins", "Mason Hawkins"],
+  ["valueact", "Mason_Morfit", "Mason Morfit"],
+  ["abrams capital", "David_Abrams", "David Abrams"],
+  ["fairholme", "Bruce_Berkowitz", "Bruce Berkowitz"],
+  ["valley forge", "Dev_Kantesaria", "Dev Kantesaria"],
+  ["semper augustus", "Chris_Bloomstran", "Chris Bloomstran"],
+  ["giverny", "Francois_Rochon", "François Rochon"],
+  ["paulson & co", "John_Paulson", "John Paulson"],
+  ["maverick capital", "Lee_Ainslie", "Lee Ainslie"],
+  ["lindsell train", "Nick_Train", "Nick Train"],
+  ["harris associates", "Bill_Nygren", "Bill Nygren"],
+  ["oakmark", "Bill_Nygren", "Bill Nygren"],
+  ["dorsey asset", "Pat_Dorsey", "Pat Dorsey"],
+  ["brave warrior", "Glenn_Greenberg", "Glenn Greenberg"],
+  ["miller value", "Bill_Miller", "Bill Miller"],
+  ["durable capital", "Henry_Ellenbogen", "Henry Ellenbogen"],
+  ["thiel macro", "Peter_Thiel", "Peter Thiel"],
+  ["jana partners", "Barry_Rosenstein", "Barry Rosenstein"],
+  // Akre's quarterly letters are signed by portfolio manager John Neff.
+  ["john neff", "Chuck_Akre", "Chuck Akre"],
   ["pelosi", "Nancy_Pelosi", "Nancy Pelosi"],
 ];
 
@@ -397,8 +427,78 @@ const BIO_STARBOARD =
   "Starboard Value is one of Wall Street’s most active activists: a big stake, a concrete plan for better margins and, if needed, a proxy fight.";
 const BIO_ROBBINS =
   "Glenview Capital specialises in healthcare and is known for a few thoroughly researched bets.";
+const BIO_EINHORN =
+  "Founded Greenlight Capital in 1996 and became known for public short calls, above all against Lehman Brothers before its 2008 collapse. Runs a concentrated value portfolio; since 2024 Greenlight’s 13F is filed as DME Capital Management.";
+const BIO_SINGER =
+  "Founded Elliott in 1977, one of the oldest hedge funds under continuous management. Among the most feared activists anywhere — from Argentina’s defaulted bonds to boardroom fights at companies around the world.";
+const BIO_SIMONS =
+  "Mathematician and former codebreaker who founded Renaissance Technologies and pioneered quantitative investing; its Medallion fund, closed to outsiders, is considered the most successful ever. Simons died in 2024. The 13F shows thousands of model-driven positions.";
+const BIO_TUDOR =
+  "Macro trader who called the 1987 crash and founded Tudor Investment Corp. Also founded the Robin Hood Foundation, which fights poverty in New York.";
+const BIO_HOHN =
+  "Founded TCI (The Children’s Investment Fund), one of Britain’s most successful hedge funds. A tough activist with a tiny portfolio of near-monopolies such as Visa, Moody’s and GE Aerospace.";
+const BIO_DUAN =
+  "Chinese entrepreneur behind BBK Electronics, the root of Oppo and Vivo, and an early backer of Pinduoduo. Invests like Buffett — he won the 2006 charity lunch with him — and his US portfolio is dominated by Apple and Berkshire.";
+const BIO_HAWKINS =
+  "Founded Southeastern Asset Management in 1975. Its Longleaf funds buy a small number of companies at deep discounts to their appraised value and push management for change when needed.";
+const BIO_MORFIT =
+  "ValueAct is a quiet activist: it takes large stakes and works with boards behind the scenes — Mason Morfit once sat on Microsoft’s board. He has led the firm since co-founder Jeff Ubben left in 2020.";
+const BIO_ABRAMS =
+  "A Baupost alumnus who keeps an extremely low profile. Abrams Capital runs a very concentrated portfolio and holds its positions for years.";
+const BIO_BERKOWITZ =
+  "Founder of Fairholme and Morningstar’s US stock fund manager of the decade for 2000–2009. Known for huge contrarian bets — today the portfolio is mostly one stock, the Florida land owner St. Joe.";
+const BIO_KANTESARIA =
+  "Valley Forge owns only a handful of “toll-road” businesses with near-monopoly positions — credit scores, credit ratings and payment networks — and holds them for the long run.";
+const BIO_BLOOMSTRAN =
+  "Founded Semper Augustus in St. Louis in 1998. His annual letter to clients runs to well over 100 pages and is a cult read among Berkshire fans; Berkshire has been his largest holding for two decades.";
+const BIO_ROCHON =
+  "Montreal-based founder of Giverny Capital and an art collector — every annual letter opens with a painting. His family portfolio has compounded at about 14.7% a year since 1993.";
+const BIO_PAULSON =
+  "Made billions betting against subprime mortgages in 2007, often called “the greatest trade ever”. Paulson & Co. now manages mainly his own money, with big bets on gold miners and drug developers.";
+const BIO_AINSLIE =
+  "A “Tiger Cub” who has run Maverick Capital since 1993: a stock picker with a long and short book across technology, healthcare, financials and consumer stocks.";
+const BIO_TRAIN =
+  "Co-founder of London’s Lindsell Train: a short list of brands and data businesses, held for decades with hardly any trading.";
+const BIO_NYGREN =
+  "Has run the Oakmark Fund at Harris Associates since 2000: classic value investing in large US companies, explained in famously readable quarterly letters.";
+const BIO_DORSEY =
+  "Former director of equity research at Morningstar and author of books on “economic moats”. Dorsey Asset Management owns about a dozen wide-moat companies.";
+const BIO_GREENBERG =
+  "Co-founded Chieftain Capital in 1984 and went his own way with Brave Warrior Advisors in 2009: a concentrated portfolio of quality companies bought when they are out of favour.";
+const BIO_MILLER =
+  "Beat the S&P 500 fifteen years in a row at Legg Mason, a record. Now advises Miller Value Partners, run by his son Bill Miller IV, and is a famous Bitcoin bull.";
+const BIO_ELLENBOGEN =
+  "Ran T. Rowe Price’s New Horizons fund before founding Durable Capital in 2019: growth companies he expects to own for many years.";
+const BIO_THIEL =
+  "PayPal co-founder and Facebook’s first outside investor, today one of Silicon Valley’s best-known venture capitalists. His small public portfolio, Thiel Macro, leans on Amazon and power utilities.";
+const BIO_ROSENSTEIN =
+  "Founded JANA Partners in 2001: an activist that pushes companies to sell themselves or split up — Whole Foods sold itself to Amazon after JANA’s 2017 campaign.";
 
 const INVESTOR_BIO: [string, string][] = [
+  ["dme capital", BIO_EINHORN],
+  ["greenlight", BIO_EINHORN],
+  ["elliott investment", BIO_SINGER],
+  ["renaissance tech", BIO_SIMONS],
+  ["tudor investment", BIO_TUDOR],
+  ["tci fund", BIO_HOHN],
+  ["h&h international", BIO_DUAN],
+  ["southeastern asset", BIO_HAWKINS],
+  ["valueact", BIO_MORFIT],
+  ["abrams capital", BIO_ABRAMS],
+  ["fairholme", BIO_BERKOWITZ],
+  ["valley forge", BIO_KANTESARIA],
+  ["semper augustus", BIO_BLOOMSTRAN],
+  ["giverny", BIO_ROCHON],
+  ["paulson & co", BIO_PAULSON],
+  ["maverick capital", BIO_AINSLIE],
+  ["lindsell train", BIO_TRAIN],
+  ["harris associates", BIO_NYGREN],
+  ["dorsey asset", BIO_DORSEY],
+  ["brave warrior", BIO_GREENBERG],
+  ["miller value", BIO_MILLER],
+  ["durable capital", BIO_ELLENBOGEN],
+  ["thiel macro", BIO_THIEL],
+  ["jana partners", BIO_ROSENSTEIN],
   ["icahn", BIO_ICAHN],
   ["gates foundation", BIO_GATES],
   ["ark investment", BIO_WOOD],
@@ -487,6 +587,10 @@ const COMPANY_BY_TICKER: Record<string, string> = {
   DDOG: "Datadog", NET: "Cloudflare", SPGI: "S&P Global", ICE: "ICE",
   CME: "CME Group", TXN: "Texas Instruments", IBM: "IBM", INTU: "Intuit",
   ISRG: "Intuitive Surgical", VRT: "Vertiv", SMCI: "Super Micro",
+  // Companies whose insiders we follow (Form 4)
+  HOOD: "Robinhood", MSTR: "Strategy", RKLB: "Rocket Lab", SOFI: "SoFi",
+  RDDT: "Reddit", CMG: "Chipotle", DASH: "DoorDash", DELL: "Dell",
+  GME: "GameStop", APP: "AppLovin", ANET: "Arista Networks", HIMS: "Hims & Hers",
   // Names that 13F abbreviations mangle beyond repair
   SPCX: "SpaceX", CART: "Instacart", JCI: "Johnson Controls", JHX: "James Hardie",
   USFD: "US Foods", MELI: "MercadoLibre", CBRS: "Cerebras", HHH: "Howard Hughes",
