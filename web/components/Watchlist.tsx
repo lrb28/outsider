@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { fetchCatalogue } from "@/lib/fetchJson";
 import type { InvestorRow, InvestorsResponse, PoliticianRow, PoliticiansResponse, StockRow, StocksResponse } from "@/lib/types";
-import { getFollowed } from "@/lib/watchlist";
+import { FROM_WATCHLIST, getFollowed, watchedInvestors } from "@/lib/watchlist";
 
 import { Avatar } from "./Avatar";
 import { CompanyLogo } from "./CompanyLogo";
@@ -65,7 +65,8 @@ export function Watchlist() {
   }
 
   const people = [
-    ...investors.filter((i) => follow.investor.includes(i.slug)).map((i) => ({ key: `i-${i.slug}`, href: `/investor/${i.slug}`, name: i.person ?? i.fund, src: null as string | null, kind: "investor" as const })),
+    // Opened from here, the investor page swipes through these investors.
+    ...watchedInvestors(investors, follow.investor).map((i) => ({ key: `i-${i.slug}`, href: `/investor/${i.slug}?${FROM_WATCHLIST}`, name: i.person ?? i.fund, src: null as string | null, kind: "investor" as const })),
     ...politicians.filter((p) => follow.politician.includes(p.slug)).map((p) => ({ key: `p-${p.slug}`, href: `/politician/${p.slug}`, name: p.name, src: p.photo ?? null, kind: "politician" as const })),
   ];
   // Two share classes of one company (GOOGL, GOOG) made two identical

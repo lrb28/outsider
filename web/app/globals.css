@@ -641,6 +641,28 @@ html[data-ptr] .scroll-edge-top { opacity: 0; transition: opacity 160ms ease; }
 .ptr-spin { animation: ptrSpin 900ms linear infinite; }
 @keyframes ptrSpin { to { stroke-dashoffset: -100; } }
 
+/* The watchlist's wheel of names (WatchPager): see-through over the aura
+   at the top of the page, a plain band that fades out at its foot once it
+   sticks under the header. */
+.watch-band::before {
+  content: "";
+  position: absolute;
+  /* Up under the header too, so the two read as one plain top. */
+  inset: calc(-1 * (max(0.75rem, env(safe-area-inset-top)) + 3.5rem)) 0 -1.25rem;
+  z-index: -1;
+  pointer-events: none;
+  background: rgb(var(--bg));
+  /* Solid behind the names (colour showing through muddied them), fading
+     out only below them. */
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 1.25rem), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 1.25rem), transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.watch-band[data-stuck]::before {
+  opacity: 1;
+}
+
 /* A tab glyph pops when its tab becomes current. */
 @keyframes tabPop {
   0% { transform: scale(0.82); }
