@@ -59,7 +59,8 @@ export default function InsiderPage() {
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-insider)" }}>
         <DetailTopBar back="/feed?type=corporate_insider" label="Insiders" />
 
-        <div className="fade-up flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+        {/* Centred, like investors and politicians (user, 2026-10-09). */}
+        <div className="fade-up flex flex-col items-center gap-4 text-center">
           {/* An executive's picture is the company they report for. */}
           <div className="relative shrink-0">
             {ins.ticker ? (
