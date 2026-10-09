@@ -25,10 +25,10 @@ export function loadInvestor(slug: string, fresh = false): Promise<InvestorDetai
  * Everything an investor page shows about one investor. `top` is the row
  * with the back button (left out when the watchlist pager keeps it fixed
  * above), `preview` draws only the head and the allocation, for the
- * neighbouring investor that slides in beside the current one, and
- * `centred` stacks picture, name and bio down the middle (the pager).
+ * neighbouring investor that slides in beside the current one. Picture,
+ * name and bio stand centred (user, 2026-10-09).
  */
-export function InvestorView({ inv, top, preview = false, centred = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean; centred?: boolean }) {
+export function InvestorView({ inv, top, preview = false }: { inv: InvestorDetail; top?: ReactNode; preview?: boolean }) {
   const [sort, setSort] = useState<"value" | "name">("value");
   // Point72 reports almost 2,000 positions; rendering them all at once made
   // the page stutter on phones. The list grows on request.
@@ -92,13 +92,13 @@ export function InvestorView({ inv, top, preview = false, centred = false }: { i
       <div className="aura-header space-y-5" style={{ ["--aura" as string]: "var(--aura-investor)" }}>
         {top}
 
-        <div className={`fade-up flex flex-col gap-4 ${centred ? "items-center text-center" : "items-start sm:flex-row sm:items-center"}`}>
+        <div className="fade-up flex flex-col items-center gap-4 text-center">
           <Avatar name={inv.person ?? inv.fund} size={96} className="shadow-[0_10px_30px_rgb(0_0_0/0.14)]" />
           <div className="min-w-0 flex-1">
             <h1 className="large-title">{inv.person ?? inv.fund}</h1>
           </div>
         </div>
-        {inv.bio && <p className={`fade-up max-w-2xl text-[17px] leading-relaxed text-ink/80 ${centred ? "mx-auto text-center" : ""}`}>{inv.bio}</p>}
+        {inv.bio && <p className="fade-up mx-auto max-w-2xl text-center text-[17px] leading-relaxed text-ink/80">{inv.bio}</p>}
 
         <div className="fade-up"><StatRow items={stats} /></div>
       </div>
